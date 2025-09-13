@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Dictation - Student</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            max-width: 400px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 30px;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+            text-align: center;
+        }
+        
+        h1 {
+            color: #ffffff;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        /* Room Code Input */
+        .join-section {
+            margin-bottom: 30px;
+        }
+        
+        #roomCodeInput {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2rem;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            color: white;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        #roomCodeInput::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        #joinBtn {
+            width: 100%;
+            background: rgba(46, 204, 113, 0.2);
+            border: 2px solid rgba(46, 204, 113, 0.5);
+            color: white;
+            padding: 15px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        #joinBtn:hover {
+            background: rgba(46, 204, 113, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        /* Voting Interface */
+        .voting-interface {
+            display: none;
+        }
+        
+        .room-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .room-code {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #3498db;
+        }
+        
+        #votingStatus {
+            font-weight: 600;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .voting-enabled {
+            background: rgba(46, 204, 113, 0.2);
+            color: #2ecc71;
+        }
+        
+        .voting-disabled {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+        }
+        
+        /* Vote Buttons */
+        .vote-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .vote-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 25px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 2rem;
+            font-weight: 700;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .vote-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .vote-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .vote-btn.voted {
+            background: rgba(52, 152, 219, 0.4) !important;
+            border-color: rgba(52, 152, 219, 0.8) !important;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(52, 152, 219, 0.5);
+        }
+        
+        .instructions {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        
+        .error {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Join Room Section -->
+        <div class="join-section" id="joinSection">
+            <h1>🎵 Music Dictation</h1>
+            <p class="instructions">Enter the room code from your teacher:</p>
+            <input type="text" id="roomCodeInput" placeholder="ROOM CODE" maxlength="6">
+            <button id="joinBtn" onclick="joinRoom()">Join Room</button>
+            <div id="errorMessage" class="error" style="display: none;"></div>
+        </div>
+        
+        <!-- Voting Interface -->
+        <div class="voting-interface" id="votingInterface">
+            <div class="room-info">
+                <div>Room: <span class="room-code" id="roomCodeDisplay"></span></div>
+            </div>
+            
+            <div id="votingStatus" class="voting-disabled">Waiting for teacher...</div>
+            
+            <p class="instructions">Listen to the melody and select your answer:</p>
+            
+            <div class="vote-buttons">
+                <button class="vote-btn" onclick="submitVote(0)">A</button>
+                <button class="vote-btn" onclick="submitVote(1)">B</button>
+                <button class="vote-btn" onclick="submitVote(2)">C</button>
+                <button class="vote-btn" onclick="submitVote(3)">D</button>
+                <button class="vote-btn" onclick="submitVote(4)">E</button>
+                <button class="vote-btn" onclick="submitVote(5)">F</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, get, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        import { set, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyB_jykeKL3tbBw8dmOCRiaDmD5Jzr-l53w",
+            authDomain: "music-dictation.firebaseapp.com",
+            databaseURL: "https://music-dictation-default-rtdb.firebaseio.com",
+            projectId: "music-dictation",
+            storageBucket: "music-dictation.firebasestorage.app",
+            messagingSenderId: "440288448006",
+            appId: "1:440288448006:web:7396aee943785e1cd43d87",
+            measurementId: "G-5N6V14YGS2"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        
+        window.firebase = { database, ref, get, onValue, set, serverTimestamp };
+    </script>
+
+    <script>
+        let currentRoomCode = null;
+        let votingEnabled = false;
+        let studentId = localStorage.getItem('studentId') || generateStudentId();
+
+        function generateStudentId() {
+            const id = Math.random().toString(36).substring(2, 15);
+            localStorage.setItem('studentId', id);
+            return id;
+        }
+
+        async function joinRoom() {
+            const roomCode = document.getElementById('roomCodeInput').value.toUpperCase().trim();
+            
+            if (!roomCode) {
+                showError('Please enter a room code');
+                return;
+            }
+
+            if (!window.firebase) {
+                showError('Loading... please try again in a moment');
+                return;
+            }
+
+            try {
+                const snapshot = await window.firebase.get(window.firebase.ref(window.firebase.database, `rooms/${roomCode}`));
+                
+                if (snapshot.exists()) {
+                    currentRoomCode = roomCode;
+                    document.getElementById('roomCodeDisplay').textContent = roomCode;
+                    
+                    // Switch to voting interface
+                    document.getElementById('joinSection').style.display = 'none';
+                    document.getElementById('votingInterface').style.display = 'block';
+                    
+                    // Start listening for updates
+                    listenToRoomUpdates();
+                } else {
+                    showError('Room not found. Please check the code.');
+                }
+            } catch (error) {
+                console.error('Error joining room:', error);
+                showError('Error joining room. Please try again.');
+            }
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            setTimeout(() => {
+                errorEl.style.display = 'none';
+            }, 3000);
+        }
+
+        function listenToRoomUpdates() {
+            window.firebase.onValue(window.firebase.ref(window.firebase.database, `rooms/${currentRoomCode}`), (snapshot) => {
+                if (snapshot.exists()) {
+                    const roomData = snapshot.val();
+                    votingEnabled = roomData.votingEnabled || false;
+                    updateVotingInterface();
+                }
+            });
+        }
+
+        function updateVotingInterface() {
+            const statusEl = document.getElementById('votingStatus');
+            statusEl.textContent = votingEnabled ? 'Voting Enabled - Select Your Answer!' : 'Waiting for teacher...';
+            statusEl.className = votingEnabled ? 'voting-enabled' : 'voting-disabled';
+            
+            // Enable/disable buttons
+            document.querySelectorAll('.vote-btn').forEach(btn => {
+                btn.disabled = !votingEnabled;
+            });
+        }
+
+        async function submitVote(optionIndex) {
+            if (!votingEnabled || !currentRoomCode) return;
+            
+            try {
+                await window.firebase.set(
+                    window.firebase.ref(window.firebase.database, `rooms/${currentRoomCode}/votes/${studentId}`),
+                    {
+                        vote: optionIndex,
+                        timestamp: window.firebase.serverTimestamp()
+                    }
+                );
+                
+                // Highlight selected button
+                document.querySelectorAll('.vote-btn').forEach((btn, index) => {
+                    btn.classList.remove('voted');
+                    if (index === optionIndex) {
+                        btn.classList.add('voted');
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Error submitting vote:', error);
+                showError('Error submitting vote. Please try again.');
+            }
+        }
+
+        // Allow Enter key to join room
+        document.getElementById('roomCodeInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                joinRoom();
+            }
+        });
+    </script>
+</body>
+</html>

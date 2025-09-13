@@ -1876,8 +1876,928 @@ const allQuestionSets = [
                 { keys: ['c/3'], duration: 'q' }    // 1 beat = 4 beats total
             ]
         }
-    ] // End of Question Set 20
-];
+    ], // End of Question Set 20
+
+    // QUESTION SET 21 (Treble Clef) - A minor melody (EASY: G#4-A4-B4-C5-D5-E5 ONLY)
+    [
+        // Option 0: CORRECT - A quarter B quarter C half | D quarter E quarter A half
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'h' }   // 2 beats = 4 total
+            ],
+            measure2: [
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        },
+        // Option 1: G# quarter B quarter C half | D quarter E quarter A half (A→G# subtle change)
+        {
+            measure1: [
+                { keys: ['g#/4'], duration: 'q' }, // 1 beat (A becomes G#)
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'h' }   // 2 beats = 4 total
+            ],
+            measure2: [
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        },
+        // Option 2: A quarter C quarter C half | D quarter E quarter A half (B→C subtle step change)
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat (B becomes C)
+                { keys: ['c/5'], duration: 'h' }   // 2 beats = 4 total
+            ],
+            measure2: [
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        },
+        // Option 3: A quarter B quarter C half | D quarter D quarter A half (E→D subtle change)
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'h' }   // 2 beats = 4 total
+            ],
+            measure2: [
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' },  // 1 beat (E becomes D)
+                { keys: ['a/4'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        },
+        // Option 4: A quarter B quarter C half | D quarter E quarter B half (A→B subtle ending change)
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'h' }   // 2 beats = 4 total
+            ],
+            measure2: [
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'h' }   // 2 beats (A becomes B) = 4 total
+            ]
+        },
+        // Option 5: A quarter B quarter B half | D quarter E quarter A half (C→B subtle change)
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'h' }   // 2 beats (C becomes B) = 4 total
+            ],
+            measure2: [
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        }
+    ], // End of Question Set 21
+
+    // QUESTION SET 22 (Bass Clef) - A minor melody (EASY: G#2-A2-B2-C3-D3-E3 ONLY)  
+    [
+        // Option 0: CORRECT - A quarter B quarter C half | D quarter E quarter A half
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'h' }   // 2 beats = 4 total
+            ],
+            measure2: [
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        },
+        // Option 1: A quarter C quarter B half | D quarter E quarter A half (B/C swap in measure 1)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat (B becomes C)
+                { keys: ['b/2'], duration: 'h' }   // 2 beats (C becomes B) = 4 total
+            ],
+            measure2: [
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        },
+        // Option 2: A quarter B quarter D half | D quarter E quarter A half (C becomes D in measure 1)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'h' }   // 2 beats (C becomes D) = 4 total
+            ],
+            measure2: [
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        },
+        // Option 3: A quarter B quarter C quarter D quarter | E quarter D quarter A half (rhythm change in measure 1)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat (half becomes quarter)
+                { keys: ['d/3'], duration: 'q' }   // 1 beat (moves from measure 2) = 4 total
+            ],
+            measure2: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' },  // 1 beat (E becomes D)
+                { keys: ['a/2'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        },
+        // Option 4: A quarter B quarter C half | D quarter E quarter B half (ending A becomes B)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'h' }   // 2 beats = 4 total
+            ],
+            measure2: [
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'h' }   // 2 beats (A becomes B) = 4 total
+            ]
+        },
+        // Option 5: A quarter B quarter C half | E quarter D quarter A half (D/E swap in measure 2)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'h' }   // 2 beats = 4 total
+            ],
+            measure2: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat (D becomes E)
+                { keys: ['d/3'], duration: 'q' },  // 1 beat (E becomes D)
+                { keys: ['a/2'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        }
+    ], // End of Question Set 22
+
+    // QUESTION SET 23 (Treble Clef) - A minor melody (EASY: G#4-A4-B4-C5-D5-E5 ONLY)
+    [
+        // Option 0: CORRECT ANSWER - A quarter B quarter C quarter D quarter | E quarter D quarter C quarter A quarter
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 1: Different rhythm - A quarter B quarter C half | E quarter D quarter C quarter A quarter
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'h' }   // 2 beats = 4 total (rhythm change)
+            ],
+            measure2: [
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 2: Single note change - A quarter B quarter C quarter D quarter | E quarter D quarter B quarter A quarter (C becomes B)
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat (C becomes B - step down)
+                { keys: ['a/4'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 3: Different rhythm - A quarter B quarter C quarter D quarter | E quarter D quarter C half (A becomes C half)
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'h' }   // 2 beats = 4 total (rhythm change)
+            ]
+        },
+        // Option 4: Single note change - A quarter C quarter B quarter D quarter | E quarter D quarter C quarter A quarter (B/C swap)
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat (B becomes C)
+                { keys: ['b/4'], duration: 'q' },  // 1 beat (C becomes B) 
+                { keys: ['d/5'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 5: Different rhythm - A half B quarter C quarter | E quarter D quarter C quarter A quarter
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'h' },  // 2 beats (rhythm change)
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        }
+    ], // End of Question Set 23
+
+    // QUESTION SET 24 (Bass Clef) - A minor melody (EASY: G#2-A2-B2-C3-D3-E3 ONLY)
+    [
+        // Option 0: CORRECT ANSWER - A quarter B quarter C quarter D quarter | E quarter D quarter C quarter A quarter
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 1: One note change - A quarter B quarter C quarter D quarter | E quarter D quarter B quarter A quarter (C becomes B)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat (C becomes B)
+                { keys: ['a/2'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 2: One note change - A quarter B quarter D quarter D quarter | E quarter D quarter C quarter A quarter (C becomes D)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' },  // 1 beat (C becomes D)
+                { keys: ['d/3'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 3: One note change - A quarter B quarter C quarter D quarter | E quarter C quarter C quarter A quarter (D becomes C)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat (D becomes C)
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 4: One note change - A quarter B quarter C quarter D quarter | E quarter D quarter C quarter B quarter (ending A becomes B)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' }   // 1 beat (A becomes B)
+            ]
+        },
+        // Option 5: Adjacent notes swapped - A quarter B quarter C quarter D quarter | E quarter D quarter A quarter C quarter (C and A swapped)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'q' },  // 1 beat (swapped with next note)
+                { keys: ['c/3'], duration: 'q' }   // 1 beat (swapped with previous note)
+            ]
+        }
+    ], // End of Question Set 24
+
+    // QUESTION SET 25 (Treble Clef) - A minor melody (EASY: G#4-A4-B4-C5-D5-E5 ONLY)
+    [
+        // Option 0: CORRECT - A half C quarter D quarter | E quarter B quarter A half
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'h' },  // 2 beats
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        },
+        // Option 1: A half D quarter C quarter | E quarter B quarter A half (C/D swap - extremely subtle)
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'h' },  // 2 beats
+                { keys: ['d/5'], duration: 'q' },  // 1 beat (swapped)
+                { keys: ['c/5'], duration: 'q' }   // 1 beat (swapped) = 4 total
+            ],
+            measure2: [
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        },
+        // Option 2: A half C quarter D quarter | E quarter C quarter A half (B→C change - one step)
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'h' },  // 2 beats
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat (B→C, one step up)
+                { keys: ['a/4'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        },
+        // Option 3: A half C quarter E quarter | D quarter B quarter A half (D→E change - one step)
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'h' },  // 2 beats
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['e/5'], duration: 'q' }   // 1 beat (D→E, one step up) = 4 total
+            ],
+            measure2: [
+                { keys: ['d/5'], duration: 'q' },  // 1 beat (E→D, moved down)
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        },
+        // Option 4: A quarter C quarter D half | E quarter B quarter A half (rhythm change - subtle)
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat (half→quarter)
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'h' }   // 2 beats (quarter→half) = 4 total
+            ],
+            measure2: [
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        },
+        // Option 5: A half C quarter D quarter | E quarter B quarter B half (A→B ending change - one step)
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'h' },  // 2 beats
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'h' }   // 2 beats (A→B, one step up) = 4 total
+            ]
+        }
+    ], // End of Question Set 25
+
+    // QUESTION SET 26 (Bass Clef) - A minor melody (EASY: G#2-A2-B2-C3-D3-E3 ONLY)
+    [
+        // Option 0: CORRECT - A half C quarter D quarter | E quarter B quarter A half
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'h' },  // 2 beats
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        },
+        // Option 1: A half C quarter E quarter | E quarter B quarter A half (D becomes E)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'h' },  // 2 beats
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['e/3'], duration: 'q' }   // 1 beat (D→E, one step up)
+            ],
+            measure2: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        },
+        // Option 2: A half B quarter D quarter | E quarter B quarter A half (C becomes B)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'h' },  // 2 beats
+                { keys: ['b/2'], duration: 'q' },  // 1 beat (C→B, one step down)
+                { keys: ['d/3'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        },
+        // Option 3: A half C quarter D quarter | E quarter C quarter A half (B becomes C)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'h' },  // 2 beats
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat (B→C, one step up)
+                { keys: ['a/2'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        },
+        // Option 4: A half C quarter D quarter | D quarter B quarter A half (E becomes D)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'h' },  // 2 beats
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['d/3'], duration: 'q' },  // 1 beat (E→D, one step down)
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        },
+        // Option 5: A quarter B quarter C quarter D quarter | E quarter B quarter A half (rhythm change)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat (rhythm change from half)
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'h' }   // 2 beats = 4 total
+            ]
+        }
+    ], // End of Question Set 26
+
+    // QUESTION SET 27 (Treble Clef) - A minor basic rhythms (EASY: G#4-A4-B4-C5-D5-E5 ONLY)
+    [
+        // Option 0: CORRECT ANSWER - A quarter B quarter A quarter B quarter | C quarter D quarter E quarter A quarter
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 1: Swap first two notes - B quarter A quarter A quarter B quarter | C quarter D quarter E quarter A quarter
+        {
+            measure1: [
+                { keys: ['b/4'], duration: 'q' },  // 1 beat (was A)
+                { keys: ['a/4'], duration: 'q' },  // 1 beat (was B)
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 2: Change ending note - A quarter B quarter A quarter B quarter | C quarter D quarter E quarter B quarter
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' }   // 1 beat = 4 total (A becomes B)
+            ]
+        },
+        // Option 3: Change one note by step - A quarter B quarter A quarter B quarter | C quarter E quarter D quarter A quarter
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['e/5'], duration: 'q' },  // 1 beat (D becomes E)
+                { keys: ['d/5'], duration: 'q' },  // 1 beat (E becomes D - swap)
+                { keys: ['a/4'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 4: Rhythm change - A half A quarter B quarter | C quarter D quarter E quarter A quarter
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'h' },  // 2 beats (A quarter B quarter becomes A half)
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 5: Change first measure ending - A quarter B quarter A quarter C quarter | C quarter D quarter E quarter A quarter
+        {
+            measure1: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' }   // 1 beat = 4 total (B becomes C)
+            ],
+            measure2: [
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        }
+    ], // End of Question Set 27
+
+    // QUESTION SET 28 (Bass Clef) - A minor basic rhythms (EASY: G#2-A2-B2-C3-D3-E3 ONLY)
+    [
+        // Option 0: CORRECT ANSWER - A quarter B quarter A quarter B quarter | C quarter D quarter E quarter A quarter
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 1: One note different - A quarter B quarter A quarter B quarter | C quarter D quarter E quarter B quarter (ending B instead of A)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat 
+                { keys: ['b/2'], duration: 'q' },  // 1 beat 
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' }   // 1 beat = 4 total (A becomes B)
+            ]
+        },
+        // Option 2: Swap two notes - A quarter B quarter B quarter A quarter | C quarter D quarter E quarter A quarter (swapped 3rd and 4th notes in measure 1)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat (A becomes B)
+                { keys: ['a/2'], duration: 'q' }   // 1 beat = 4 total (B becomes A)
+            ],
+            measure2: [
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 3: One step different - A quarter B quarter A quarter B quarter | C quarter E quarter D quarter A quarter (D and E swapped)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['e/3'], duration: 'q' },  // 1 beat (D becomes E)
+                { keys: ['d/3'], duration: 'q' },  // 1 beat (E becomes D)
+                { keys: ['a/2'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 4: One note higher - A quarter B quarter A quarter B quarter | C quarter D quarter E quarter C quarter (ending C instead of A)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' }   // 1 beat = 4 total (A becomes C)
+            ]
+        },
+        // Option 5: Different rhythm - A quarter B quarter A half | C quarter D quarter E quarter A quarter (3rd and 4th notes combined into half note)
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'h' }   // 2 beats = 4 total (A quarter B quarter becomes A half)
+            ],
+            measure2: [
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        }
+    ], // End of Question Set 28
+
+    // QUESTION SET 29 (Treble Clef) - A minor basic rhythms (EASY: G#4-A4-B4-C5-D5-E5 ONLY)
+    [
+        // Option 0: CORRECT ANSWER - E quarter D quarter C quarter B quarter | A quarter B quarter C quarter A quarter
+        {
+            measure1: [
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 1: One note changed - E quarter D quarter B quarter B quarter | A quarter B quarter C quarter A quarter (C becomes B)
+        {
+            measure1: [
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat (C becomes B)
+                { keys: ['b/4'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 2: One note changed - E quarter D quarter C quarter A quarter | A quarter B quarter C quarter A quarter (B becomes A)
+        {
+            measure1: [
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'q' }   // 1 beat = 4 total (B becomes A)
+            ],
+            measure2: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 3: One note changed - E quarter D quarter C quarter B quarter | A quarter B quarter D quarter A quarter (C becomes D)
+        {
+            measure1: [
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' },  // 1 beat (C becomes D)
+                { keys: ['a/4'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 4: Two notes swapped - E quarter D quarter C quarter B quarter | B quarter A quarter C quarter A quarter (A-B swapped)
+        {
+            measure1: [
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['d/5'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['b/4'], duration: 'q' },  // 1 beat (A becomes B)
+                { keys: ['a/4'], duration: 'q' },  // 1 beat (B becomes A)
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 5: One note changed - E quarter C quarter C quarter B quarter | A quarter B quarter C quarter A quarter (D becomes C)
+        {
+            measure1: [
+                { keys: ['e/5'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat (D becomes C)
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['a/4'], duration: 'q' },  // 1 beat
+                { keys: ['b/4'], duration: 'q' },  // 1 beat
+                { keys: ['c/5'], duration: 'q' },  // 1 beat
+                { keys: ['a/4'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        }
+    ], // End of Question Set 29
+
+    // QUESTION SET 30 (Bass Clef) - A minor basic rhythms (EASY: G#2-A2-B2-C3-D3-E3 ONLY)
+    [
+        // Option 0: CORRECT ANSWER - E quarter D quarter C quarter B quarter | A quarter B quarter C quarter A quarter
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 1: Change C to D - E quarter D quarter D quarter B quarter | A quarter B quarter C quarter A quarter
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' },  // 1 beat (C becomes D)
+                { keys: ['b/2'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 2: Swap C and B - E quarter D quarter B quarter C quarter | A quarter B quarter C quarter A quarter
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat (swapped with C)
+                { keys: ['c/3'], duration: 'q' }   // 1 beat (swapped with B) = 4 total
+            ],
+            measure2: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 3: Change final A to B - E quarter D quarter C quarter B quarter | A quarter B quarter C quarter B quarter
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' }   // 1 beat (A becomes B) = 4 total
+            ]
+        },
+        // Option 4: Change D to E - E quarter E quarter C quarter B quarter | A quarter B quarter C quarter A quarter
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['e/3'], duration: 'q' },  // 1 beat (D becomes E)
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['a/2'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        },
+        // Option 5: Swap B and C in measure 2 - E quarter D quarter C quarter B quarter | A quarter C quarter B quarter A quarter
+        {
+            clef: 'bass',
+            measure1: [
+                { keys: ['e/3'], duration: 'q' },  // 1 beat
+                { keys: ['d/3'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat
+                { keys: ['b/2'], duration: 'q' }   // 1 beat = 4 total
+            ],
+            measure2: [
+                { keys: ['a/2'], duration: 'q' },  // 1 beat
+                { keys: ['c/3'], duration: 'q' },  // 1 beat (swapped with B)
+                { keys: ['b/2'], duration: 'q' },  // 1 beat (swapped with C)
+                { keys: ['a/2'], duration: 'q' }   // 1 beat = 4 total
+            ]
+        }
+    ] // End of Question Set 30
+]; // End of allQuestionSets
+
 let questionOptions = allQuestionSets[currentQuestionSet];
 
 function createNotation(containerId, option) {
@@ -1932,21 +2852,31 @@ function createNotation(containerId, option) {
                 staveNote.addModifier(new VF.Dot(), 0);
             }
             
+            // Add sharp accidentals for G# notes
+            if (note.keys[0].includes('#')) {
+                staveNote.addModifier(new VF.Accidental('#'), 0);
+            }
+            
             // Set stem direction based on note position and clef
             if (clefType === 'bass') {
                 const noteKey = note.keys[0];
-                if (noteKey === 'c/3' || noteKey === 'a/2' || noteKey === 'b/2') {
+                // Bass clef: notes below middle line (D3) go UP, on/above go DOWN
+                if (noteKey === 'c/3' || noteKey === 'a/2' || noteKey === 'b/2' || noteKey === 'g#/2') {
                     staveNote.setStemDirection(VF.Stem.UP);
                 } else {
+                    // d/3, e/3, f/3, g/3, g#/3 and higher go DOWN
                     staveNote.setStemDirection(VF.Stem.DOWN);
                 }
             } else {
                 // Treble clef stem directions (middle line is B4)
                 const noteKey = note.keys[0];
+                // Notes below/on middle line (B4) go UP, above go DOWN
                 if (noteKey === 'c/4' || noteKey === 'd/4' || noteKey === 'e/4' || 
-                    noteKey === 'f/4' || noteKey === 'g/4' || noteKey === 'a/4') {
+                    noteKey === 'f/4' || noteKey === 'g/4' || noteKey === 'a/4' || 
+                    noteKey === 'g#/4' || noteKey === 'b/4') {
                     staveNote.setStemDirection(VF.Stem.UP);
                 } else {
+                    // c/5, d/5, e/5, f/5, g/5 and higher go DOWN
                     staveNote.setStemDirection(VF.Stem.DOWN);
                 }
             }
@@ -1966,21 +2896,31 @@ function createNotation(containerId, option) {
                 staveNote.addModifier(new VF.Dot(), 0);
             }
             
+            // Add sharp accidentals for G# notes
+            if (note.keys[0].includes('#')) {
+                staveNote.addModifier(new VF.Accidental('#'), 0);
+            }
+            
             // Set stem direction based on note position and clef
             if (clefType === 'bass') {
                 const noteKey = note.keys[0];
-                if (noteKey === 'c/3' || noteKey === 'a/2' || noteKey === 'b/2') {
+                // Bass clef: notes below middle line (D3) go UP, on/above go DOWN
+                if (noteKey === 'c/3' || noteKey === 'a/2' || noteKey === 'b/2' || noteKey === 'g#/2') {
                     staveNote.setStemDirection(VF.Stem.UP);
                 } else {
+                    // d/3, e/3, f/3, g/3, g#/3 and higher go DOWN
                     staveNote.setStemDirection(VF.Stem.DOWN);
                 }
             } else {
                 // Treble clef stem directions (middle line is B4)
                 const noteKey = note.keys[0];
+                // Notes below/on middle line (B4) go UP, above go DOWN
                 if (noteKey === 'c/4' || noteKey === 'd/4' || noteKey === 'e/4' || 
-                    noteKey === 'f/4' || noteKey === 'g/4' || noteKey === 'a/4') {
+                    noteKey === 'f/4' || noteKey === 'g/4' || noteKey === 'a/4' || 
+                    noteKey === 'g#/4' || noteKey === 'b/4') {
                     staveNote.setStemDirection(VF.Stem.UP);
                 } else {
+                    // c/5, d/5, e/5, f/5, g/5 and higher go DOWN
                     staveNote.setStemDirection(VF.Stem.DOWN);
                 }
             }
@@ -2258,19 +3198,33 @@ function playMIDIWithPiano(allNotes) {
 function convertToMIDINote(vexNote) {
     // Convert VexFlow note format (c/4) to MIDI format (C4)
     const noteMap = {
-        // Treble clef notes
+        // Treble clef notes - C major range
         'c/4': 'C4',
         'd/4': 'D4', 
         'e/4': 'E4',
         'f/4': 'F4',
         'g/4': 'G4',
         'a/4': 'A4',
-        // Bass clef notes
+        // Bass clef notes - C major range
         'c/3': 'C3',
         'd/3': 'D3',
         'e/3': 'E3',
         'f/3': 'F3',
-        'g/3': 'G3'
+        'g/3': 'G3',
+        // Treble clef notes - A minor range (extended)
+        'g#/4': 'G#4',  // Leading tone for A minor treble clef
+        'b/4': 'B4',
+        'c/5': 'C5',
+        'd/5': 'D5',
+        'e/5': 'E5',
+        'f/5': 'F5',
+        'g/5': 'G5',
+        'g#/5': 'G#5',
+        // Bass clef notes - A minor range (extended)
+        'g#/2': 'G#2',  // Leading tone for A minor bass clef
+        'a/2': 'A2',
+        'b/2': 'B2',
+        'g#/3': 'G#3'
     };
     return noteMap[vexNote] || 'C4';
 }
@@ -2342,19 +3296,29 @@ function createPianoNote(audioContext, frequency, duration, startTime) {
 
 function getFrequency(noteString) {
     const noteMap = {
-        // Treble clef notes
+        // Treble clef notes - C major
         'c/4': 261.63,  // C4
         'd/4': 293.66,  // D4
         'e/4': 329.63,  // E4
         'f/4': 349.23,  // F4
         'g/4': 392.00,  // G4
         'a/4': 440.00,  // A4
-        // Bass clef notes (C3-G3 on staff lines and spaces)
+        // Treble clef notes - A minor extended range (G#4-A4-B4-C5-D5-E5)
+        'g#/4': 415.30, // G#4 - leading tone for A minor
+        'b/4': 493.88,  // B4
+        'c/5': 523.25,  // C5
+        'd/5': 587.33,  // D5
+        'e/5': 659.25,  // E5
+        // Bass clef notes - C major (C3-G3 on staff lines and spaces)
         'c/3': 130.81,  // C3 - second space in bass clef
         'd/3': 146.83,  // D3 - third line in bass clef
         'e/3': 164.81,  // E3 - third space in bass clef
         'f/3': 174.61,  // F3 - fourth line in bass clef
-        'g/3': 196.00   // G3 - fourth space in bass clef
+        'g/3': 196.00,  // G3 - fourth space in bass clef
+        // Bass clef notes - A minor extended range (G#2-A2-B2-C3-D3-E3)
+        'g#/2': 207.65, // G#2 - leading tone for A minor bass clef
+        'a/2': 110.00,  // A2
+        'b/2': 123.47   // B2
     };
     return noteMap[noteString] || 261.63;
 }
@@ -2458,6 +3422,77 @@ function createConfetti() {
     }
 }
 
+// Beat Validation Script - CRITICAL for preventing beat count errors
+function validateAllQuestions() {
+    const beatMap = {
+        'w': 4,     // whole note = 4 beats
+        'h': 2,     // half note = 2 beats  
+        'q': 1,     // quarter note = 1 beat
+        'qd': 1.5,  // dotted quarter = 1.5 beats
+        '8': 0.5,   // eighth note = 0.5 beats
+        'qr': 1     // quarter rest = 1 beat
+    };
+
+    const calculateBeats = (notes) => {
+        return notes.reduce((total, note) => total + (beatMap[note.duration] || 0), 0);
+    };
+
+    const errors = [];
+    let totalQuestions = 0;
+    let totalOptions = 0;
+    
+    allQuestionSets.forEach((questionSet, setIndex) => {
+        totalQuestions++;
+        questionSet.forEach((option, optionIndex) => {
+            totalOptions++;
+            const beats1 = calculateBeats(option.measure1);
+            const beats2 = calculateBeats(option.measure2);
+            
+            if (beats1 !== 4) {
+                errors.push(`Q${setIndex + 1} Option ${String.fromCharCode(65 + optionIndex)}: Measure 1 has ${beats1} beats (should be 4)`);
+            }
+            if (beats2 !== 4) {
+                errors.push(`Q${setIndex + 1} Option ${String.fromCharCode(65 + optionIndex)}: Measure 2 has ${beats2} beats (should be 4)`);
+            }
+        });
+    });
+
+    console.log(`\n=== BEAT VALIDATION REPORT ===`);
+    console.log(`Total Questions: ${totalQuestions}`);
+    console.log(`Total Options: ${totalOptions}`);
+    console.log(`Measures Checked: ${totalOptions * 2}`);
+
+    if (errors.length === 0) {
+        console.log(`✅ ALL QUESTIONS VALID - Every measure has exactly 4 beats!`);
+        
+        // Temporarily show validation result on page
+        setTimeout(() => {
+            const header = document.querySelector('.question-header h1');
+            if (header) {
+                header.textContent = `✅ All ${totalQuestions} Questions Valid - Melodic Dictation Easy`;
+                header.style.color = '#27ae60';
+            }
+        }, 1000);
+        
+        return true;
+    } else {
+        console.log(`❌ BEAT COUNT ERRORS FOUND: ${errors.length}`);
+        console.log(`\nERROR DETAILS:`);
+        errors.forEach(error => console.error(`  ${error}`));
+        
+        // Show validation errors on page
+        setTimeout(() => {
+            const header = document.querySelector('.question-header h1');
+            if (header) {
+                header.textContent = `❌ Beat Errors Found: ${errors.length}`;
+                header.style.color = '#e74c3c';
+            }
+        }, 1000);
+        
+        return false;
+    }
+}
+
 // Developer functions
 function toggleDevMode() {
     const devControls = document.getElementById('devControls');
@@ -2516,6 +3551,10 @@ window.onload = function() {
             
             generateOptions();
             
+            // Run beat validation on existing questions
+            console.log('Running beat validation on existing questions...');
+            validateAllQuestions();
+            
             // Load piano samples if Tone.js is available
             if (typeof Tone !== 'undefined') {
                 console.log('Loading piano samples...');
@@ -2527,3 +3566,186 @@ window.onload = function() {
         }
     }, 100);
 };
+
+// ===== FIREBASE REAL-TIME VOTING SYSTEM =====
+
+// Global variables for voting
+let currentRoomCode = null;
+let isTeacher = false;
+let votingEnabled = false;
+
+// Generate random room code
+function generateRoomCode() {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+// Create a new room (teacher only)
+async function createRoom() {
+    if (!window.firebase) {
+        alert('Firebase not loaded yet. Please wait and try again.');
+        return;
+    }
+    
+    currentRoomCode = generateRoomCode();
+    isTeacher = true;
+    
+    const roomData = {
+        created: window.firebase.serverTimestamp(),
+        currentQuestion: currentQuestionSet + 1,
+        votingEnabled: false,
+        votes: {},
+        totalStudents: 0
+    };
+    
+    try {
+        await window.firebase.set(window.firebase.ref(window.firebase.database, `rooms/${currentRoomCode}`), roomData);
+        console.log('Room created:', currentRoomCode);
+        updateRoomDisplay();
+        showTeacherControls();
+    } catch (error) {
+        console.error('Error creating room:', error);
+        alert('Error creating room. Please try again.');
+    }
+}
+
+// Student functionality moved to student.html
+
+// Enable/disable voting (teacher only)
+async function toggleVoting() {
+    if (!isTeacher || !currentRoomCode) return;
+    
+    votingEnabled = !votingEnabled;
+    
+    try {
+        await window.firebase.set(window.firebase.ref(window.firebase.database, `rooms/${currentRoomCode}/votingEnabled`), votingEnabled);
+        await window.firebase.set(window.firebase.ref(window.firebase.database, `rooms/${currentRoomCode}/currentQuestion`), currentQuestionSet + 1);
+        
+        if (votingEnabled) {
+            // Clear previous votes
+            await window.firebase.set(window.firebase.ref(window.firebase.database, `rooms/${currentRoomCode}/votes`), {});
+        }
+        
+        updateTeacherControls();
+    } catch (error) {
+        console.error('Error toggling voting:', error);
+    }
+}
+
+// Submit vote (student only)
+async function submitVote(optionIndex) {
+    if (isTeacher || !currentRoomCode || !votingEnabled) return;
+    
+    const studentId = localStorage.getItem('studentId') || generateStudentId();
+    
+    try {
+        await window.firebase.set(window.firebase.ref(window.firebase.database, `rooms/${currentRoomCode}/votes/${studentId}`), {
+            vote: optionIndex,
+            timestamp: window.firebase.serverTimestamp()
+        });
+        
+        console.log('Vote submitted:', optionIndex);
+        highlightStudentVote(optionIndex);
+    } catch (error) {
+        console.error('Error submitting vote:', error);
+    }
+}
+
+// Generate unique student ID
+function generateStudentId() {
+    const id = Math.random().toString(36).substring(2, 15);
+    localStorage.setItem('studentId', id);
+    return id;
+}
+
+// Listen to room updates
+function listenToRoomUpdates() {
+    if (!currentRoomCode) return;
+    
+    window.firebase.onValue(window.firebase.ref(window.firebase.database, `rooms/${currentRoomCode}`), (snapshot) => {
+        if (snapshot.exists()) {
+            const roomData = snapshot.val();
+            votingEnabled = roomData.votingEnabled || false;
+            
+            // Only handle teacher interface (students use student.html)
+            updateVoteDisplay(roomData.votes || {});
+            updateTeacherControls();
+        }
+    });
+}
+
+// Update vote display for teacher
+function updateVoteDisplay(votes) {
+    const voteContainer = document.getElementById('voteResults');
+    if (!voteContainer) return;
+    
+    const voteCounts = [0, 0, 0, 0, 0, 0]; // 6 options
+    const totalVotes = Object.keys(votes).length;
+    
+    Object.values(votes).forEach(vote => {
+        if (vote.vote >= 0 && vote.vote < 6) {
+            voteCounts[vote.vote]++;
+        }
+    });
+    
+    voteContainer.innerHTML = `
+        <div class="vote-summary">
+            <h3>Live Vote Results (${totalVotes} votes)</h3>
+            ${voteCounts.map((count, index) => `
+                <div class="vote-bar">
+                    <span>Option ${String.fromCharCode(65 + index)}: ${count} votes</span>
+                    <div class="bar">
+                        <div class="fill" style="width: ${totalVotes > 0 ? (count / totalVotes) * 100 : 0}%"></div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+// Student interface moved to student.html
+
+// Student voting moved to student.html
+
+// Update room display
+function updateRoomDisplay() {
+    const roomDisplay = document.getElementById('roomDisplay');
+    if (roomDisplay && currentRoomCode) {
+        roomDisplay.innerHTML = `
+            <div class="room-info">
+                <strong>Room Code: ${currentRoomCode}</strong>
+                <span class="role">(${isTeacher ? 'Teacher' : 'Student'})</span>
+            </div>
+        `;
+        roomDisplay.style.display = 'block';
+    }
+}
+
+// Show teacher controls
+function showTeacherControls() {
+    let teacherControls = document.getElementById('teacherControls');
+    if (!teacherControls) {
+        teacherControls = document.createElement('div');
+        teacherControls.id = 'teacherControls';
+        teacherControls.innerHTML = `
+            <div class="teacher-panel">
+                <h3>Teacher Controls</h3>
+                <button id="toggleVotingBtn" onclick="toggleVoting()">Enable Voting</button>
+                <div id="voteResults"></div>
+            </div>
+        `;
+        document.querySelector('.container').appendChild(teacherControls);
+    }
+    teacherControls.style.display = 'block';
+    listenToRoomUpdates();
+}
+
+// Student controls moved to student.html
+
+// Update teacher controls
+function updateTeacherControls() {
+    const toggleBtn = document.getElementById('toggleVotingBtn');
+    if (toggleBtn) {
+        toggleBtn.textContent = votingEnabled ? 'Disable Voting' : 'Enable Voting';
+        toggleBtn.className = votingEnabled ? 'voting-active' : '';
+    }
+}
