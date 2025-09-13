@@ -2089,9 +2089,7 @@ function shuffleOptionsForNewQuestion() {
 function updateQuestionHeader() {
     const header = document.querySelector('.question-header h1');
     if (header) {
-        const clefType = questionOptions[0].clef || 'treble';
-        const clefIcon = clefType === 'bass' ? '𝄢' : '𝄞';
-        header.textContent = `Music Dictation - Set ${currentQuestionSet + 1}, Question ${currentCorrectOption + 1} of 6 ${clefIcon}`;
+        header.textContent = `Melodic Dictation - Easy`;
     }
 }
 
