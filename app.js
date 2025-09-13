@@ -3163,6 +3163,11 @@ function playAudio() {
         
         console.log('Playing MIDI-generated piano audio');
         
+        // Auto-enable voting when melody is played (if room exists)
+        if (currentRoomCode && isTeacher) {
+            enableVotingForCurrentQuestion();
+        }
+        
         if (typeof Tone !== 'undefined' && piano) {
             playMIDIWithPiano(allNotes);
         } else {
@@ -3341,6 +3346,9 @@ function previousQuestion() {
     skipToQuestionSet(newQuestionSet);
     generateOptions();
     updateQuestionCounter();
+    
+    // Reset voting for new question
+    resetVotingForNewQuestion();
 }
 
 function nextQuestion() {
@@ -3348,6 +3356,9 @@ function nextQuestion() {
     skipToQuestionSet(newQuestionSet);
     generateOptions();
     updateQuestionCounter();
+    
+    // Reset voting for new question
+    resetVotingForNewQuestion();
 }
 
 function updateQuestionCounter() {
@@ -3631,6 +3642,45 @@ async function toggleVoting() {
     }
 }
 
+// Auto-enable voting for current question (when play button is pressed)
+async function enableVotingForCurrentQuestion() {
+    if (!isTeacher || !currentRoomCode) return;
+    
+    votingEnabled = true;
+    
+    try {
+        await window.firebase.set(window.firebase.ref(window.firebase.database, `rooms/${currentRoomCode}/votingEnabled`), true);
+        await window.firebase.set(window.firebase.ref(window.firebase.database, `rooms/${currentRoomCode}/currentQuestion`), currentQuestionSet + 1);
+        
+        // Clear previous votes for new question
+        await window.firebase.set(window.firebase.ref(window.firebase.database, `rooms/${currentRoomCode}/votes`), {});
+        
+        updateTeacherControls();
+        console.log('Voting auto-enabled for question', currentQuestionSet + 1);
+    } catch (error) {
+        console.error('Error enabling voting:', error);
+    }
+}
+
+// Reset voting when changing questions
+async function resetVotingForNewQuestion() {
+    if (!isTeacher || !currentRoomCode) return;
+    
+    votingEnabled = false;
+    
+    try {
+        await window.firebase.set(window.firebase.ref(window.firebase.database, `rooms/${currentRoomCode}/votingEnabled`), false);
+        await window.firebase.set(window.firebase.ref(window.firebase.database, `rooms/${currentRoomCode}/currentQuestion`), currentQuestionSet + 1);
+        await window.firebase.set(window.firebase.ref(window.firebase.database, `rooms/${currentRoomCode}/questionChanged`), Date.now());
+        await window.firebase.set(window.firebase.ref(window.firebase.database, `rooms/${currentRoomCode}/votes`), {});
+        
+        updateTeacherControls();
+        console.log('Voting reset for new question', currentQuestionSet + 1);
+    } catch (error) {
+        console.error('Error resetting voting:', error);
+    }
+}
+
 // Submit vote (student only)
 async function submitVote(optionIndex) {
     if (isTeacher || !currentRoomCode || !votingEnabled) return;
@@ -3667,19 +3717,20 @@ function listenToRoomUpdates() {
             votingEnabled = roomData.votingEnabled || false;
             
             // Only handle teacher interface (students use student.html)
-            updateVoteDisplay(roomData.votes || {});
+            updateVoteDisplay(roomData.votes || {}, roomData.students || {});
             updateTeacherControls();
         }
     });
 }
 
 // Update vote display for teacher
-function updateVoteDisplay(votes) {
+function updateVoteDisplay(votes, students) {
     const voteContainer = document.getElementById('voteResults');
     if (!voteContainer) return;
     
     const voteCounts = [0, 0, 0, 0, 0, 0]; // 6 options
     const totalVotes = Object.keys(votes).length;
+    const totalStudents = students ? Object.keys(students).length : 0;
     
     Object.values(votes).forEach(vote => {
         if (vote.vote >= 0 && vote.vote < 6) {
@@ -3687,9 +3738,13 @@ function updateVoteDisplay(votes) {
         }
     });
     
+    // Check if all students have voted
+    const allVotesIn = totalStudents > 0 && totalVotes >= totalStudents;
+    
     voteContainer.innerHTML = `
         <div class="vote-summary">
-            <h3>Live Vote Results (${totalVotes} votes)</h3>
+            <h3>Live Vote Results (${totalVotes}/${totalStudents} votes)</h3>
+            ${allVotesIn ? '<div class="all-votes-in">🎉 All votes are in!</div>' : ''}
             ${voteCounts.map((count, index) => `
                 <div class="vote-bar">
                     <span>Option ${String.fromCharCode(65 + index)}: ${count} votes</span>
@@ -3700,11 +3755,88 @@ function updateVoteDisplay(votes) {
             `).join('')}
         </div>
     `;
+    
+    // Auto-reveal answer when all votes are in
+    if (allVotesIn && votingEnabled) {
+        setTimeout(() => {
+            revealCorrectAnswer();
+            // Auto-advance to next question after showing answer
+            setTimeout(() => {
+                autoAdvanceToNextQuestion();
+            }, 4000); // Wait 4 seconds to show the correct answer, then advance
+        }, 2000); // Wait 2 seconds to show the "all votes in" message
+    }
 }
 
 // Student interface moved to student.html
 
 // Student voting moved to student.html
+
+// Reveal correct answer automatically
+function revealCorrectAnswer() {
+    // Disable voting first
+    votingEnabled = false;
+    if (currentRoomCode && isTeacher) {
+        window.firebase.set(window.firebase.ref(window.firebase.database, `rooms/${currentRoomCode}/votingEnabled`), false);
+    }
+    
+    // Highlight the correct answer
+    const options = document.querySelectorAll('.option');
+    options.forEach((option, index) => {
+        option.classList.remove('selected', 'correct', 'incorrect');
+        if (index === correctAnswer) {
+            option.classList.add('correct');
+        }
+    });
+    
+    // Show feedback message
+    showFeedback(true);
+    
+    console.log('Correct answer revealed automatically');
+}
+
+// Auto-advance to next question and reset UI
+function autoAdvanceToNextQuestion() {
+    console.log('Auto-advancing to next question...');
+    
+    // Reset selected option
+    selectedOption = null;
+    
+    // Clear all highlighting and reset UI
+    const options = document.querySelectorAll('.option');
+    options.forEach(option => {
+        option.classList.remove('selected', 'correct', 'incorrect');
+        option.style.pointerEvents = 'auto';
+    });
+    
+    // Hide feedback
+    const feedbackPanel = document.getElementById('feedbackPanel');
+    if (feedbackPanel) {
+        feedbackPanel.style.opacity = '0';
+        feedbackPanel.style.pointerEvents = 'none';
+    }
+    
+    // Reset submit button
+    const submitButton = document.getElementById('submitButton');
+    if (submitButton) {
+        submitButton.disabled = true; // Will be enabled when new melody is played
+    }
+    
+    // Hide any next button that might be showing
+    const nextBtn = document.getElementById('nextButton');
+    if (nextBtn) nextBtn.style.display = 'none';
+    
+    // Move to next question
+    const newQuestionSet = currentQuestionSet < allQuestionSets.length - 1 ? currentQuestionSet + 1 : 0;
+    skipToQuestionSet(newQuestionSet);
+    generateOptions();
+    updateQuestionCounter();
+    
+    // Reset voting for new question
+    resetVotingForNewQuestion();
+    
+    console.log('Advanced to question set:', newQuestionSet + 1);
+}
 
 // Update room display
 function updateRoomDisplay() {
@@ -3729,7 +3861,10 @@ function showTeacherControls() {
         teacherControls.innerHTML = `
             <div class="teacher-panel">
                 <h3>Teacher Controls</h3>
-                <button id="toggleVotingBtn" onclick="toggleVoting()">Enable Voting</button>
+                <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.9rem; margin: 10px 0;">
+                    Voting auto-enables when you press "Play Melody"
+                </p>
+                <button id="toggleVotingBtn" onclick="toggleVoting()">Manual Toggle</button>
                 <div id="voteResults"></div>
             </div>
         `;

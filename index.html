@@ -633,6 +633,24 @@
             color: #e74c3c;
         }
 
+        .all-votes-in {
+            background: rgba(46, 204, 113, 0.3);
+            color: #2ecc71;
+            padding: 12px;
+            border-radius: 12px;
+            margin: 10px 0;
+            font-weight: 600;
+            font-size: 1.1rem;
+            text-align: center;
+            animation: pulse 1s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
         /* Student interface moved to student.html */
     </style>
 </head>
@@ -645,7 +663,6 @@
             <!-- Voting Controls -->
             <div class="voting-controls" style="margin-bottom: 15px;">
                 <button onclick="createRoom()" class="vote-btn create-room">Create Room (Teacher)</button>
-                <a href="student.html" class="vote-btn join-room" style="text-decoration: none; display: inline-block;">Student Page</a>
                 <div id="roomDisplay" class="room-display" style="display: none;"></div>
             </div>
             

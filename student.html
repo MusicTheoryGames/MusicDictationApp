@@ -233,6 +233,8 @@
     <script>
         let currentRoomCode = null;
         let votingEnabled = false;
+        let hasVoted = false;
+        let lastQuestionChange = 0;
         let studentId = localStorage.getItem('studentId') || generateStudentId();
 
         function generateStudentId() {
@@ -260,6 +262,15 @@
                 if (snapshot.exists()) {
                     currentRoomCode = roomCode;
                     document.getElementById('roomCodeDisplay').textContent = roomCode;
+                    
+                    // Add this student to the room
+                    await window.firebase.set(
+                        window.firebase.ref(window.firebase.database, `rooms/${roomCode}/students/${studentId}`),
+                        {
+                            joined: window.firebase.serverTimestamp(),
+                            active: true
+                        }
+                    );
                     
                     // Switch to voting interface
                     document.getElementById('joinSection').style.display = 'none';
@@ -289,7 +300,23 @@
             window.firebase.onValue(window.firebase.ref(window.firebase.database, `rooms/${currentRoomCode}`), (snapshot) => {
                 if (snapshot.exists()) {
                     const roomData = snapshot.val();
-                    votingEnabled = roomData.votingEnabled || false;
+                    const newVotingEnabled = roomData.votingEnabled || false;
+                    const questionChanged = roomData.questionChanged || 0;
+                    
+                    // Reset hasVoted when question changes or voting is re-enabled
+                    if (questionChanged > lastQuestionChange || (!votingEnabled && newVotingEnabled)) {
+                        hasVoted = false;
+                        lastQuestionChange = questionChanged;
+                        
+                        // Clear any previous vote highlighting
+                        document.querySelectorAll('.vote-btn').forEach(btn => {
+                            btn.classList.remove('voted');
+                        });
+                        
+                        console.log('Question changed - resetting vote status');
+                    }
+                    
+                    votingEnabled = newVotingEnabled;
                     updateVotingInterface();
                 }
             });
@@ -297,17 +324,28 @@
 
         function updateVotingInterface() {
             const statusEl = document.getElementById('votingStatus');
-            statusEl.textContent = votingEnabled ? 'Voting Enabled - Select Your Answer!' : 'Waiting for teacher...';
-            statusEl.className = votingEnabled ? 'voting-enabled' : 'voting-disabled';
             
-            // Enable/disable buttons
+            if (hasVoted) {
+                statusEl.textContent = 'Vote Submitted! Wait for next question.';
+                statusEl.className = 'voting-disabled';
+            } else {
+                statusEl.textContent = votingEnabled ? 'Voting Enabled - Select Your Answer!' : 'Waiting for teacher...';
+                statusEl.className = votingEnabled ? 'voting-enabled' : 'voting-disabled';
+            }
+            
+            // Enable/disable buttons based on voting status and whether already voted
             document.querySelectorAll('.vote-btn').forEach(btn => {
-                btn.disabled = !votingEnabled;
+                btn.disabled = !votingEnabled || hasVoted;
+                if (hasVoted) {
+                    btn.style.opacity = '0.6';
+                } else {
+                    btn.style.opacity = btn.disabled ? '0.5' : '1';
+                }
             });
         }
 
         async function submitVote(optionIndex) {
-            if (!votingEnabled || !currentRoomCode) return;
+            if (!votingEnabled || !currentRoomCode || hasVoted) return;
             
             try {
                 await window.firebase.set(
@@ -318,13 +356,17 @@
                     }
                 );
                 
-                // Highlight selected button
+                // Mark as voted and highlight selected button
+                hasVoted = true;
                 document.querySelectorAll('.vote-btn').forEach((btn, index) => {
                     btn.classList.remove('voted');
                     if (index === optionIndex) {
                         btn.classList.add('voted');
                     }
                 });
+                
+                // Update interface to show vote submitted
+                updateVotingInterface();
                 
             } catch (error) {
                 console.error('Error submitting vote:', error);
