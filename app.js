@@ -987,469 +987,8 @@ const allQuestionSets = [
                 { keys: ['c/4'], duration: 'h' }    // 2 beats = 4 total
             ]
         }
-    ], // End of Question Set 11
-
-    // QUESTION SET 12 (Bass Clef) - C major with dotted rhythms and eighth notes
-    [
-        // Option 0: CORRECT - G eighth F eighth E quarter D quarter | C dotted quarter D eighth C half
-        {
-            clef: 'bass',
-            measure1: [
-                { keys: ['g/3'], duration: '8' },   // 0.5 beats
-                { keys: ['f/3'], duration: '8' },   // 0.5 beats
-                { keys: ['e/3'], duration: 'q' },   // 1 beat
-                { keys: ['d/3'], duration: 'q' }    // 1 beat = 4 total
-            ],
-            measure2: [
-                { keys: ['c/3'], duration: 'qd' },  // 1.5 beats
-                { keys: ['d/3'], duration: '8' },   // 0.5 beats
-                { keys: ['c/3'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 1: F eighth G eighth E quarter D quarter | C dotted quarter D eighth C half
-        {
-            clef: 'bass',
-            measure1: [
-                { keys: ['f/3'], duration: '8' },   // 0.5 beats
-                { keys: ['g/3'], duration: '8' },   // 0.5 beats
-                { keys: ['e/3'], duration: 'q' },   // 1 beat
-                { keys: ['d/3'], duration: 'q' }    // 1 beat = 4 total
-            ],
-            measure2: [
-                { keys: ['c/3'], duration: 'qd' },  // 1.5 beats
-                { keys: ['d/3'], duration: '8' },   // 0.5 beats
-                { keys: ['c/3'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 2: G eighth F eighth E quarter D quarter | C quarter D eighth D eighth C half
-        {
-            clef: 'bass',
-            measure1: [
-                { keys: ['g/3'], duration: '8' },   // 0.5 beats
-                { keys: ['f/3'], duration: '8' },   // 0.5 beats
-                { keys: ['e/3'], duration: 'q' },   // 1 beat
-                { keys: ['d/3'], duration: 'q' }    // 1 beat = 4 total
-            ],
-            measure2: [
-                { keys: ['c/3'], duration: 'q' },   // 1 beat
-                { keys: ['d/3'], duration: '8' },   // 0.5 beats
-                { keys: ['d/3'], duration: '8' },   // 0.5 beats
-                { keys: ['c/3'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 3: G eighth F eighth D quarter E quarter | C dotted quarter D eighth C half
-        {
-            clef: 'bass',
-            measure1: [
-                { keys: ['g/3'], duration: '8' },   // 0.5 beats
-                { keys: ['f/3'], duration: '8' },   // 0.5 beats
-                { keys: ['d/3'], duration: 'q' },   // 1 beat
-                { keys: ['e/3'], duration: 'q' }    // 1 beat = 4 total
-            ],
-            measure2: [
-                { keys: ['c/3'], duration: 'qd' },  // 1.5 beats
-                { keys: ['d/3'], duration: '8' },   // 0.5 beats
-                { keys: ['c/3'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 4: G eighth F eighth E quarter D quarter | C dotted quarter E eighth C half
-        {
-            clef: 'bass',
-            measure1: [
-                { keys: ['g/3'], duration: '8' },   // 0.5 beats
-                { keys: ['f/3'], duration: '8' },   // 0.5 beats
-                { keys: ['e/3'], duration: 'q' },   // 1 beat
-                { keys: ['d/3'], duration: 'q' }    // 1 beat = 4 total
-            ],
-            measure2: [
-                { keys: ['c/3'], duration: 'qd' },  // 1.5 beats
-                { keys: ['e/3'], duration: '8' },   // 0.5 beats
-                { keys: ['c/3'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 5: G eighth F eighth E quarter D quarter | C dotted quarter D eighth D half
-        {
-            clef: 'bass',
-            measure1: [
-                { keys: ['g/3'], duration: '8' },   // 0.5 beats
-                { keys: ['f/3'], duration: '8' },   // 0.5 beats
-                { keys: ['e/3'], duration: 'q' },   // 1 beat
-                { keys: ['d/3'], duration: 'q' }    // 1 beat = 4 total
-            ],
-            measure2: [
-                { keys: ['c/3'], duration: 'qd' },  // 1.5 beats
-                { keys: ['d/3'], duration: '8' },   // 0.5 beats
-                { keys: ['d/3'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        }
-    ], // End of Question Set 12
-
-    // QUESTION SET 13 (Treble Clef) - C major with four eighth notes patterns
-    [
-        // Option 0: CORRECT - C eighth D eighth E eighth F eighth | G quarter F quarter C half
-        {
-            measure1: [
-                { keys: ['c/4'], duration: '8' },   // 0.5 beats
-                { keys: ['d/4'], duration: '8' },   // 0.5 beats
-                { keys: ['e/4'], duration: '8' },   // 0.5 beats
-                { keys: ['f/4'], duration: '8' }    // 0.5 beats = 2 total
-            ],
-            measure2: [
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['c/4'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 1: C eighth E eighth D eighth F eighth | G quarter F quarter C half
-        {
-            measure1: [
-                { keys: ['c/4'], duration: '8' },   // 0.5 beats
-                { keys: ['e/4'], duration: '8' },   // 0.5 beats
-                { keys: ['d/4'], duration: '8' },   // 0.5 beats
-                { keys: ['f/4'], duration: '8' }    // 0.5 beats = 2 total
-            ],
-            measure2: [
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['c/4'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 2: C eighth D eighth E eighth F eighth | F quarter G quarter C half
-        {
-            measure1: [
-                { keys: ['c/4'], duration: '8' },   // 0.5 beats
-                { keys: ['d/4'], duration: '8' },   // 0.5 beats
-                { keys: ['e/4'], duration: '8' },   // 0.5 beats
-                { keys: ['f/4'], duration: '8' }    // 0.5 beats = 2 total
-            ],
-            measure2: [
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['c/4'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 3: C quarter D eighth E eighth F quarter | G quarter F quarter C half
-        {
-            measure1: [
-                { keys: ['c/4'], duration: 'q' },   // 1 beat
-                { keys: ['d/4'], duration: '8' },   // 0.5 beats
-                { keys: ['e/4'], duration: '8' },   // 0.5 beats
-                { keys: ['f/4'], duration: 'q' },   // 1 beat 
-                { keys: ['g/4'], duration: 'q' }    // 1 beat = 4 total
-            ],
-            measure2: [
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['c/4'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 4: C eighth D eighth E eighth F eighth | G quarter F quarter D half
-        {
-            measure1: [
-                { keys: ['c/4'], duration: '8' },   // 0.5 beats
-                { keys: ['d/4'], duration: '8' },   // 0.5 beats
-                { keys: ['e/4'], duration: '8' },   // 0.5 beats
-                { keys: ['f/4'], duration: '8' }    // 0.5 beats = 2 total
-            ],
-            measure2: [
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['d/4'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 5: C eighth D eighth F eighth E eighth | G quarter F quarter C half
-        {
-            measure1: [
-                { keys: ['c/4'], duration: '8' },   // 0.5 beats
-                { keys: ['d/4'], duration: '8' },   // 0.5 beats
-                { keys: ['f/4'], duration: '8' },   // 0.5 beats
-                { keys: ['e/4'], duration: '8' }    // 0.5 beats = 2 total
-            ],
-            measure2: [
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['c/4'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        }
-    ], // End of Question Set 13
-
-    // QUESTION SET 14 (Bass Clef) - C major with mixed rhythms  
-    [
-        // Option 0: CORRECT - C quarter D eighth E eighth F quarter | G dotted quarter F eighth C half
-        {
-            clef: 'bass',
-            measure1: [
-                { keys: ['c/3'], duration: 'q' },   // 1 beat
-                { keys: ['d/3'], duration: '8' },   // 0.5 beats
-                { keys: ['e/3'], duration: '8' },   // 0.5 beats
-                { keys: ['f/3'], duration: 'q' }    // 1 beat = 3 total
-            ],
-            measure2: [
-                { keys: ['g/3'], duration: 'qd' },  // 1.5 beats
-                { keys: ['f/3'], duration: '8' },   // 0.5 beats
-                { keys: ['c/3'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 1: C quarter E eighth D eighth F quarter | G dotted quarter F eighth C half
-        {
-            clef: 'bass',
-            measure1: [
-                { keys: ['c/3'], duration: 'q' },   // 1 beat
-                { keys: ['e/3'], duration: '8' },   // 0.5 beats
-                { keys: ['d/3'], duration: '8' },   // 0.5 beats
-                { keys: ['f/3'], duration: 'q' }    // 1 beat = 3 total
-            ],
-            measure2: [
-                { keys: ['g/3'], duration: 'qd' },  // 1.5 beats
-                { keys: ['f/3'], duration: '8' },   // 0.5 beats
-                { keys: ['c/3'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 2: C quarter D eighth E eighth F quarter | F dotted quarter G eighth C half
-        {
-            clef: 'bass',
-            measure1: [
-                { keys: ['c/3'], duration: 'q' },   // 1 beat
-                { keys: ['d/3'], duration: '8' },   // 0.5 beats
-                { keys: ['e/3'], duration: '8' },   // 0.5 beats
-                { keys: ['f/3'], duration: 'q' }    // 1 beat = 3 total
-            ],
-            measure2: [
-                { keys: ['f/3'], duration: 'qd' },  // 1.5 beats
-                { keys: ['g/3'], duration: '8' },   // 0.5 beats
-                { keys: ['c/3'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 3: C eighth C eighth D eighth E eighth F eighth G eighth C eighth D eighth | G dotted quarter F eighth C half
-        {
-            clef: 'bass',
-            measure1: [
-                { keys: ['c/3'], duration: '8' },   // 0.5 beats
-                { keys: ['c/3'], duration: '8' },   // 0.5 beats
-                { keys: ['d/3'], duration: '8' },   // 0.5 beats
-                { keys: ['e/3'], duration: '8' },   // 0.5 beats
-                { keys: ['f/3'], duration: '8' },   // 0.5 beats
-                { keys: ['g/3'], duration: '8' },   // 0.5 beats
-                { keys: ['c/3'], duration: '8' },   // 0.5 beats
-                { keys: ['d/3'], duration: '8' }    // 0.5 beats = 4 total
-            ],
-            measure2: [
-                { keys: ['g/3'], duration: 'qd' },  // 1.5 beats
-                { keys: ['f/3'], duration: '8' },   // 0.5 beats
-                { keys: ['c/3'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 4: C quarter D eighth E eighth F quarter | G dotted quarter F eighth D half
-        {
-            clef: 'bass',
-            measure1: [
-                { keys: ['c/3'], duration: 'q' },   // 1 beat
-                { keys: ['d/3'], duration: '8' },   // 0.5 beats
-                { keys: ['e/3'], duration: '8' },   // 0.5 beats
-                { keys: ['f/3'], duration: 'q' }    // 1 beat = 3 total
-            ],
-            measure2: [
-                { keys: ['g/3'], duration: 'qd' },  // 1.5 beats
-                { keys: ['f/3'], duration: '8' },   // 0.5 beats
-                { keys: ['d/3'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 5: C quarter D eighth E eighth E quarter | G dotted quarter F eighth C half
-        {
-            clef: 'bass',
-            measure1: [
-                { keys: ['c/3'], duration: 'q' },   // 1 beat
-                { keys: ['d/3'], duration: '8' },   // 0.5 beats
-                { keys: ['e/3'], duration: '8' },   // 0.5 beats
-                { keys: ['e/3'], duration: 'q' }    // 1 beat = 3 total
-            ],
-            measure2: [
-                { keys: ['g/3'], duration: 'qd' },  // 1.5 beats
-                { keys: ['f/3'], duration: '8' },   // 0.5 beats
-                { keys: ['c/3'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        }
-    ], // End of Question Set 10
-
-    // QUESTION SET 11 (Treble Clef) - C major with eighth notes and simple rhythms
-    [
-        // Option 0: CORRECT - C quarter D eighth E eighth F quarter G quarter | F quarter E quarter C half
-        {
-            measure1: [
-                { keys: ['c/4'], duration: 'q' },   // 1 beat
-                { keys: ['d/4'], duration: '8' },   // 0.5 beats
-                { keys: ['e/4'], duration: '8' },   // 0.5 beats
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['g/4'], duration: 'q' }    // 1 beat = 4 beats total
-            ],
-            measure2: [
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['c/4'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 1: C quarter E eighth D eighth F quarter | G quarter F quarter C half  
-        {
-            measure1: [
-                { keys: ['c/4'], duration: 'q' },   // 1 beat
-                { keys: ['e/4'], duration: '8' },   // 0.5 beats
-                { keys: ['d/4'], duration: '8' },   // 0.5 beats
-                { keys: ['f/4'], duration: 'q' }    // 1 beat = 3 beats so far
-            ],
-            measure2: [
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['c/4'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 2: C quarter D eighth E eighth E quarter | G quarter F quarter C half
-        {
-            measure1: [
-                { keys: ['c/4'], duration: 'q' },   // 1 beat
-                { keys: ['d/4'], duration: '8' },   // 0.5 beats
-                { keys: ['e/4'], duration: '8' },   // 0.5 beats
-                { keys: ['e/4'], duration: 'q' }    // 1 beat = 3 beats so far
-            ],
-            measure2: [
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['c/4'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 3: C quarter D eighth E eighth F quarter | F quarter G quarter C half
-        {
-            measure1: [
-                { keys: ['c/4'], duration: 'q' },   // 1 beat
-                { keys: ['d/4'], duration: '8' },   // 0.5 beats
-                { keys: ['e/4'], duration: '8' },   // 0.5 beats
-                { keys: ['f/4'], duration: 'q' }    // 1 beat = 3 beats so far
-            ],
-            measure2: [
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['c/4'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 4: C quarter D eighth E eighth F quarter | G quarter F quarter D half
-        {
-            measure1: [
-                { keys: ['c/4'], duration: 'q' },   // 1 beat
-                { keys: ['d/4'], duration: '8' },   // 0.5 beats
-                { keys: ['e/4'], duration: '8' },   // 0.5 beats
-                { keys: ['f/4'], duration: 'q' }    // 1 beat = 3 beats so far
-            ],
-            measure2: [
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['d/4'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 5: C quarter F eighth E eighth D quarter | G quarter F quarter C half
-        {
-            measure1: [
-                { keys: ['c/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: '8' },   // 0.5 beats
-                { keys: ['e/4'], duration: '8' },   // 0.5 beats
-                { keys: ['d/4'], duration: 'q' }    // 1 beat = 3 beats so far
-            ],
-            measure2: [
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['c/4'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        }
-    ], // End of Question Set 10
-
-    // QUESTION SET 11 (Treble Clef) - Simple eighth note patterns
-    [
-        // Option 0: CORRECT - C eighth D eighth E quarter F quarter | G quarter F quarter C half
-        {
-            measure1: [
-                { keys: ['c/4'], duration: '8' },   // 0.5 beats
-                { keys: ['d/4'], duration: '8' },   // 0.5 beats
-                { keys: ['e/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'h' }    // 2 beats = 4 total
-            ],
-            measure2: [
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['c/4'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 1: D eighth C eighth E quarter F half | G quarter F quarter C half
-        {
-            measure1: [
-                { keys: ['d/4'], duration: '8' },   // 0.5 beats
-                { keys: ['c/4'], duration: '8' },   // 0.5 beats
-                { keys: ['e/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'h' }    // 2 beats = 4 total
-            ],
-            measure2: [
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['c/4'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 2: C eighth D eighth F quarter E half | G quarter F quarter C half
-        {
-            measure1: [
-                { keys: ['c/4'], duration: '8' },   // 0.5 beats
-                { keys: ['d/4'], duration: '8' },   // 0.5 beats
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['e/4'], duration: 'h' }    // 2 beats = 4 total
-            ],
-            measure2: [
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['c/4'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 3: C eighth D eighth E quarter F half | F quarter G quarter C half
-        {
-            measure1: [
-                { keys: ['c/4'], duration: '8' },   // 0.5 beats
-                { keys: ['d/4'], duration: '8' },   // 0.5 beats
-                { keys: ['e/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'h' }    // 2 beats = 4 total
-            ],
-            measure2: [
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['c/4'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 4: C eighth D eighth E quarter F half | G quarter F quarter D half
-        {
-            measure1: [
-                { keys: ['c/4'], duration: '8' },   // 0.5 beats
-                { keys: ['d/4'], duration: '8' },   // 0.5 beats
-                { keys: ['e/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'h' }    // 2 beats = 4 total
-            ],
-            measure2: [
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['d/4'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        },
-        // Option 5: C eighth D eighth G quarter F half | G quarter F quarter C half
-        {
-            measure1: [
-                { keys: ['c/4'], duration: '8' },   // 0.5 beats
-                { keys: ['d/4'], duration: '8' },   // 0.5 beats
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'h' }    // 2 beats = 4 total
-            ],
-            measure2: [
-                { keys: ['g/4'], duration: 'q' },   // 1 beat
-                { keys: ['f/4'], duration: 'q' },   // 1 beat
-                { keys: ['c/4'], duration: 'h' }    // 2 beats = 4 total
-            ]
-        }
     ] // End of Question Set 11
 ];
-
-// Current question options (will be set from allQuestionSets)
 let questionOptions = allQuestionSets[currentQuestionSet];
 
 function createNotation(containerId, option) {
@@ -1463,18 +1002,18 @@ function createNotation(containerId, option) {
     container.innerHTML = '';
     
     try {
-        // Create renderer
+        // Create renderer with maximum width for TV screen visibility
         const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-        renderer.resize(400, 120);
+        renderer.resize(420, 100);
         const context = renderer.getContext();
         
-        // Create separate staves for each measure
-        const stave1 = new VF.Stave(10, 20, 180);
+        // Create separate staves for each measure - first measure longer for clef and time signature
+        const stave1 = new VF.Stave(5, -10, 220);
         const clefType = option.clef || 'treble';
         stave1.addClef(clefType).addTimeSignature('4/4');
         stave1.setContext(context).draw();
         
-        const stave2 = new VF.Stave(190, 20, 180);
+        const stave2 = new VF.Stave(225, -10, 170);
         // No clef or time signature for second measure
         stave2.setContext(context).draw();
         
@@ -1602,9 +1141,28 @@ function generateOptions() {
         notationDiv.id = `notation-${index}`;
         
         const label = document.createElement('div');
-        label.textContent = `Option ${String.fromCharCode(65 + index)}`;
-        label.style.fontWeight = 'bold';
-        label.style.marginBottom = '10px';
+        label.className = 'option-label';
+        label.textContent = String.fromCharCode(65 + index);
+        label.style.fontWeight = '700';
+        label.style.fontSize = '1.25rem';
+        label.style.color = 'white';
+        label.style.marginBottom = '12px';
+        label.style.textAlign = 'center';
+        label.style.flexShrink = '0';
+        label.style.width = '40px';
+        label.style.height = '40px';
+        label.style.borderRadius = '50%';
+        label.style.display = 'flex';
+        label.style.alignItems = 'center';
+        label.style.justifyContent = 'center';
+        label.style.margin = '0 auto 12px auto';
+        label.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.2)';
+        label.style.transition = 'all 0.3s ease';
+        
+        // Set background color based on index
+        const colors = ['#e74c3c', '#1abc9c', '#3498db', '#27ae60', '#f39c12', '#9b59b6'];
+        label.style.background = colors[index];
+        label.style.border = `1px solid ${colors[index]}80`;
         
         optionDiv.appendChild(label);
         optionDiv.appendChild(notationDiv);
