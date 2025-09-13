@@ -12,6 +12,7 @@ let currentQuestionSet = 0; // Which question set we're using (0-9 for questions
 let currentCorrectOption = 0; // Which option from the set is correct (0-5)  
 let shuffledOptions = []; // Current randomized order of options
 let usedQuestionSets = []; // Track which question sets have been used
+let playbackSpeed = 1.0; // Default normal speed (1.0x)
 
 // Define all 10 question sets (each with 6 very similar options)
 const allQuestionSets = [
@@ -2155,19 +2156,12 @@ function checkAnswer() {
         opt.style.pointerEvents = 'none'; // Disable further clicking
     });
     
-    // Disable submit button and show next question button
+    // Disable submit button
     document.getElementById('submitButton').disabled = true;
     
-    // Show result and next question option
-    const result = selectedOption === correctAnswer ? 'Correct!' : `Incorrect. The correct answer was Option ${String.fromCharCode(65 + correctAnswer)}.`;
-    const nextQuestionText = currentCorrectOption < 5 ? '\n\nClick "Next Question" to continue.' : '\n\nYou\'ve completed all 6 variations!';
-    
-    alert(result + nextQuestionText);
-    
-    // Show next question button if not at the end
-    if (currentCorrectOption < 5) {
-        showNextQuestionButton();
-    }
+    // Show visual feedback
+    const isCorrect = selectedOption === correctAnswer;
+    showFeedback(isCorrect);
 }
 
 function showNextQuestionButton() {
@@ -2374,7 +2368,7 @@ function getNoteDuration(duration) {
         '8': 0.25,  // eighth note
         'qr': 0.5   // quarter rest
     };
-    return durationMap[duration] || 0.5;
+    return (durationMap[duration] || 0.5) / playbackSpeed;
 }
 
 // Simple question navigation functions
@@ -2396,6 +2390,71 @@ function updateQuestionCounter() {
     const counter = document.getElementById('questionCounter');
     if (counter) {
         counter.textContent = `Question ${currentQuestionSet + 1} of ${allQuestionSets.length}`;
+    }
+}
+
+function changeSpeed() {
+    const slider = document.getElementById('speedSlider');
+    const speedText = document.getElementById('speedText');
+    
+    const speedValues = [0.5, 0.75, 1.0]; // 60, 90, 120 BPM
+    const speedLabels = ['Largo', 'Andante', 'Allegro'];
+    
+    const index = parseInt(slider.value);
+    playbackSpeed = speedValues[index];
+    speedText.textContent = speedLabels[index];
+}
+
+function showFeedback(isCorrect) {
+    const overlay = document.getElementById('feedbackOverlay');
+    const icon = document.getElementById('feedbackIcon');
+    const text = document.getElementById('feedbackText');
+    
+    // Set content based on result
+    if (isCorrect) {
+        overlay.className = 'feedback-overlay correct';
+        icon.textContent = '✓';
+        text.textContent = 'Correct!';
+        createConfetti();
+    } else {
+        overlay.className = 'feedback-overlay incorrect';
+        icon.textContent = '✗';
+        text.textContent = 'Incorrect';
+    }
+    
+    // Show overlay
+    overlay.classList.add('show');
+    
+    // Auto-hide after 2 seconds
+    setTimeout(() => {
+        overlay.classList.remove('show');
+        
+        // Show next question button if not at the end
+        if (currentCorrectOption < 5) {
+            setTimeout(() => showNextQuestionButton(), 300);
+        }
+    }, 2000);
+}
+
+function createConfetti() {
+    const colors = ['#f39c12', '#e74c3c', '#3498db', '#27ae60', '#9b59b6', '#1abc9c'];
+    
+    for (let i = 0; i < 50; i++) {
+        setTimeout(() => {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            confetti.style.left = Math.random() * 100 + 'vw';
+            confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+            confetti.style.animationDelay = Math.random() * 0.5 + 's';
+            confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+            
+            document.body.appendChild(confetti);
+            
+            // Remove confetti after animation
+            setTimeout(() => {
+                confetti.remove();
+            }, 3000);
+        }, i * 30);
     }
 }
 

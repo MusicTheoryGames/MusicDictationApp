@@ -364,6 +364,144 @@
             font-size: 14px;
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         }
+        
+        .speed-control {
+            position: absolute;
+            left: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .speed-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+        }
+        
+        .speed-slider {
+            width: 100px;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+        
+        .speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #ff6b35;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+        
+        .speed-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #ff6b35;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+        
+        .speed-text {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.7);
+            min-width: 40px;
+            text-align: center;
+        }
+        
+        .feedback-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .feedback-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .feedback-content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 30px;
+            padding: 40px 60px;
+            text-align: center;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+            transform: scale(0.8);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .feedback-overlay.show .feedback-content {
+            transform: scale(1);
+        }
+        
+        .feedback-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            display: block;
+        }
+        
+        .feedback-text {
+            font-size: 36px;
+            font-weight: 700;
+            margin: 0;
+            color: #2c3e50;
+            text-shadow: none;
+        }
+        
+        .correct .feedback-icon {
+            color: #27ae60;
+        }
+        
+        .correct .feedback-text {
+            color: #27ae60;
+        }
+        
+        .incorrect .feedback-icon {
+            color: #e74c3c;
+        }
+        
+        .incorrect .feedback-text {
+            color: #e74c3c;
+        }
+        
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: #f39c12;
+            border-radius: 50%;
+            z-index: 999;
+            animation: confetti-fall 3s ease-out forwards;
+        }
+        
+        @keyframes confetti-fall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -374,6 +512,11 @@
             
             <!-- Question Navigation -->
             <div class="navigation-controls">
+                <div class="speed-control">
+                    <span class="speed-label">Speed:</span>
+                    <input type="range" class="speed-slider" id="speedSlider" min="0" max="2" value="2" step="1" onchange="changeSpeed()">
+                    <span class="speed-text" id="speedText">Allegro</span>
+                </div>
                 <button class="play-button" onclick="playAudio()">Play Melody</button>
                 <div class="nav-buttons">
                     <button onclick="previousQuestion()">◄ Previous</button>
@@ -388,6 +531,14 @@
         </div>
 
         <button class="submit-button" id="submitButton" onclick="checkAnswer()" disabled>Submit Answer</button>
+    </div>
+
+    <!-- Feedback Overlay -->
+    <div class="feedback-overlay" id="feedbackOverlay">
+        <div class="feedback-content">
+            <span class="feedback-icon" id="feedbackIcon">✓</span>
+            <p class="feedback-text" id="feedbackText">Correct!</p>
+        </div>
     </div>
 
     <script src="https://unpkg.com/vexflow@4.2.2/build/cjs/vexflow.js"></script>
