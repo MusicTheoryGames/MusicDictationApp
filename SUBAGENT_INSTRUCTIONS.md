@@ -163,6 +163,43 @@ Measure 2: E(q) C(q) A(q) F(q)   // Random leaps
 
 ---
 
+## REST USAGE RULES (8-MEASURE EXAMPLES ONLY)
+
+### ⚠️ CRITICAL REST PLACEMENT RULE ⚠️
+**Rests must be placed so they do NOT make the correct answer obvious!**
+
+### Rest Guidelines:
+- **Only quarter rests allowed** in 8-measure examples
+- **No rests in 2-measure or 4-measure examples** (Easy level only)
+- **Rests must be in same or adjacent positions** across all 6 options
+- **Maximum 1 beat difference** in rest placement between options
+
+### Examples of CORRECT Rest Usage:
+
+**Good Example** - Rests in similar positions:
+```
+Option 0: M3: C(q) REST(qr) E(q) F(q)
+Option 1: M3: C(q) D(qr) E(q) F(q)     // Rest 1 beat later - SUBTLE
+Option 2: M3: REST(qr) D(q) E(q) F(q)  // Rest 1 beat earlier - SUBTLE
+Option 3: M3: C(q) REST(qr) F(q) G(q)  // Same rest position, different notes
+```
+
+### Examples of BAD Rest Usage:
+
+❌ **Too Obvious** - Rests in completely different measures:
+```
+Option 0: M1: REST(qr) D(q) E(q) F(q)
+Option 1: M5: C(q) D(q) REST(qr) F(q)  // TOO DIFFERENT - makes answer obvious
+```
+
+❌ **Inconsistent** - Some options with rests, others without:
+```
+Option 0: C(q) D(q) E(q) F(q)           // No rest
+Option 1: C(q) REST(qr) E(q) F(q)       // Has rest - makes it obvious
+```
+
+---
+
 ## TONALITY REQUIREMENTS
 
 ### C Major:

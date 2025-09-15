@@ -12,29 +12,99 @@ const TIME_SIGNATURES = {
         beatsPerMeasure: 4,
         beatUnit: 'quarter',
         description: '4/4 time (Common time)',
-        simpleRhythms: ['q', 'h', 'q q', 'h q', 'q h', 'q q q q', 'h h'],
-        complexRhythms: ['8 8', 'q 8 8', '8 8 q', 'qd 8', '8 qd', 'q 8 8 q', '8 8 8 8', 'qd 8 q']
+        simpleRhythms: {
+            allowed: ['w', 'h', 'hd', 'q'],
+            patterns: ['q q q q', 'h h', 'h q q', 'q h q', 'q q h', 'hd q'],
+            restrictions: {
+                2: { maxWholeNotes: 0, maxHalfNotes: 1 },
+                4: { maxWholeNotes: 1, maxHalfNotes: 2 },
+                8: { maxWholeNotes: 1, maxHalfNotes: 2 }
+            }
+        },
+        complexRhythms: {
+            allowed: ['w', 'h', 'hd', 'q', 'qd', '8'],
+            patterns: ['q 8 8 q', '8 8 q q', 'qd 8 q', 'q qd 8', '8 8 8 8', 'h 8 8'],
+            restrictions: {
+                2: { maxWholeNotes: 0, maxHalfNotes: 1 },
+                4: { maxWholeNotes: 1, maxHalfNotes: 2 },
+                8: { maxWholeNotes: 1, maxHalfNotes: 2 }
+            },
+            grouping: 'eighth_notes_paired'
+        }
     },
     '3/4': {
         beatsPerMeasure: 3,
         beatUnit: 'quarter',
         description: '3/4 time (Waltz time)',
-        simpleRhythms: ['hd', 'q q q', 'h q', 'q h', 'q q h'],
-        complexRhythms: ['q 8 8 q', 'qd 8 q', 'q qd 8', '8 8 q q', 'q q 8 8']
+        simpleRhythms: {
+            allowed: ['w', 'h', 'hd', 'q'],
+            patterns: ['hd', 'q q q', 'h q', 'q h', 'q q h'],
+            restrictions: {
+                2: { maxWholeNotes: 0, maxHalfNotes: 1 },
+                4: { maxWholeNotes: 1, maxHalfNotes: 1 },
+                8: { maxWholeNotes: 1, maxHalfNotes: 1 }
+            }
+        },
+        complexRhythms: {
+            allowed: ['w', 'h', 'hd', 'q', 'qd', '8'],
+            patterns: ['q 8 8 q', 'qd 8 q', 'q qd 8', '8 8 q q', 'q q 8 8'],
+            restrictions: {
+                2: { maxWholeNotes: 0, maxHalfNotes: 1 },
+                4: { maxWholeNotes: 1, maxHalfNotes: 1 },
+                8: { maxWholeNotes: 1, maxHalfNotes: 1 }
+            },
+            grouping: 'eighth_notes_paired'
+        }
     },
     '6/8': {
         beatsPerMeasure: 6,
         beatUnit: 'eighth',
         description: '6/8 time (Compound duple)',
-        simpleRhythms: ['qd qd', 'q 8 qd', 'qd q 8', 'q 8 q 8', '8 8 8 qd'],
-        complexRhythms: ['8 8 8 8 8 8', 'qd 8 8 8', '8 8 8 qd', 'q 8 8 8 8', '8 qd 8 8']
+        simpleRhythms: {
+            allowed: ['hd', 'qd', 'q', '8', '8_8_8'],
+            patterns: ['qd qd', 'q 8 qd', 'qd q 8', 'q 8 q 8', '8 8 8 qd'],
+            restrictions: {
+                2: { maxDottedHalves: 0 },
+                4: { maxDottedHalves: 2 },
+                8: { maxDottedHalves: 4 }
+            },
+            grouping: 'eighth_notes_in_threes'
+        },
+        complexRhythms: {
+            allowed: ['hd', 'qd', 'q', '8', '8_8_8', '8_16_8', '8_q'],
+            patterns: ['8 8 8 8 8 8', 'qd 8 8 8', '8 8 8 qd', 'q 8 8 8 8', '8 qd 8 8', '8 16 8 qd'],
+            restrictions: {
+                2: { maxDottedHalves: 0 },
+                4: { maxDottedHalves: 2 },
+                8: { maxDottedHalves: 4 }
+            },
+            grouping: 'compound_patterns'
+        }
     },
     '9/8': {
         beatsPerMeasure: 9,
         beatUnit: 'eighth',
         description: '9/8 time (Compound triple)',
-        simpleRhythms: ['qd qd qd', 'q 8 qd qd', 'qd q 8 qd', 'qd qd q 8'],
-        complexRhythms: ['qd 8 8 8 qd', 'q 8 q 8 qd', '8 8 8 qd qd', 'qd q 8 8 8 8']
+        simpleRhythms: {
+            allowed: ['hd', 'qd', 'q', '8', '8_8_8'],
+            patterns: ['qd qd qd', 'q 8 qd qd', 'qd q 8 qd', 'qd qd q 8'],
+            restrictions: {
+                2: { maxDottedHalves: 0 },
+                4: { maxDottedHalves: 1 },
+                8: { maxDottedHalves: 2 }
+            },
+            grouping: 'eighth_notes_in_threes'
+        },
+        complexRhythms: {
+            allowed: ['hd', 'qd', 'q', '8', '8_8_8', '8_16_8', '8_q'],
+            patterns: ['qd 8 8 8 qd', 'q 8 q 8 qd', '8 8 8 qd qd', 'qd q 8 8 8 8'],
+            restrictions: {
+                2: { maxDottedHalves: 0 },
+                4: { maxDottedHalves: 1 },
+                8: { maxDottedHalves: 2 }
+            },
+            grouping: 'compound_patterns'
+        }
     }
 };
 
