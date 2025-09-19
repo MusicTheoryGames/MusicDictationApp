@@ -160,6 +160,7 @@ class RhythmTeacher {
         this.currentDifficulty = 'medium';
         this.measureCount = 2;
         this.tempo = 100;
+        this.timeSignature = '4/4';
         this.roomCode = '';
         this.students = new Map();
         this.revealedBeats = [];
@@ -167,11 +168,11 @@ class RhythmTeacher {
         this.init();
     }
 
-    init() {
+    async init() {
         this.generateRoomCode();
         this.setupEventListeners();
+        await this.setupFirebase();
         this.generateNewRhythm();
-        this.setupWebSocket();
     }
 
     generateRoomCode() {
@@ -182,6 +183,7 @@ class RhythmTeacher {
     setupEventListeners() {
         document.getElementById('generateBtn').addEventListener('click', () => this.generateNewRhythm());
         document.getElementById('playBtn').addEventListener('click', () => this.playRhythm());
+        document.getElementById('openProjectionBtn').addEventListener('click', () => this.openProjection());
 
         document.getElementById('difficulty').addEventListener('change', (e) => {
             this.currentDifficulty = e.target.value;
@@ -190,6 +192,7 @@ class RhythmTeacher {
 
         document.getElementById('measureCount').addEventListener('change', (e) => {
             this.measureCount = parseInt(e.target.value);
+            this.setupRevealButtons();
             this.generateNewRhythm();
         });
 
@@ -197,40 +200,142 @@ class RhythmTeacher {
             this.tempo = parseInt(e.target.value);
         });
 
-        // Reveal button listeners
-        for (let i = 1; i <= 4; i++) {
-            document.getElementById(`revealBeat${i}`).addEventListener('click', () => this.revealBeat(i));
+        document.getElementById('timeSignature').addEventListener('change', (e) => {
+            this.timeSignature = e.target.value;
+            this.generateNewRhythm();
+        });
+
+        this.setupRevealButtons();
+    }
+
+    setupRevealButtons() {
+        const revealContainer = document.getElementById('revealControls');
+        revealContainer.innerHTML = '';
+
+        const totalBeats = this.measureCount * 4;
+
+        // Create individual beat reveal buttons
+        for (let i = 1; i <= totalBeats; i++) {
+            const button = document.createElement('button');
+            button.className = 'reveal-btn';
+            button.id = `revealBeat${i}`;
+            button.textContent = `Reveal Beat ${i}`;
+            button.disabled = true;
+            button.addEventListener('click', () => this.revealBeat(i));
+            revealContainer.appendChild(button);
         }
-        document.getElementById('revealAll').addEventListener('click', () => this.revealAll());
+
+        // Create reveal all button
+        const revealAllBtn = document.createElement('button');
+        revealAllBtn.className = 'reveal-btn';
+        revealAllBtn.id = 'revealAll';
+        revealAllBtn.textContent = 'Reveal All';
+        revealAllBtn.disabled = true;
+        revealAllBtn.addEventListener('click', () => this.revealAll());
+        revealContainer.appendChild(revealAllBtn);
     }
 
-    setupWebSocket() {
-        // In a real implementation, this would connect to your server
-        // For now, we'll simulate students joining
-        this.simulateStudents();
+    async setupFirebase() {
+        // Wait for Firebase to load
+        while (!window.firebase) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        // Create Firebase room for rhythm dictation
+        await this.createFirebaseRoom();
+        this.listenToStudentUpdates();
     }
 
-    simulateStudents() {
-        // Simulate some students joining for demo
-        const studentNames = ['Alice', 'Bob', 'Charlie', 'Diana', 'Eva'];
+    async createFirebaseRoom() {
+        try {
+            const roomData = {
+                created: window.firebase.serverTimestamp(),
+                type: 'rhythm-dictation',
+                exerciseActive: false,
+                currentRhythm: null,
+                measureCount: this.measureCount,
+                difficulty: this.currentDifficulty,
+                tempo: this.tempo,
+                timeSignature: this.timeSignature,
+                revealedBeats: [],
+                studentAnswers: {},
+                students: {}
+            };
 
-        studentNames.forEach((name, index) => {
-            setTimeout(() => {
-                this.addStudent(name, `student_${index + 1}`);
-            }, index * 1000);
+            await window.firebase.set(
+                window.firebase.ref(window.firebase.database, `rhythm-rooms/${this.roomCode}`),
+                roomData
+            );
+
+            console.log('Firebase rhythm room created:', this.roomCode);
+        } catch (error) {
+            console.error('Error creating Firebase room:', error);
+        }
+    }
+
+    listenToStudentUpdates() {
+        const roomRef = window.firebase.ref(window.firebase.database, `rhythm-rooms/${this.roomCode}`);
+
+        window.firebase.onValue(roomRef, (snapshot) => {
+            if (snapshot.exists()) {
+                const roomData = snapshot.val();
+                this.updateStudentDisplayFromFirebase(roomData.students || {}, roomData.studentAnswers || {});
+                this.updateConnectedCount();
+                this.checkForBeatReveals(roomData.studentAnswers || {});
+            }
         });
     }
 
-    addStudent(name, id) {
-        this.students.set(id, {
-            name: name,
-            connected: true,
-            answers: Array(this.measureCount * 4).fill(null),
-            correctBeats: []
+    updateStudentDisplayFromFirebase(students, answers) {
+        this.students.clear();
+
+        Object.entries(students).forEach(([studentId, studentData]) => {
+            const studentAnswers = answers[studentId] || {};
+            this.students.set(studentId, {
+                name: studentData.name || `Student ${studentId.slice(-3)}`,
+                connected: studentData.connected || false,
+                answers: studentAnswers,
+                correctBeats: this.calculateCorrectBeats(studentAnswers)
+            });
         });
 
         this.updateStudentDisplay();
-        this.updateConnectedCount();
+    }
+
+    calculateCorrectBeats(studentAnswers) {
+        const correctBeats = [];
+        if (!this.currentRhythm || !this.currentRhythm[0]) return correctBeats;
+
+        for (let beat = 1; beat <= 4; beat++) {
+            const studentAnswer = studentAnswers[`beat${beat}`];
+            const correctAnswer = this.currentRhythm[0][beat - 1];
+            if (studentAnswer && studentAnswer === correctAnswer) {
+                correctBeats.push(beat);
+            }
+        }
+        return correctBeats;
+    }
+
+    checkForBeatReveals(studentAnswers) {
+        const studentIds = Object.keys(studentAnswers);
+        if (studentIds.length === 0) return;
+
+        for (let beat = 1; beat <= 4; beat++) {
+            if (this.revealedBeats.includes(beat)) continue;
+
+            const allCorrect = studentIds.every(studentId => {
+                const answer = studentAnswers[studentId][`beat${beat}`];
+                const correct = this.currentRhythm && this.currentRhythm[0] && this.currentRhythm[0][beat - 1];
+                return answer === correct;
+            });
+
+            if (allCorrect && studentIds.length > 0) {
+                const btn = document.getElementById(`revealBeat${beat}`);
+                btn.disabled = false;
+                btn.textContent = `✓ Reveal Beat ${beat}`;
+                btn.style.background = 'linear-gradient(45deg, #27ae60, #229954)';
+            }
+        }
     }
 
     generateNewRhythm() {
@@ -451,30 +556,37 @@ class RhythmTeacher {
     }
 
     revealAll() {
-        this.revealedBeats = [1, 2, 3, 4];
+        const totalBeats = this.measureCount * 4;
+        this.revealedBeats = Array.from({length: totalBeats}, (_, i) => i + 1);
         this.updateRevealButtons();
         this.broadcastToStudents('reveal-all', { rhythm: this.currentRhythm });
     }
 
     updateRevealButtons() {
-        for (let i = 1; i <= 4; i++) {
+        const totalBeats = this.measureCount * 4;
+
+        for (let i = 1; i <= totalBeats; i++) {
             const btn = document.getElementById(`revealBeat${i}`);
-            if (this.revealedBeats.includes(i)) {
-                btn.disabled = true;
-                btn.textContent = `Beat ${i} Revealed`;
-            } else {
-                btn.disabled = false;
-                btn.textContent = `Reveal Beat ${i}`;
+            if (btn) {
+                if (this.revealedBeats.includes(i)) {
+                    btn.disabled = true;
+                    btn.textContent = `Beat ${i} Revealed`;
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = `Reveal Beat ${i}`;
+                }
             }
         }
 
         const revealAllBtn = document.getElementById('revealAll');
-        if (this.revealedBeats.length === 4) {
-            revealAllBtn.disabled = true;
-            revealAllBtn.textContent = 'All Revealed';
-        } else {
-            revealAllBtn.disabled = false;
-            revealAllBtn.textContent = 'Reveal All';
+        if (revealAllBtn) {
+            if (this.revealedBeats.length === totalBeats) {
+                revealAllBtn.disabled = true;
+                revealAllBtn.textContent = 'All Revealed';
+            } else {
+                revealAllBtn.disabled = false;
+                revealAllBtn.textContent = 'Reveal All';
+            }
         }
     }
 
@@ -485,13 +597,14 @@ class RhythmTeacher {
         this.students.forEach((student, id) => {
             const card = document.createElement('div');
             card.className = 'student-card';
+            const totalBeats = this.measureCount * 4;
             card.innerHTML = `
                 <div class="student-name">
                     <span class="status-indicator ${student.connected ? 'online' : 'offline'}"></span>
                     ${student.name}
                 </div>
                 <div class="beat-progress">
-                    ${Array.from({length: 4}, (_, i) => {
+                    ${Array.from({length: totalBeats}, (_, i) => {
                         const beatNum = i + 1;
                         const isCorrect = student.correctBeats.includes(beatNum);
                         const hasAnswer = student.answers[i] !== null;
@@ -514,32 +627,62 @@ class RhythmTeacher {
         document.getElementById('connectedCount').textContent = connectedStudents;
     }
 
-    broadcastToStudents(type, data) {
-        // In a real implementation, this would send to WebSocket server
-        console.log('Broadcasting to students:', type, data);
+    async broadcastToStudents(type, data) {
+        try {
+            const updates = {};
 
-        // Simulate student responses for demo
-        if (type === 'new-rhythm') {
-            this.simulateStudentAnswers();
+            if (type === 'new-rhythm') {
+                updates[`rhythm-rooms/${this.roomCode}/currentRhythm`] = this.currentRhythm;
+                updates[`rhythm-rooms/${this.roomCode}/exerciseActive`] = true;
+                updates[`rhythm-rooms/${this.roomCode}/revealedBeats`] = [];
+                updates[`rhythm-rooms/${this.roomCode}/measureCount`] = this.measureCount;
+                updates[`rhythm-rooms/${this.roomCode}/difficulty`] = this.currentDifficulty;
+                updates[`rhythm-rooms/${this.roomCode}/tempo`] = this.tempo;
+                updates[`rhythm-rooms/${this.roomCode}/timeSignature`] = this.timeSignature;
+                // Clear previous student answers
+                updates[`rhythm-rooms/${this.roomCode}/studentAnswers`] = {};
+                console.log('Teacher setting exerciseActive to true for room:', this.roomCode);
+            } else if (type === 'play-rhythm') {
+                updates[`rhythm-rooms/${this.roomCode}/playCommand`] = {
+                    timestamp: window.firebase.serverTimestamp(),
+                    tempo: data.tempo
+                };
+            } else if (type === 'reveal-beat') {
+                updates[`rhythm-rooms/${this.roomCode}/revealedBeats`] = this.revealedBeats;
+            } else if (type === 'reveal-all') {
+                updates[`rhythm-rooms/${this.roomCode}/revealedBeats`] = [1, 2, 3, 4];
+                updates[`rhythm-rooms/${this.roomCode}/exerciseActive`] = false;
+            }
+
+            console.log('Teacher broadcasting updates:', updates);
+
+            await window.firebase.set(
+                window.firebase.ref(window.firebase.database, '/'),
+                updates
+            );
+
+            console.log('Broadcasting to students via Firebase completed:', type, data);
+        } catch (error) {
+            console.error('Error broadcasting to students:', error);
         }
     }
 
-    simulateStudentAnswers() {
-        // Simulate students gradually submitting answers
-        this.students.forEach((student, id) => {
-            setTimeout(() => {
-                // Simulate some correct and some incorrect answers
-                for (let i = 0; i < 4; i++) {
-                    const isCorrect = Math.random() > 0.3; // 70% chance of being correct
-                    if (isCorrect) {
-                        student.correctBeats.push(i + 1);
-                    }
-                    student.answers[i] = isCorrect ? this.currentRhythm[0][i] : 'wrong-answer';
-                }
-                this.updateStudentDisplay();
-            }, Math.random() * 3000);
-        });
+    openProjection() {
+        const projectionUrl = `projection.html?room=${this.roomCode}`;
+        const projectionWindow = window.open(
+            projectionUrl,
+            'BeatQuestProjection',
+            'width=1200,height=800,scrollbars=no,resizable=yes,status=no,location=no,toolbar=no,menubar=no'
+        );
+
+        if (projectionWindow) {
+            projectionWindow.focus();
+            console.log('Projection window opened for room:', this.roomCode);
+        } else {
+            alert('Could not open projection window. Please allow popups and try again.');
+        }
     }
+
 }
 
 // Initialize the teacher control system

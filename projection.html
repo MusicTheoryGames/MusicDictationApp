@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beat Quest - Projection Display</title>
+    <script type="module">
+        // Import Firebase functions
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, set, get, onValue, push, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyB_jykeKL3tbBw8dmOCRiaDmD5Jzr-l53w",
+            authDomain: "music-dictation.firebaseapp.com",
+            databaseURL: "https://music-dictation-default-rtdb.firebaseio.com",
+            projectId: "music-dictation",
+            storageBucket: "music-dictation.firebasestorage.app",
+            messagingSenderId: "440288448006",
+            appId: "1:440288448006:web:7396aee943785e1cd43d87",
+            measurementId: "G-5N6V14YGS2"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Make Firebase functions globally available
+        window.firebase = {
+            database,
+            ref,
+            set,
+            get,
+            onValue,
+            push,
+            serverTimestamp
+        };
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(140deg, #2d3436 0%, #636e72 100%);
+            min-height: 100vh;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+
+        .projection-container {
+            width: 100%;
+            max-width: 1200px;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 4rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+            background: linear-gradient(45deg, #74b9ff, #0984e3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .room-code {
+            font-size: 2rem;
+            margin-bottom: 50px;
+            opacity: 0.8;
+        }
+
+        .answer-area {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            flex: 1;
+            min-height: 0;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .answer-area h3 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+        }
+
+        .measure-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .answer-staff {
+            background: white;
+            border-radius: 8px;
+            padding: 20px 50px 20px 20px;
+            position: relative;
+            width: 900px;
+            height: 120px;
+        }
+
+        .answer-staff-label {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #333;
+        }
+
+        .staff-container {
+            position: relative;
+            height: 80px;
+            margin-top: 10px;
+        }
+
+        .staff-lines {
+            position: absolute;
+            width: 100%;
+            height: 20px;
+            top: 30px;
+        }
+
+        .staff-line {
+            position: absolute;
+            width: 100%;
+            height: 1px;
+            background: #333;
+            top: 9px;
+        }
+
+        .percussion-clef {
+            position: absolute;
+            left: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 22px;
+            height: 20px;
+            z-index: 5;
+        }
+
+        .percussion-clef::before,
+        .percussion-clef::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 20px;
+            background: #333;
+            top: 0;
+        }
+
+        .percussion-clef::before {
+            left: 3px;
+        }
+
+        .percussion-clef::after {
+            right: 0px;
+        }
+
+        .time-signature {
+            position: absolute;
+            left: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            text-align: center;
+            font-weight: bold;
+            font-size: clamp(18px, 3vw, 28px);
+            color: #333;
+            z-index: 5;
+            line-height: 1;
+        }
+
+        .time-sig-top, .time-sig-bottom {
+            display: block;
+            margin: 0;
+            padding: 0;
+        }
+
+        .beat-divisions {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+        }
+
+        .beat-drop-zone {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        /* Only show bar line in the middle (after beat 4) */
+        .beat-drop-zone[data-beat="4"] {
+            border-right: 3px solid #333; /* Bar line between measures */
+            margin-right: 15px; /* Add space after bar line */
+        }
+
+        /* Add thick line to the right of the last bar to make double bar */
+        .beat-drop-zone[data-beat="4"][data-measure="2"]::after {
+            content: '';
+            position: absolute;
+            right: -10px;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #333; /* Thick line to the right */
+        }
+
+        /* Beat indicators inside white area */
+        .beat-drop-zone::before {
+            content: attr(data-beat);
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #999;
+            z-index: 1;
+        }
+
+        .beat-notation {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .waiting-message {
+            font-size: 1.5rem;
+            margin-top: 30px;
+            opacity: 0.7;
+            font-style: italic;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 1024px) {
+            .title {
+                font-size: 3rem;
+            }
+            .measures-container {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .time-signature {
+                left: 25px;
+                top: 50%;
+                transform: translateY(-50%);
+                font-size: clamp(16px, 4.5vw, 24px);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .time-signature {
+                left: 20px;
+                top: 50%;
+                transform: translateY(-50%);
+                font-size: clamp(14px, 5vw, 22px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">
+        Connecting...
+    </div>
+
+    <div class="projection-container">
+        <div class="title">🥁 Beat Quest</div>
+        <div class="room-code" id="roomCodeDisplay">Enter Room Code in URL</div>
+
+        <div class="answer-area">
+            <h3>Answer</h3>
+
+            <div id="measureContainer">
+                <!-- Measures will be populated by JavaScript -->
+            </div>
+
+            <div class="waiting-message" id="waitingMessage">
+                Waiting for exercise to begin...
+            </div>
+        </div>
+    </div>
+
+    <script src="projection.js"></script>
+</body>
+</html>

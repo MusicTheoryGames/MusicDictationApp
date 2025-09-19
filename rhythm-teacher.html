@@ -5,6 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rhythm Teacher Control - Music Dictation</title>
     <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, set, get, onValue, push, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyB_jykeKL3tbBw8dmOCRiaDmD5Jzr-l53w",
+            authDomain: "music-dictation.firebaseapp.com",
+            databaseURL: "https://music-dictation-default-rtdb.firebaseio.com",
+            projectId: "music-dictation",
+            storageBucket: "music-dictation.firebasestorage.app",
+            messagingSenderId: "440288448006",
+            appId: "1:440288448006:web:7396aee943785e1cd43d87",
+            measurementId: "G-5N6V14YGS2"
+        };
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Make Firebase functions globally available
+        window.firebase = {
+            database,
+            ref,
+            set,
+            get,
+            onValue,
+            push,
+            serverTimestamp
+        };
+    </script>
     <style>
         * {
             margin: 0;
@@ -277,6 +308,17 @@
             </div>
 
             <div class="control-group">
+                <label>Time Signature:</label>
+                <select id="timeSignature">
+                    <option value="4/4" selected>4/4</option>
+                    <option value="3/4">3/4</option>
+                    <option value="2/4">2/4</option>
+                    <option value="6/8">6/8</option>
+                    <option value="9/8">9/8</option>
+                </select>
+            </div>
+
+            <div class="control-group">
                 <label>Difficulty:</label>
                 <select id="difficulty">
                     <option value="easy">Easy</option>
@@ -290,6 +332,7 @@
                 <div style="display: flex; gap: 10px; flex-direction: column;">
                     <button class="btn-primary" id="generateBtn">Generate New Rhythm</button>
                     <button class="btn-secondary" id="playBtn">Play Rhythm</button>
+                    <button class="btn-success" id="openProjectionBtn">📺 Open Projection</button>
                 </div>
             </div>
         </div>
@@ -307,12 +350,8 @@
             <span id="connectedCount">0</span> students connected
         </div>
 
-        <div class="reveal-controls">
-            <button class="reveal-btn" id="revealBeat1" disabled>Reveal Beat 1</button>
-            <button class="reveal-btn" id="revealBeat2" disabled>Reveal Beat 2</button>
-            <button class="reveal-btn" id="revealBeat3" disabled>Reveal Beat 3</button>
-            <button class="reveal-btn" id="revealBeat4" disabled>Reveal Beat 4</button>
-            <button class="reveal-btn" id="revealAll" disabled>Reveal All</button>
+        <div class="reveal-controls" id="revealControls">
+            <!-- Reveal buttons will be populated by JavaScript -->
         </div>
 
         <div class="progress-grid" id="studentProgress">

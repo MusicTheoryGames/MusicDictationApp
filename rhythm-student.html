@@ -143,7 +143,7 @@
             text-align: center;
             color: #333;
             font-size: 0.8rem;
-            min-height: 90px;
+            min-height: 68px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -250,12 +250,49 @@
 
         .percussion-clef {
             position: absolute;
-            left: 10px;
-            top: 15px;
-            font-size: 28px;
+            left: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 22px;
+            height: 20px;
+            z-index: 5;
+        }
+
+        .percussion-clef::before,
+        .percussion-clef::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 20px;
+            background: #333;
+            top: 0;
+        }
+
+        .percussion-clef::before {
+            left: 3px;
+        }
+
+        .percussion-clef::after {
+            right: 0px;
+        }
+
+        .time-signature {
+            position: absolute;
+            left: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            text-align: center;
             font-weight: bold;
+            font-size: clamp(16px, 2.5vw, 24px);
             color: #333;
             z-index: 5;
+            line-height: 1;
+        }
+
+        .time-sig-top, .time-sig-bottom {
+            display: block;
+            margin: 0;
+            padding: 0;
         }
 
         .beat-divisions {
@@ -386,7 +423,7 @@
             }
 
             .rhythm-tile {
-                min-height: 100px;
+                min-height: 75px;
                 padding: 0;
             }
         }
@@ -420,6 +457,13 @@
                 height: 100px;
             }
 
+            .time-signature {
+                left: 25px;
+                top: 50%;
+                transform: translateY(-50%);
+                font-size: clamp(14px, 4vw, 20px);
+            }
+
             .staff-container {
                 height: 70px;
             }
@@ -440,7 +484,7 @@
             }
 
             .rhythm-tile {
-                min-height: 80px;
+                min-height: 60px;
                 padding: 0;
                 font-size: 0.7rem;
             }
@@ -499,7 +543,7 @@
             }
 
             .rhythm-tile {
-                min-height: 70px;
+                min-height: 53px;
                 padding: 0;
                 font-size: 0.65rem;
             }
@@ -546,7 +590,7 @@
             }
 
             .rhythm-tile {
-                min-height: 40px;
+                min-height: 30px;
                 font-size: 0.6rem;
             }
 
@@ -554,6 +598,46 @@
             .beat-notation svg {
                 transform: translateX(-50%) scale(1.0) !important;
             }
+        }
+
+        .submit-section {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .submit-btn {
+            background: linear-gradient(45deg, #27ae60, #229954);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+        }
+
+        .submit-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .submit-hint {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            opacity: 0.8;
         }
     </style>
 </head>
@@ -595,10 +679,47 @@
             <div id="measureContainer">
                 <!-- Measures will be populated by JavaScript -->
             </div>
+
+            <div class="submit-section" id="submitSection" style="display: none;">
+                <button id="submitAnswer" class="submit-btn">Submit Final Answer</button>
+            </div>
+
             <div id="feedback"></div>
         </div>
     </div>
 
+    <script type="module">
+        // Import Firebase functions
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, set, get, onValue, push, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyB_jykeKL3tbBw8dmOCRiaDmD5Jzr-l53w",
+            authDomain: "music-dictation.firebaseapp.com",
+            databaseURL: "https://music-dictation-default-rtdb.firebaseio.com",
+            projectId: "music-dictation",
+            storageBucket: "music-dictation.firebasestorage.app",
+            messagingSenderId: "440288448006",
+            appId: "1:440288448006:web:7396aee943785e1cd43d87",
+            measurementId: "G-5N6V14YGS2"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Make Firebase functions globally available
+        window.firebase = {
+            database,
+            ref,
+            set,
+            get,
+            onValue,
+            push,
+            serverTimestamp
+        };
+    </script>
     <script type="module" src="rhythm-student.js"></script>
 </body>
 </html>
