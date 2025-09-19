@@ -404,10 +404,11 @@ class RhythmStudent {
             // Scale down the entire context for smaller notation
             context.scale(0.8, 0.8);
 
-            // Create mini staff for this pattern (positioned at top)
+            // Create invisible stave for positioning only (no lines drawn)
             const stave = new VF.Stave(15, -15, 110);
-            stave.setContext(context).draw();
-            console.log('Staff drawn');
+            stave.setContext(context);
+            // Don't draw the stave - just use for note positioning
+            console.log('Invisible stave created for positioning');
 
             // Convert pattern to VexFlow notes
             const notes = [];
@@ -466,35 +467,39 @@ class RhythmStudent {
         const container = document.getElementById('measureContainer');
         container.innerHTML = '';
 
-        for (let m = 1; m <= this.measureCount; m++) {
-            const measureDiv = document.createElement('div');
-            measureDiv.innerHTML = `
-                <div class="measure-label">Measure ${m}</div>
-                <div class="drop-zones" data-measure="${m}">
-                    <div class="drop-zone" data-beat="1">
-                        <h4>Beat 1</h4>
-                        <div class="drop-content"></div>
-                    </div>
-                    <div class="drop-zone" data-beat="2">
-                        <h4>Beat 2</h4>
-                        <div class="drop-content"></div>
-                    </div>
-                    <div class="drop-zone" data-beat="3">
-                        <h4>Beat 3</h4>
-                        <div class="drop-content"></div>
-                    </div>
-                    <div class="drop-zone" data-beat="4">
-                        <h4>Beat 4</h4>
-                        <div class="drop-content"></div>
-                    </div>
+        // Create single continuous staff container
+        const measureContainer = document.createElement('div');
+        measureContainer.className = 'measure-container';
+
+        const staffDiv = document.createElement('div');
+        staffDiv.className = 'answer-staff';
+        staffDiv.innerHTML = `
+            <div class="answer-staff-label">Your Answer (${this.measureCount} measures)</div>
+            <div class="staff-container">
+                <div class="staff-lines">
+                    <div class="staff-line"></div>
                 </div>
-            `;
-            container.appendChild(measureDiv);
-        }
+                <div class="beat-divisions" style="margin-left: 30px; margin-right: 20px;">
+                    ${Array.from({length: this.measureCount * 4}, (_, i) => {
+                        const beat = (i % 4) + 1;
+                        const measure = Math.floor(i / 4) + 1;
+                        return `
+                            <div class="beat-drop-zone" data-beat="${beat}" data-measure="${measure}" data-absolute-beat="${i + 1}">
+                                <div class="beat-notation"></div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+
+        measureContainer.appendChild(staffDiv);
+        container.appendChild(measureContainer);
 
         this.setupDropZones();
         this.userAnswer = Array(this.measureCount).fill(null).map(() => Array(4).fill(null));
     }
+
 
     setupDragAndDrop() {
         const tiles = document.querySelectorAll('.rhythm-tile');
@@ -503,33 +508,36 @@ class RhythmStudent {
             tile.addEventListener('dragstart', (e) => {
                 e.dataTransfer.setData('text/plain', tile.dataset.patternId);
                 tile.classList.add('dragging');
+                this.currentDragPattern = tile.dataset.patternId;
             });
 
             tile.addEventListener('dragend', () => {
                 tile.classList.remove('dragging');
+                this.currentDragPattern = null;
+                this.clearDragHighlights();
             });
         });
     }
 
     setupDropZones() {
-        const dropZones = document.querySelectorAll('.drop-zone');
+        const dropZones = document.querySelectorAll('.beat-drop-zone');
 
         dropZones.forEach(zone => {
             zone.addEventListener('dragover', (e) => {
                 e.preventDefault();
-                zone.classList.add('drag-over');
+                this.highlightDragTarget(zone, true);
             });
 
             zone.addEventListener('dragleave', () => {
-                zone.classList.remove('drag-over');
+                this.clearDragHighlights();
             });
 
             zone.addEventListener('drop', (e) => {
                 e.preventDefault();
-                zone.classList.remove('drag-over');
+                this.clearDragHighlights();
 
                 const patternId = e.dataTransfer.getData('text/plain');
-                const measure = parseInt(zone.closest('.drop-zones').dataset.measure);
+                const measure = parseInt(zone.dataset.measure);
                 const beat = parseInt(zone.dataset.beat);
 
                 this.placeTile(zone, patternId, measure, beat);
@@ -537,32 +545,122 @@ class RhythmStudent {
         });
     }
 
+    highlightDragTarget(zone, isOver) {
+        if (!this.currentDragPattern) return;
+
+        const measure = parseInt(zone.dataset.measure);
+        const beat = parseInt(zone.dataset.beat);
+        const pattern = this.rhythmPatterns[this.currentDifficulty].find(p => p.id === this.currentDragPattern);
+
+        if (!pattern) return;
+
+        const beatsNeeded = pattern.beats;
+        const endBeat = beat + beatsNeeded - 1;
+
+        // Check if pattern fits
+        if (endBeat > 4) return;
+
+        // Highlight all beats this pattern would occupy
+        for (let b = beat; b <= endBeat; b++) {
+            const targetZone = document.querySelector(`.beat-drop-zone[data-measure="${measure}"][data-beat="${b}"]`);
+            if (targetZone && isOver) {
+                targetZone.classList.add('drag-over');
+            }
+        }
+    }
+
+    clearDragHighlights() {
+        document.querySelectorAll('.beat-drop-zone').forEach(zone => {
+            zone.classList.remove('drag-over');
+        });
+    }
+
     placeTile(dropZone, patternId, measure, beat) {
         const pattern = this.rhythmPatterns[this.currentDifficulty].find(p => p.id === patternId);
         if (!pattern) return;
 
-        const dropContent = dropZone.querySelector('.drop-content');
-        dropContent.innerHTML = `
-            <div class="dropped-tile">
-                ${pattern.notation}
-                <button class="remove-btn" onclick="rhythmStudent.removeTile(${measure}, ${beat})">×</button>
-            </div>
-        `;
+        const beatsNeeded = pattern.beats;
+        const startBeat = beat;
+        const endBeat = startBeat + beatsNeeded - 1;
 
-        dropZone.classList.add('filled');
-        this.userAnswer[measure - 1][beat - 1] = patternId;
+        // Check if we have enough space (don't go beyond beat 4 or into next measure)
+        if (endBeat > 4) {
+            alert(`Not enough space! This pattern needs ${beatsNeeded} beats.`);
+            return;
+        }
+
+        // Check if any of the target beats are already filled
+        for (let b = startBeat; b <= endBeat; b++) {
+            if (this.userAnswer[measure - 1][b - 1] !== null) {
+                alert(`Beat ${b} is already filled! Clear it first.`);
+                return;
+            }
+        }
+
+        // Place the pattern in the first beat and mark subsequent beats as occupied
+        for (let b = startBeat; b <= endBeat; b++) {
+            const targetZone = document.querySelector(`.beat-drop-zone[data-measure="${measure}"][data-beat="${b}"]`);
+            const notationArea = targetZone.querySelector('.beat-notation');
+
+            if (b === startBeat) {
+                // First beat gets a copy of the tile's VexFlow notation
+                const sourceTile = document.getElementById(`notation-${pattern.id}`);
+                console.log('Source tile found:', sourceTile);
+                console.log('Has child:', sourceTile?.firstChild);
+
+                if (sourceTile && sourceTile.firstChild) {
+                    // Clone the SVG from the source tile and make it larger
+                    const clonedSVG = sourceTile.firstChild.cloneNode(true);
+                    clonedSVG.style.position = 'absolute';
+                    clonedSVG.style.top = '3.5px'; // Move up slightly
+                    clonedSVG.style.left = '50%';
+                    clonedSVG.style.transform = 'translateX(-50%) scale(1.3)'; // Make it 30% larger
+                    clonedSVG.style.transformOrigin = 'center';
+
+                    notationArea.innerHTML = `<button class="remove-btn" onclick="rhythmStudent.removeTile(${measure}, ${startBeat})">×</button>`;
+                    notationArea.appendChild(clonedSVG);
+                    console.log('SVG cloned and appended to:', notationArea);
+                } else {
+                    // Fallback if no source tile found
+                    console.warn('No source tile found for pattern:', pattern.id);
+                    notationArea.innerHTML = `<button class="remove-btn" onclick="rhythmStudent.removeTile(${measure}, ${startBeat})">×</button><span>${pattern.notation}</span>`;
+                }
+                targetZone.classList.add('filled');
+                this.userAnswer[measure - 1][b - 1] = patternId;
+            } else {
+                // Subsequent beats get a visual indicator
+                notationArea.innerHTML = '<span style="color: #999; font-size: 0.8rem;">—</span>';
+                targetZone.classList.add('filled', 'continuation');
+                this.userAnswer[measure - 1][b - 1] = `${patternId}_continuation`;
+            }
+        }
 
         // Send answer to teacher (in real implementation)
-        this.sendAnswerToTeacher(measure, beat, patternId);
+        this.sendAnswerToTeacher(measure, startBeat, patternId);
     }
 
-    removeTile(measure, beat) {
-        const dropZone = document.querySelector(`[data-measure="${measure}"] [data-beat="${beat}"]`);
-        const dropContent = dropZone.querySelector('.drop-content');
 
-        dropContent.innerHTML = '';
-        dropZone.classList.remove('filled');
-        this.userAnswer[measure - 1][beat - 1] = null;
+    removeTile(measure, beat) {
+        // Find the pattern that starts at this beat
+        const patternId = this.userAnswer[measure - 1][beat - 1];
+        if (!patternId || patternId.includes('_continuation')) return;
+
+        const pattern = this.rhythmPatterns[this.currentDifficulty].find(p => p.id === patternId);
+        if (!pattern) return;
+
+        const beatsToRemove = pattern.beats;
+        const startBeat = beat;
+        const endBeat = startBeat + beatsToRemove - 1;
+
+        // Remove the pattern from all beats it occupies
+        for (let b = startBeat; b <= endBeat; b++) {
+            const targetZone = document.querySelector(`.beat-drop-zone[data-measure="${measure}"][data-beat="${b}"]`);
+            const notationArea = targetZone.querySelector('.beat-notation');
+
+            notationArea.innerHTML = '';
+            targetZone.classList.remove('filled', 'continuation');
+            this.userAnswer[measure - 1][b - 1] = null;
+        }
 
         // Send removal to teacher
         this.sendAnswerToTeacher(measure, beat, null);
@@ -661,9 +759,9 @@ class RhythmStudent {
     }
 
     clearAnswers() {
-        document.querySelectorAll('.drop-zone').forEach(zone => {
-            zone.querySelector('.drop-content').innerHTML = '';
-            zone.classList.remove('filled', 'revealed');
+        document.querySelectorAll('.beat-drop-zone').forEach(zone => {
+            zone.querySelector('.beat-notation').innerHTML = '';
+            zone.classList.remove('filled', 'revealed', 'continuation');
         });
         this.userAnswer = Array(this.measureCount).fill(null).map(() => Array(4).fill(null));
     }
