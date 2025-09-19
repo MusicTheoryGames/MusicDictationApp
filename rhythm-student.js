@@ -133,11 +133,35 @@ class RhythmStudent {
                     vexflow: [{ keys: ['b/4'], duration: 'qr' }]
                 },
                 {
-                    id: 'half-rest',
-                    name: 'Half Rest',
-                    notation: '𝄼',
-                    beats: 2,
-                    vexflow: [{ keys: ['b/4'], duration: 'hr' }]
+                    id: 'sixteenth-eighth-sixteenth',
+                    name: '16th + 8th + 16th',
+                    notation: '♬♫♬',
+                    beats: 1,
+                    vexflow: [
+                        { keys: ['b/4'], duration: '16' },
+                        { keys: ['b/4'], duration: '8' },
+                        { keys: ['b/4'], duration: '16' }
+                    ]
+                },
+                {
+                    id: 'dotted-eighth-sixteenth',
+                    name: 'Dotted 8th + 16th',
+                    notation: '♫.♬',
+                    beats: 1,
+                    vexflow: [
+                        { keys: ['b/4'], duration: '8', dots: 1 },
+                        { keys: ['b/4'], duration: '16' }
+                    ]
+                },
+                {
+                    id: 'sixteenth-dotted-eighth',
+                    name: '16th + Dotted 8th',
+                    notation: '♬♫.',
+                    beats: 1,
+                    vexflow: [
+                        { keys: ['b/4'], duration: '16' },
+                        { keys: ['b/4'], duration: '8', dots: 1 }
+                    ]
                 }
             ],
             hard: [
@@ -320,7 +344,7 @@ class RhythmStudent {
             tile.draggable = true;
             tile.dataset.patternId = pattern.id;
 
-            // Create container for VexFlow notation (fills entire tile)
+            // Create container for VexFlow notation (centered in tile)
             const notationDiv = document.createElement('div');
             notationDiv.style.height = '100%';
             notationDiv.style.width = '100%';
@@ -328,6 +352,7 @@ class RhythmStudent {
             notationDiv.style.display = 'flex';
             notationDiv.style.alignItems = 'center';
             notationDiv.style.justifyContent = 'center';
+            notationDiv.style.position = 'relative';
             notationDiv.id = `notation-${pattern.id}`;
 
             // No text label - notation is self-explanatory
@@ -359,16 +384,28 @@ class RhythmStudent {
             container.innerHTML = '';
             console.log('Container cleared');
 
-            const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-            renderer.resize(120, 50);
+            // Create SVG element manually for better control
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', '120');
+            svg.setAttribute('height', '70');
+            svg.style.display = 'block';
+            svg.style.position = 'absolute';
+            svg.style.top = '50%';
+            svg.style.left = '50%';
+            svg.style.transform = 'translate(-50%, -50%)';
+
+            container.appendChild(svg);
+
+            const renderer = new VF.Renderer(svg, VF.Renderer.Backends.SVG);
+            renderer.resize(120, 70);
             const context = renderer.getContext();
             console.log('Renderer created');
 
             // Scale down the entire context for smaller notation
-            context.scale(0.7, 0.7);
+            context.scale(0.8, 0.8);
 
-            // Create mini staff for this pattern (positioned higher)
-            const stave = new VF.Stave(0, -25, 120);
+            // Create mini staff for this pattern (positioned at top)
+            const stave = new VF.Stave(15, -15, 110);
             stave.setContext(context).draw();
             console.log('Staff drawn');
 
