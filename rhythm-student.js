@@ -1,7 +1,12 @@
+// Import rhythm assets
+import { rhythmAssets } from './rhythm-assets/rhythm-assets.js';
+
 // Rhythm Student System
 class RhythmStudent {
     constructor() {
-        // Copy rhythm patterns (same as teacher and practice)
+        // Use pre-rendered PNG assets instead of VexFlow patterns
+        this.rhythmAssets = rhythmAssets;
+        console.log('Loaded rhythm assets:', this.rhythmAssets);
         this.rhythmPatterns = {
             easy: [
                 {
@@ -314,8 +319,10 @@ class RhythmStudent {
     }
 
     joinSession() {
+        console.log('joinSession called');
         this.studentName = document.getElementById('studentName').value.trim();
         this.roomCode = document.getElementById('roomCode').value.trim().toUpperCase();
+        console.log('Name:', this.studentName, 'Room:', this.roomCode);
 
         if (!this.studentName || !this.roomCode) {
             this.showFeedback('Please enter both your name and room code', 'error');
@@ -425,157 +432,46 @@ class RhythmStudent {
     }
 
     renderTileNotation(pattern, container) {
-        console.log('Rendering notation for pattern:', pattern.id);
-        console.log('Vex available:', typeof Vex !== 'undefined');
-
-        if (typeof Vex === 'undefined') {
-            console.log('VexFlow not loaded - no notation rendered');
-            container.innerHTML = `<div style="color: red; text-align: center; padding: 20px;">VexFlow Loading...</div>`;
-            return;
-        }
+        console.log('Loading PNG asset for pattern:', pattern.id);
 
         try {
-            console.log('VexFlow available, rendering...');
-            const VF = Vex.Flow;
-
             // Clear container
             container.innerHTML = '';
-            console.log('Container cleared');
 
-            // Create SVG element manually for better control
-            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svg.setAttribute('width', '100%');
-            svg.setAttribute('height', '100%');
-            svg.style.display = 'block';
-            svg.style.position = 'absolute';
-            svg.style.top = '0';
-            svg.style.left = '0';
-            svg.style.width = '100%';
-            svg.style.height = '100%';
-
-            container.appendChild(svg);
-
-            // Get actual container dimensions
-            const containerRect = container.getBoundingClientRect();
-            const width = Math.max(containerRect.width || 100, 60);
-            const height = Math.max(containerRect.height || 40, 30);
-
-            const renderer = new VF.Renderer(svg, VF.Renderer.Backends.SVG);
-            renderer.resize(width, height);
-            const context = renderer.getContext();
-            console.log('Renderer created with dynamic size:', width, 'x', height);
-
-            // Scale MUCH smaller to actually fit in the tiny tiles
-            const scale = Math.min(width / 200, height / 80);
-            context.scale(scale, scale);
-
-            // Create invisible stave positioned at the top
-            const stave = new VF.Stave(5, 5, width - 10);
-            stave.setContext(context);
-            // Don't draw the stave - just use for note positioning
-            console.log('Invisible stave created for positioning');
-
-            // Convert pattern to VexFlow notes
-            const notes = [];
-            pattern.vexflow.forEach((noteData, index) => {
-                console.log(`Creating note ${index + 1} for ${pattern.id}:`, noteData);
-
-                const note = new VF.StaveNote({
-                    clef: 'percussion',
-                    keys: noteData.keys,
-                    duration: noteData.duration
-                });
-
-                // Add dots for dotted notes - use correct VexFlow API
-                if (noteData.dots && noteData.dots > 0) {
-                    console.log(`Adding ${noteData.dots} dots to note`);
-                    note.addModifier(new VF.Dot(), 0);
-                } else if (noteData.duration.includes('d')) {
-                    console.log(`Adding dot from duration suffix: ${noteData.duration}`);
-                    note.addModifier(new VF.Dot(), 0);
-                }
-
-                notes.push(note);
-                console.log(`Note ${index + 1} created successfully`);
-            });
-
-            console.log(`Created ${notes.length} notes for ${pattern.id}`);
-
-            if (notes.length > 0) {
-                // For triplets, create beam BEFORE tuplet as per VexFlow docs
-                let beams = [];
-                let triplet = null;
-
-                if (pattern.triplet && notes.length === 3) {
-                    console.log('Creating triplet...');
-                    // Force stem direction down for triplets
-                    notes.forEach(note => note.setStemDirection(VF.StaveNote.STEM_DOWN));
-
-                    // Only beam if notes are eighth notes or shorter
-                    const canBeam = notes.every(note => note.getDuration() === '8' || note.getDuration() === '16');
-                    if (canBeam) {
-                        console.log('Creating triplet beam...');
-                        const tripletBeam = new VF.Beam(notes);
-                        beams = [tripletBeam];
-                    } else {
-                        console.log('Quarter note triplet - no beaming needed');
-                        beams = [];
-                    }
-
-                    console.log('Creating triplet tuplet...');
-                    triplet = new VF.Tuplet(notes, {
-                        num_notes: 3,
-                        notes_occupied: 2,
-                        bracketed: true,
-                        location: 1,
-                        y_offset: 15  // Move bracket down closer to notes
-                    });
-                } else {
-                    // Create beams for non-triplet patterns
-                    console.log('Generating beams...');
-                    beams = VF.Beam.generateBeams(notes);
-                }
-
-                console.log(`Generated ${beams.length} beams`);
-
-                // Format and draw
-                console.log('Formatting and drawing notes...');
-                VF.Formatter.FormatAndDraw(context, stave, notes);
-
-                console.log('Drawing beams...');
-                beams.forEach(beam => beam.setContext(context).draw());
-
-                // Draw triplet bracket if created
-                if (triplet) {
-                    console.log('Drawing triplet bracket...');
-                    triplet.setContext(context).draw();
-                }
-
-                // Apply viewBox cropping
-                setTimeout(() => {
-                    const svgElement = container.querySelector('svg');
-                    if (svgElement) {
-                        // Apply current crop - adjusted for triplet brackets
-                        if (pattern.triplet) {
-                            svgElement.setAttribute('viewBox', '5 45 110 25');
-                        } else {
-                            svgElement.setAttribute('viewBox', '5 50 110 20');
-                        }
-                        console.log(`Applied viewBox crop for ${pattern.id}`);
-                    }
-                }, 10);
-
-                console.log(`Successfully rendered ${pattern.id}`);
-            } else {
-                console.warn(`No notes created for pattern ${pattern.id}`);
+            // Check if we have an asset for this pattern
+            const asset = this.rhythmAssets[pattern.id];
+            if (!asset) {
+                console.warn(`No PNG asset found for pattern: ${pattern.id}`);
+                container.innerHTML = `<div style="color: red; text-align: center; padding: 5px; font-size: 0.7rem;">Asset Missing<br>${pattern.id}</div>`;
+                return;
             }
 
+            // Create img element to load the SVG
+            const img = document.createElement('img');
+            img.src = `./rhythm-assets/${asset.file}`;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'contain';
+            img.style.objectPosition = 'center top';
+            img.alt = asset.name;
+
+            // Handle load success
+            img.onload = () => {
+                console.log(`Successfully loaded PNG asset: ${asset.file}`);
+            };
+
+            // Handle load error
+            img.onerror = (event) => {
+                console.error(`Failed to load SVG asset: ${asset.file}`, event);
+                console.error(`Full path attempted: ${img.src}`);
+                container.innerHTML = `<div style="color: red; text-align: center; padding: 5px; font-size: 0.7rem;">Load Error<br>${pattern.id}<br>${img.src}</div>`;
+            };
+
+            container.appendChild(img);
+
         } catch (error) {
-            console.error('VexFlow ERROR for pattern:', pattern.id, error);
-            console.error('Error details:', error.message);
-            console.error('Stack trace:', error.stack);
-            // Show detailed error for debugging
-            container.innerHTML = `<div style="color: red; text-align: center; padding: 5px; font-size: 0.7rem;">VF Error<br>${pattern.id}<br>${error.message}</div>`;
+            console.error('Error loading SVG asset for pattern:', pattern.id, error);
+            container.innerHTML = `<div style="color: red; text-align: center; padding: 5px; font-size: 0.7rem;">SVG Error<br>${pattern.id}<br>${error.message}</div>`;
         }
     }
 
@@ -724,22 +620,25 @@ class RhythmStudent {
                 console.log('Source tile found:', sourceTile);
                 console.log('Has child:', sourceTile?.firstChild);
 
-                if (sourceTile && sourceTile.firstChild) {
-                    // Clone the SVG from the source tile and make it larger
-                    const clonedSVG = sourceTile.firstChild.cloneNode(true);
-                    clonedSVG.style.position = 'absolute';
-                    clonedSVG.style.top = '3.5px'; // Move up slightly
-                    clonedSVG.style.left = '50%';
-                    clonedSVG.style.transform = 'translateX(-50%) scale(1.3)'; // Make it 30% larger
-                    clonedSVG.style.transformOrigin = 'center';
+                // Use PNG asset instead of cloning SVG
+                const asset = this.rhythmAssets[pattern.id];
+                if (asset) {
+                    // Create PNG image for the placed notation
+                    const img = document.createElement('img');
+                    img.src = `./rhythm-assets/${asset.file}`;
+                    img.style.position = 'absolute';
+                    img.style.top = '55%';
+                    img.style.left = '50%';
+                    img.style.transform = 'translate(-50%, -50%) scale(0.265)';
+                    img.alt = asset.name;
 
                     notationArea.innerHTML = `<button class="remove-btn" onclick="rhythmStudent.removeTile(${measure}, ${startBeat})">×</button>`;
-                    notationArea.appendChild(clonedSVG);
-                    console.log('SVG cloned and appended to:', notationArea);
+                    notationArea.appendChild(img);
+                    console.log('PNG image placed for pattern:', pattern.id);
                 } else {
-                    // Fallback if no source tile found
-                    console.warn('No source tile found for pattern:', pattern.id);
-                    notationArea.innerHTML = `<button class="remove-btn" onclick="rhythmStudent.removeTile(${measure}, ${startBeat})">×</button><span>${pattern.notation}</span>`;
+                    // Fallback if no asset found
+                    console.warn('No PNG asset found for pattern:', pattern.id);
+                    notationArea.innerHTML = `<button class="remove-btn" onclick="rhythmStudent.removeTile(${measure}, ${startBeat})">×</button><span style="color: red; font-size: 0.7rem;">Missing: ${pattern.id}</span>`;
                 }
                 targetZone.classList.add('filled');
                 this.userAnswer[measure - 1][b - 1] = patternId;
