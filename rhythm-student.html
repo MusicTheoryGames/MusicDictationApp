@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Rhythm Student - Music Dictation</title>
     <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
     <style>
@@ -15,9 +15,12 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            height: 100vh;
+            overflow: hidden;
             color: white;
-            padding: 15px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
         }
 
         .header {
@@ -84,10 +87,13 @@
 
         .game-area {
             display: none;
+            flex: 1;
+            overflow: auto;
         }
 
         .game-area.active {
-            display: block;
+            display: flex;
+            flex-direction: column;
         }
 
         .status-bar {
@@ -104,9 +110,10 @@
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
+            padding: 15px;
+            margin-bottom: 15px;
             border: 1px solid rgba(255, 255, 255, 0.18);
+            flex-shrink: 0;
         }
 
         .rhythm-bank h3 {
@@ -124,7 +131,7 @@
         .rhythm-tile {
             background: rgba(255, 255, 255, 0.9);
             border-radius: 8px;
-            padding: 5px;
+            padding: 0;
             cursor: grab;
             transition: all 0.3s ease;
             border: 2px solid transparent;
@@ -136,6 +143,11 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
+        }
+
+        .rhythm-tile svg {
+            padding: 0 !important;
+            margin: 0 !important;
         }
 
         .rhythm-tile:hover {
@@ -152,8 +164,10 @@
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border-radius: 15px;
-            padding: 20px;
+            padding: 15px;
             border: 1px solid rgba(255, 255, 255, 0.18);
+            flex: 1;
+            min-height: 0;
         }
 
         .answer-area h3 {
@@ -334,23 +348,188 @@
         }
 
 
+        /* Tablet Layout */
+        @media (max-width: 1024px) {
+            .answer-staff {
+                width: 95vw;
+                max-width: 800px;
+                padding: 15px 35px 15px 15px;
+            }
+
+            .rhythm-bank {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 12px;
+                padding: 15px;
+            }
+
+            .rhythm-tile {
+                min-height: 100px;
+                padding: 0;
+            }
+        }
+
+        /* Landscape orientation hint */
+        @media (max-width: 768px) and (orientation: portrait) {
+            .game-area::before {
+                content: "💡 Tip: Rotate to landscape for better experience";
+                display: block;
+                text-align: center;
+                background: rgba(255, 255, 255, 0.1);
+                padding: 8px;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                font-size: 0.8rem;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+        }
+
+        /* Mobile Layout - Large phones and small tablets */
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 1.5rem;
+                margin: 15px 0;
             }
 
-            .drop-zones {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 8px;
+            .answer-staff {
+                width: 95vw;
+                max-width: 700px;
+                padding: 12px 25px 12px 12px;
+                height: 100px;
             }
 
-            .rhythm-tiles {
-                grid-template-columns: repeat(2, 1fr);
+            .staff-container {
+                height: 70px;
             }
 
-            .drop-zone {
-                padding: 20px 8px;
+            .beat-drop-zone {
                 min-height: 70px;
+            }
+
+            .beat-drop-zone::before {
+                font-size: 1rem;
+                bottom: 3px;
+            }
+
+            .rhythm-bank {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
+                padding: 10px;
+            }
+
+            .rhythm-tile {
+                min-height: 80px;
+                padding: 0;
+                font-size: 0.7rem;
+            }
+
+            .remove-btn {
+                width: 20px;
+                height: 20px;
+                font-size: 10px;
+                top: -10px;
+                right: -10px;
+            }
+
+            /* Touch-friendly interactions */
+            .rhythm-tile:active {
+                transform: scale(0.98);
+                background: rgba(255, 255, 255, 1);
+            }
+
+            .beat-drop-zone:active {
+                background: rgba(76, 175, 80, 0.15);
+            }
+        }
+
+        /* Small Mobile Phones */
+        @media (max-width: 400px) {
+            .header h1 {
+                font-size: 1.3rem;
+                margin: 10px 0;
+            }
+
+            .answer-staff {
+                width: 98vw;
+                max-width: none;
+                padding: 10px 20px 10px 10px;
+                height: 90px;
+                margin: 0 auto;
+            }
+
+            .staff-container {
+                height: 60px;
+            }
+
+            .beat-drop-zone {
+                min-height: 60px;
+            }
+
+            .beat-drop-zone::before {
+                font-size: 0.9rem;
+                bottom: 2px;
+            }
+
+            .rhythm-bank {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 6px;
+                padding: 8px;
+            }
+
+            .rhythm-tile {
+                min-height: 70px;
+                padding: 0;
+                font-size: 0.65rem;
+            }
+
+            .remove-btn {
+                width: 18px;
+                height: 18px;
+                font-size: 9px;
+                top: -9px;
+                right: -9px;
+            }
+
+            /* Smaller VexFlow notation on mobile */
+            .beat-notation svg {
+                transform: translateX(-50%) scale(1.1) !important;
+            }
+        }
+
+        /* Very small phones */
+        @media (max-width: 360px) {
+            .answer-staff {
+                width: 99vw;
+                padding: 8px 15px 8px 8px;
+                height: 80px;
+            }
+
+            .staff-container {
+                height: 55px;
+            }
+
+            .beat-drop-zone {
+                min-height: 55px;
+            }
+
+            .beat-drop-zone::before {
+                font-size: 0.8rem;
+                bottom: 1px;
+            }
+
+            .rhythm-bank {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 4px;
+                padding: 6px;
+            }
+
+            .rhythm-tile {
+                min-height: 40px;
+                font-size: 0.6rem;
+            }
+
+            /* Even smaller notation for tiny screens */
+            .beat-notation svg {
+                transform: translateX(-50%) scale(1.0) !important;
             }
         }
     </style>

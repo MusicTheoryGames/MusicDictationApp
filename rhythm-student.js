@@ -386,26 +386,33 @@ class RhythmStudent {
 
             // Create SVG element manually for better control
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svg.setAttribute('width', '120');
-            svg.setAttribute('height', '70');
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '100%');
             svg.style.display = 'block';
             svg.style.position = 'absolute';
-            svg.style.top = '50%';
-            svg.style.left = '50%';
-            svg.style.transform = 'translate(-50%, -50%)';
+            svg.style.top = '0';
+            svg.style.left = '0';
+            svg.style.width = '100%';
+            svg.style.height = '100%';
 
             container.appendChild(svg);
 
+            // Get actual container dimensions
+            const containerRect = container.getBoundingClientRect();
+            const width = Math.max(containerRect.width || 100, 60);
+            const height = Math.max(containerRect.height || 40, 30);
+
             const renderer = new VF.Renderer(svg, VF.Renderer.Backends.SVG);
-            renderer.resize(120, 70);
+            renderer.resize(width, height);
             const context = renderer.getContext();
-            console.log('Renderer created');
+            console.log('Renderer created with dynamic size:', width, 'x', height);
 
-            // Scale down the entire context for smaller notation
-            context.scale(0.8, 0.8);
+            // Scale MUCH smaller to actually fit in the tiny tiles
+            const scale = Math.min(width / 200, height / 80);
+            context.scale(scale, scale);
 
-            // Create invisible stave for positioning only (no lines drawn)
-            const stave = new VF.Stave(15, -15, 110);
+            // Create invisible stave positioned at the top
+            const stave = new VF.Stave(5, 5, width - 10);
             stave.setContext(context);
             // Don't draw the stave - just use for note positioning
             console.log('Invisible stave created for positioning');
@@ -448,6 +455,43 @@ class RhythmStudent {
 
                 console.log('Drawing beams...');
                 beams.forEach(beam => beam.setContext(context).draw());
+
+                // Export SVG as PNG for cropping analysis
+                setTimeout(() => {
+                    const svgElement = container.querySelector('svg');
+                    if (svgElement) {
+                        // Convert SVG to PNG
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const img = new Image();
+
+                        const svgData = new XMLSerializer().serializeToString(svgElement);
+                        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                        const url = URL.createObjectURL(svgBlob);
+
+                        img.onload = function() {
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            ctx.drawImage(img, 0, 0);
+
+                            canvas.toBlob(function(blob) {
+                                const link = document.createElement('a');
+                                link.href = URL.createObjectURL(blob);
+                                link.download = `rhythm-${pattern.id}.png`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                URL.revokeObjectURL(link.href);
+                            });
+                            URL.revokeObjectURL(url);
+                        };
+                        img.src = url;
+
+                        // Apply current crop with more space on the right
+                        svgElement.setAttribute('viewBox', '5 50 110 20');
+                        console.log(`Exported PNG for ${pattern.id}`);
+                    }
+                }, 10);
 
                 console.log(`Successfully rendered ${pattern.id}`);
             } else {
