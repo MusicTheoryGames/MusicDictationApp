@@ -144,6 +144,18 @@ class RhythmStudent {
                     ]
                 },
                 {
+                    id: 'triplet-eighths',
+                    name: 'Triplet Eighths',
+                    notation: '♫♫♫',
+                    beats: 1,
+                    vexflow: [
+                        { keys: ['b/4'], duration: '8' },
+                        { keys: ['b/4'], duration: '8' },
+                        { keys: ['b/4'], duration: '8' }
+                    ],
+                    triplet: true
+                },
+                {
                     id: 'dotted-eighth-sixteenth',
                     name: 'Dotted 8th + 16th',
                     notation: '♫.♬',
@@ -162,6 +174,52 @@ class RhythmStudent {
                         { keys: ['b/4'], duration: '16' },
                         { keys: ['b/4'], duration: '8', dots: 1 }
                     ]
+                },
+                {
+                    id: 'eighth-quarter-eighth',
+                    name: '8th + Quarter + 8th',
+                    notation: '♫♩♫',
+                    beats: 2,
+                    vexflow: [
+                        { keys: ['b/4'], duration: '8' },
+                        { keys: ['b/4'], duration: 'q' },
+                        { keys: ['b/4'], duration: '8' }
+                    ]
+                },
+                {
+                    id: 'eighth-rest-two-sixteenths',
+                    name: '8th Rest + 2 16ths',
+                    notation: '𝄾♬♬',
+                    beats: 1,
+                    vexflow: [
+                        { keys: ['b/4'], duration: '8r' },
+                        { keys: ['b/4'], duration: '16' },
+                        { keys: ['b/4'], duration: '16' }
+                    ]
+                },
+                {
+                    id: 'sixteenth-rest-three-sixteenths',
+                    name: '16th Rest + 3 16ths',
+                    notation: '𝄿♬♬♬',
+                    beats: 1,
+                    vexflow: [
+                        { keys: ['b/4'], duration: '16r' },
+                        { keys: ['b/4'], duration: '16' },
+                        { keys: ['b/4'], duration: '16' },
+                        { keys: ['b/4'], duration: '16' }
+                    ]
+                },
+                {
+                    id: 'triplet-quarters',
+                    name: 'Triplet Quarters',
+                    notation: '♩♩♩',
+                    beats: 2,
+                    vexflow: [
+                        { keys: ['b/4'], duration: 'q' },
+                        { keys: ['b/4'], duration: 'q' },
+                        { keys: ['b/4'], duration: 'q' }
+                    ],
+                    triplet: true
                 }
             ],
             hard: [
@@ -444,9 +502,40 @@ class RhythmStudent {
             console.log(`Created ${notes.length} notes for ${pattern.id}`);
 
             if (notes.length > 0) {
-                // Create beams if needed for eighth notes and smaller
-                console.log('Generating beams...');
-                const beams = VF.Beam.generateBeams(notes);
+                // For triplets, create beam BEFORE tuplet as per VexFlow docs
+                let beams = [];
+                let triplet = null;
+
+                if (pattern.triplet && notes.length === 3) {
+                    console.log('Creating triplet...');
+                    // Force stem direction down for triplets
+                    notes.forEach(note => note.setStemDirection(VF.StaveNote.STEM_DOWN));
+
+                    // Only beam if notes are eighth notes or shorter
+                    const canBeam = notes.every(note => note.getDuration() === '8' || note.getDuration() === '16');
+                    if (canBeam) {
+                        console.log('Creating triplet beam...');
+                        const tripletBeam = new VF.Beam(notes);
+                        beams = [tripletBeam];
+                    } else {
+                        console.log('Quarter note triplet - no beaming needed');
+                        beams = [];
+                    }
+
+                    console.log('Creating triplet tuplet...');
+                    triplet = new VF.Tuplet(notes, {
+                        num_notes: 3,
+                        notes_occupied: 2,
+                        bracketed: true,
+                        location: 1,
+                        y_offset: 15  // Move bracket down closer to notes
+                    });
+                } else {
+                    // Create beams for non-triplet patterns
+                    console.log('Generating beams...');
+                    beams = VF.Beam.generateBeams(notes);
+                }
+
                 console.log(`Generated ${beams.length} beams`);
 
                 // Format and draw
@@ -456,40 +545,23 @@ class RhythmStudent {
                 console.log('Drawing beams...');
                 beams.forEach(beam => beam.setContext(context).draw());
 
-                // Export SVG as PNG for cropping analysis
+                // Draw triplet bracket if created
+                if (triplet) {
+                    console.log('Drawing triplet bracket...');
+                    triplet.setContext(context).draw();
+                }
+
+                // Apply viewBox cropping
                 setTimeout(() => {
                     const svgElement = container.querySelector('svg');
                     if (svgElement) {
-                        // Convert SVG to PNG
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        const img = new Image();
-
-                        const svgData = new XMLSerializer().serializeToString(svgElement);
-                        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-                        const url = URL.createObjectURL(svgBlob);
-
-                        img.onload = function() {
-                            canvas.width = img.width;
-                            canvas.height = img.height;
-                            ctx.drawImage(img, 0, 0);
-
-                            canvas.toBlob(function(blob) {
-                                const link = document.createElement('a');
-                                link.href = URL.createObjectURL(blob);
-                                link.download = `rhythm-${pattern.id}.png`;
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                                URL.revokeObjectURL(link.href);
-                            });
-                            URL.revokeObjectURL(url);
-                        };
-                        img.src = url;
-
-                        // Apply current crop with more space on the right
-                        svgElement.setAttribute('viewBox', '5 50 110 20');
-                        console.log(`Exported PNG for ${pattern.id}`);
+                        // Apply current crop - adjusted for triplet brackets
+                        if (pattern.triplet) {
+                            svgElement.setAttribute('viewBox', '5 45 110 25');
+                        } else {
+                            svgElement.setAttribute('viewBox', '5 50 110 20');
+                        }
+                        console.log(`Applied viewBox crop for ${pattern.id}`);
                     }
                 }, 10);
 
