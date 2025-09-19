@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhythm Teacher Control - Music Dictation</title>
+    <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .teacher-controls {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        select, button {
+            padding: 12px 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        select {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.6);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #27ae60, #229954);
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+        }
+
+        .rhythm-display {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .student-progress {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .progress-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .student-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .student-name {
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .beat-progress {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .beat-status {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .beat-status.correct {
+            background: #27ae60;
+            color: white;
+        }
+
+        .beat-status.incorrect {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .beat-status.pending {
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+
+        .reveal-controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .reveal-btn {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+            color: white;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+
+        .reveal-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .reveal-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .room-info {
+            background: rgba(52, 152, 219, 0.2);
+            border: 1px solid #3498db;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .room-code {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #3498db;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.online {
+            background: #27ae60;
+        }
+
+        .status-indicator.offline {
+            background: #e74c3c;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .progress-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🥁 Rhythm Dictation - Teacher Control</h1>
+        <div class="room-info">
+            <div>Room Code: <span class="room-code" id="roomCode">LOADING...</span></div>
+            <div>Students should go to: <strong>rhythm-student.html</strong></div>
+        </div>
+    </div>
+
+    <div class="teacher-controls">
+        <h2>Exercise Settings</h2>
+        <div class="controls-grid">
+            <div class="control-group">
+                <label>Measures:</label>
+                <select id="measureCount">
+                    <option value="1">1 Measure</option>
+                    <option value="2" selected>2 Measures</option>
+                    <option value="4">4 Measures</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Tempo:</label>
+                <select id="tempo">
+                    <option value="80">80 BPM</option>
+                    <option value="100" selected>100 BPM</option>
+                    <option value="120">120 BPM</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Difficulty:</label>
+                <select id="difficulty">
+                    <option value="easy">Easy</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="hard">Hard</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Actions:</label>
+                <div style="display: flex; gap: 10px; flex-direction: column;">
+                    <button class="btn-primary" id="generateBtn">Generate New Rhythm</button>
+                    <button class="btn-secondary" id="playBtn">Play Rhythm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="rhythm-display">
+        <h3 style="color: #333; text-align: center; margin-bottom: 20px;">Generated Rhythm (Teacher View)</h3>
+        <div id="teacherStaff"></div>
+        <div id="rhythmInfo" style="margin-top: 20px; color: #666; text-align: center;"></div>
+    </div>
+
+    <div class="student-progress">
+        <h2>Student Progress</h2>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <span id="connectedCount">0</span> students connected
+        </div>
+
+        <div class="reveal-controls">
+            <button class="reveal-btn" id="revealBeat1" disabled>Reveal Beat 1</button>
+            <button class="reveal-btn" id="revealBeat2" disabled>Reveal Beat 2</button>
+            <button class="reveal-btn" id="revealBeat3" disabled>Reveal Beat 3</button>
+            <button class="reveal-btn" id="revealBeat4" disabled>Reveal Beat 4</button>
+            <button class="reveal-btn" id="revealAll" disabled>Reveal All</button>
+        </div>
+
+        <div class="progress-grid" id="studentProgress">
+            <!-- Student cards will be populated here -->
+        </div>
+    </div>
+
+    <script src="rhythm-teacher.js"></script>
+</body>
+</html>

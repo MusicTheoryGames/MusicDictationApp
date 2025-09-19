@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhythm Student - Music Dictation</title>
+    <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 15px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .login-form {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 400px;
+            margin: 0 auto 30px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .login-form.hidden {
+            display: none;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+        }
+
+        .game-area {
+            display: none;
+        }
+
+        .game-area.active {
+            display: block;
+        }
+
+        .status-bar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .rhythm-bank {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .rhythm-bank h3 {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .rhythm-tiles {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+        }
+
+        .rhythm-tile {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            padding: 10px 8px;
+            cursor: grab;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            text-align: center;
+            color: #333;
+            font-size: 0.8rem;
+            min-height: 90px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .rhythm-tile:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .rhythm-tile.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .answer-area {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .answer-area h3 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+        }
+
+        .drop-zones {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .drop-zone {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px dashed rgba(255, 255, 255, 0.5);
+            border-radius: 8px;
+            padding: 25px 10px;
+            text-align: center;
+            transition: all 0.3s ease;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .drop-zone.drag-over {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: #ff6b6b;
+            transform: scale(1.02);
+        }
+
+        .drop-zone.filled {
+            background: rgba(76, 175, 80, 0.2);
+            border-color: #4caf50;
+            border-style: solid;
+        }
+
+        .drop-zone.revealed {
+            background: rgba(52, 152, 219, 0.3);
+            border-color: #3498db;
+            border-style: solid;
+        }
+
+        .drop-zone h4 {
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .dropped-tile {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 6px;
+            padding: 8px;
+            color: #333;
+            font-weight: 600;
+            position: relative;
+            font-size: 0.8rem;
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .feedback {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-weight: 600;
+        }
+
+        .feedback.success {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4caf50;
+        }
+
+        .feedback.error {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid #f44336;
+        }
+
+        .feedback.info {
+            background: rgba(52, 152, 219, 0.2);
+            border: 1px solid #3498db;
+        }
+
+        .measure-label {
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .drop-zones {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+
+            .rhythm-tiles {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .drop-zone {
+                padding: 20px 8px;
+                min-height: 70px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🥁 Rhythm Dictation - Student</h1>
+    </div>
+
+    <!-- Login Form -->
+    <div class="login-form" id="loginForm">
+        <h2 style="text-align: center; margin-bottom: 20px;">Join Rhythm Session</h2>
+        <div class="form-group">
+            <label for="studentName">Your Name:</label>
+            <input type="text" id="studentName" placeholder="Enter your name" required>
+        </div>
+        <div class="form-group">
+            <label for="roomCode">Room Code:</label>
+            <input type="text" id="roomCode" placeholder="Enter room code" required>
+        </div>
+        <button class="btn-login" id="joinBtn">Join Session</button>
+    </div>
+
+    <!-- Game Area -->
+    <div class="game-area" id="gameArea">
+        <div class="status-bar">
+            <div>Connected to Room: <strong id="connectedRoom">-</strong></div>
+            <div>Status: <span id="connectionStatus">Connected</span></div>
+        </div>
+
+        <div class="rhythm-bank">
+            <h3>Rhythm Bank</h3>
+            <div class="rhythm-tiles" id="rhythmTiles">
+                <!-- Rhythm tiles will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <div class="answer-area">
+            <h3>Your Answer</h3>
+            <div id="measureContainer">
+                <!-- Measures will be populated by JavaScript -->
+            </div>
+            <div id="feedback"></div>
+        </div>
+    </div>
+
+    <script src="rhythm-student.js"></script>
+</body>
+</html>

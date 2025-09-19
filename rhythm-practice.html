@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhythm Practice - Music Dictation</title>
+    <script src="https://unpkg.com/vexflow/releases/vexflow-min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        select, button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        select {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .practice-area {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .rhythm-bank {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            height: fit-content;
+        }
+
+        .rhythm-bank h3 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+        }
+
+        .rhythm-tiles {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .rhythm-tile {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            padding: 15px;
+            cursor: grab;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            text-align: center;
+            color: #333;
+        }
+
+        .rhythm-tile:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .rhythm-tile.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .staff-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .drop-zones {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .drop-zone {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px dashed rgba(255, 255, 255, 0.5);
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .drop-zone.drag-over {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: #ff6b6b;
+            transform: scale(1.02);
+        }
+
+        .drop-zone.filled {
+            background: rgba(76, 175, 80, 0.2);
+            border-color: #4caf50;
+            border-style: solid;
+        }
+
+        .drop-zone h4 {
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .dropped-tile {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 6px;
+            padding: 10px;
+            color: #333;
+            font-weight: 600;
+            position: relative;
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .feedback {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-weight: 600;
+        }
+
+        .feedback.correct {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4caf50;
+        }
+
+        .feedback.incorrect {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid #f44336;
+        }
+
+        .nav-link {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .nav-link:hover {
+            opacity: 1;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .rhythm-bank {
+                order: -1;
+            }
+
+            .rhythm-tiles {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .drop-zones {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="rhythm.html" class="nav-link">← Back to Rhythm Menu</a>
+
+    <div class="header">
+        <h1>🥁 Rhythm Practice</h1>
+        <p>Listen to the rhythm and drag the correct patterns to each beat</p>
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Measures:</label>
+            <select id="measureCount">
+                <option value="1">1 Measure</option>
+                <option value="2" selected>2 Measures</option>
+                <option value="4">4 Measures</option>
+                <option value="8">8 Measures</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Tempo:</label>
+            <select id="tempo">
+                <option value="60">60 BPM</option>
+                <option value="80">80 BPM</option>
+                <option value="100" selected>100 BPM</option>
+                <option value="120">120 BPM</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Difficulty:</label>
+            <select id="difficulty">
+                <option value="easy">Easy</option>
+                <option value="medium" selected>Medium</option>
+                <option value="hard">Hard</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Actions:</label>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-primary" id="generateBtn">New Rhythm</button>
+                <button class="btn-secondary" id="playBtn">Play</button>
+                <button class="btn-secondary" id="checkBtn">Check Answer</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="practice-area">
+            <div class="staff-container">
+                <div id="staff"></div>
+            </div>
+
+            <div id="measureContainer">
+                <!-- Measure 1 -->
+                <h3>Measure 1</h3>
+                <div class="drop-zones" data-measure="1">
+                    <div class="drop-zone" data-beat="1">
+                        <h4>Beat 1</h4>
+                        <div class="drop-content"></div>
+                    </div>
+                    <div class="drop-zone" data-beat="2">
+                        <h4>Beat 2</h4>
+                        <div class="drop-content"></div>
+                    </div>
+                    <div class="drop-zone" data-beat="3">
+                        <h4>Beat 3</h4>
+                        <div class="drop-content"></div>
+                    </div>
+                    <div class="drop-zone" data-beat="4">
+                        <h4>Beat 4</h4>
+                        <div class="drop-content"></div>
+                    </div>
+                </div>
+
+                <!-- Measure 2 -->
+                <h3>Measure 2</h3>
+                <div class="drop-zones" data-measure="2">
+                    <div class="drop-zone" data-beat="1">
+                        <h4>Beat 1</h4>
+                        <div class="drop-content"></div>
+                    </div>
+                    <div class="drop-zone" data-beat="2">
+                        <h4>Beat 2</h4>
+                        <div class="drop-content"></div>
+                    </div>
+                    <div class="drop-zone" data-beat="3">
+                        <h4>Beat 3</h4>
+                        <div class="drop-content"></div>
+                    </div>
+                    <div class="drop-zone" data-beat="4">
+                        <h4>Beat 4</h4>
+                        <div class="drop-content"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="feedback"></div>
+        </div>
+
+        <div class="rhythm-bank">
+            <h3>Rhythm Bank</h3>
+            <div class="rhythm-tiles" id="rhythmTiles">
+                <!-- Rhythm tiles will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script src="rhythm-practice.js"></script>
+</body>
+</html>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhythmic Dictation - Music Training</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            text-align: center;
+            max-width: 800px;
+            width: 90%;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 30px 20px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(31, 38, 135, 0.5);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .feature-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .feature-description {
+            font-size: 1rem;
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+
+        .cta-section {
+            margin-top: 40px;
+        }
+
+        .start-button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .start-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+        }
+
+        .nav-links {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .nav-link:hover {
+            opacity: 1;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .nav-links {
+                position: static;
+                text-align: center;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-links">
+        <a href="index.html" class="nav-link">← Back to Main</a>
+    </div>
+
+    <div class="container">
+        <h1>🥁 Rhythmic Dictation</h1>
+        <p class="subtitle">Master rhythm recognition and notation skills</p>
+
+        <div class="features">
+            <div class="feature-card">
+                <span class="feature-icon">🎵</span>
+                <h3 class="feature-title">Pattern Recognition</h3>
+                <p class="feature-description">Listen to rhythmic patterns and identify the correct notation from multiple choices</p>
+            </div>
+
+            <div class="feature-card">
+                <span class="feature-icon">⏰</span>
+                <h3 class="feature-title">Time Signatures</h3>
+                <p class="feature-description">Practice with various time signatures including 4/4, 3/4, 2/4, and complex meters</p>
+            </div>
+
+            <div class="feature-card">
+                <span class="feature-icon">🎯</span>
+                <h3 class="feature-title">Progressive Difficulty</h3>
+                <p class="feature-description">Start with simple rhythms and advance to complex syncopated patterns</p>
+            </div>
+
+            <div class="feature-card">
+                <span class="feature-icon">📊</span>
+                <h3 class="feature-title">Performance Tracking</h3>
+                <p class="feature-description">Monitor your progress with detailed statistics and accuracy metrics</p>
+            </div>
+
+            <div class="feature-card">
+                <span class="feature-icon">🔄</span>
+                <h3 class="feature-title">Adaptive Learning</h3>
+                <p class="feature-description">AI-powered question selection based on your strengths and weaknesses</p>
+            </div>
+
+            <div class="feature-card">
+                <span class="feature-icon">🎧</span>
+                <h3 class="feature-title">Audio Playback</h3>
+                <p class="feature-description">High-quality metronome and rhythm playback with adjustable tempo</p>
+            </div>
+        </div>
+
+        <div class="cta-section">
+            <div style="display: flex; flex-direction: column; gap: 20px; align-items: center;">
+                <a href="rhythm-practice.html" class="start-button">Solo Practice Mode</a>
+
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
+                    <a href="rhythm-teacher.html" class="start-button" style="background: linear-gradient(45deg, #e74c3c, #c0392b);">
+                        Teacher Dashboard
+                    </a>
+                    <a href="rhythm-student.html" class="start-button" style="background: linear-gradient(45deg, #27ae60, #229954);">
+                        Join as Student
+                    </a>
+                </div>
+
+                <div style="font-size: 0.9rem; opacity: 0.8; text-align: center; max-width: 500px;">
+                    <strong>Solo Practice:</strong> Train on your own device<br>
+                    <strong>Classroom Mode:</strong> Teacher controls exercises, students join with room code
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
