@@ -22,6 +22,32 @@
             flex-direction: column;
         }
 
+        .game-area.active {
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        body.login-mode {
+            background: url('Public/Beat-Quest-SplashPage.jpg') center/cover no-repeat;
+            position: relative;
+        }
+
+        body.login-mode::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 0;
+        }
+
+        body.login-mode > * {
+            position: relative;
+            z-index: 1;
+        }
+
         .header {
             text-align: center;
             margin-bottom: 20px;
@@ -95,6 +121,33 @@
             flex-direction: column;
         }
 
+        .compact-header {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            padding: 6px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+            margin-bottom: 20px;
+        }
+
+        .room-display {
+            font-weight: 600;
+            color: #74b9ff;
+        }
+
+        .status-dot {
+            color: #e74c3c;
+            font-size: 1.2rem;
+        }
+
+        .status-dot.connected {
+            color: #27ae60;
+        }
+
         .status-bar {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
@@ -123,7 +176,7 @@
 
         .rhythm-tiles {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             gap: 10px;
         }
 
@@ -165,6 +218,14 @@
         .rhythm-tile svg {
             padding: 0 !important;
             margin: 0 !important;
+        }
+
+        .rhythm-tile img {
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         }
 
         .rhythm-tile:hover {
@@ -301,6 +362,29 @@
             width: 100%;
             height: 100%;
             display: flex;
+        }
+
+        .responsive-measures {
+            position: absolute;
+            left: 50px;
+            right: 10px;
+            height: 100%;
+            display: grid;
+            grid-template-columns: repeat(8, minmax(80px, 1fr)) auto;
+            align-items: center;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-behavior: smooth;
+            scroll-snap-type: x mandatory;
+        }
+
+        .responsive-measures.fit-mode {
+            grid-template-columns: repeat(8, 1fr) auto;
+            overflow-x: hidden;
+        }
+
+        .beat-drop-zone {
+            scroll-snap-align: start;
         }
 
         .beat-drop-zone {
@@ -464,6 +548,34 @@
             opacity: 0.8;
         }
 
+        .answer-controls {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .fit-btn {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+        }
+
+        .fit-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+        }
+
+        .fit-btn.active {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+        }
+
 
         /* Tablet Layout */
         @media (max-width: 1024px) {
@@ -480,38 +592,94 @@
             }
 
             .rhythm-tile {
-                min-height: 100px;
+                min-height: 70px;
                 padding: 0;
             }
         }
 
-        /* Landscape orientation hint */
+        /* Force landscape orientation only for game area */
         @media (max-width: 768px) and (orientation: portrait) {
-            .game-area::before {
-                content: "💡 Tip: Rotate to landscape for better experience";
-                display: block;
+            .game-area.active {
+                display: none !important;
+            }
+
+            .landscape-warning {
+                display: flex !important;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
                 text-align: center;
-                background: rgba(255, 255, 255, 0.1);
-                padding: 8px;
-                border-radius: 8px;
-                margin-bottom: 10px;
-                font-size: 0.8rem;
-                border: 1px solid rgba(255, 255, 255, 0.2);
+                padding: 20px;
+            }
+
+            .landscape-warning h2 {
+                font-size: 1.5rem;
+                margin-bottom: 20px;
+            }
+
+            .landscape-warning p {
+                font-size: 1rem;
+                opacity: 0.8;
             }
         }
 
+        .landscape-warning {
+            display: none;
+        }
+
         /* Mobile Layout - Large phones and small tablets */
-        @media (max-width: 768px) {
-            .header h1 {
-                font-size: 1.5rem;
-                margin: 15px 0;
+        @media (max-width: 1024px) {
+            body {
+                padding: 0;
+                overflow: hidden;
+                height: 100vh;
+            }
+
+            .game-area.active {
+                height: 100vh;
+                padding: 0;
+                margin: 0;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .compact-header {
+                margin-bottom: 0;
+                padding: 4px 10px;
+                font-size: 0.8rem;
+                flex-shrink: 0;
+                height: 32px;
+            }
+
+            .rhythm-bank {
+                flex: 1;
+                overflow-y: auto;
+                margin-bottom: 0;
+                padding: 8px 8px 35vh 8px;
+                min-height: 0;
+            }
+
+            .answer-area {
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                background: rgba(255, 255, 255, 0.95) !important;
+                backdrop-filter: blur(10px) !important;
+                padding: 8px !important;
+                margin: 0 !important;
+                border-top: 1px solid rgba(255, 255, 255, 0.18) !important;
+                z-index: 9999 !important;
+                height: 35vh !important;
             }
 
             .answer-staff {
-                width: 95vw;
-                max-width: 700px;
-                padding: 12px 25px 12px 12px;
-                height: 100px;
+                width: 95vw !important;
+                max-width: none !important;
+                padding: 4px 4px 4px 4px !important;
+                height: 60px !important;
+                margin: 0 auto !important;
             }
 
             .staff-container {
@@ -527,16 +695,19 @@
                 bottom: 3px;
             }
 
+            .rhythm-tiles {
+                grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+                gap: 6px;
+            }
+
             .rhythm-bank {
-                grid-template-columns: repeat(4, 1fr);
-                gap: 8px;
                 padding: 10px;
             }
 
             .rhythm-tile {
-                min-height: 80px;
+                min-height: 60px;
                 padding: 0;
-                font-size: 0.7rem;
+                font-size: 0.65rem;
             }
 
             .remove-btn {
@@ -593,9 +764,9 @@
             }
 
             .rhythm-tile {
-                min-height: 70px;
+                min-height: 50px;
                 padding: 0;
-                font-size: 0.65rem;
+                font-size: 0.6rem;
             }
 
             .remove-btn {
@@ -640,8 +811,8 @@
             }
 
             .rhythm-tile {
-                min-height: 40px;
-                font-size: 0.6rem;
+                min-height: 35px;
+                font-size: 0.55rem;
             }
 
             /* Even smaller notation for tiny screens */
@@ -651,10 +822,7 @@
         }
     </style>
 </head>
-<body>
-    <div class="header">
-        <h1>🥁 Rhythm Dictation - Student</h1>
-    </div>
+<body class="login-mode">
 
     <!-- Login Form -->
     <div class="login-form" id="loginForm">
@@ -672,20 +840,21 @@
 
     <!-- Game Area -->
     <div class="game-area" id="gameArea">
-        <div class="status-bar">
-            <div>Connected to Room: <strong id="connectedRoom">-</strong></div>
-            <div>Status: <span id="connectionStatus">Connected</span></div>
+        <div class="compact-header">
+            <span id="connectedRoom" class="room-display">Room: --</span>
+            <span id="connectionStatus" class="status-dot">●</span>
         </div>
 
         <div class="rhythm-bank">
-            <h3>Rhythm Bank</h3>
             <div class="rhythm-tiles" id="rhythmTiles">
                 <!-- Rhythm tiles will be populated by JavaScript -->
             </div>
         </div>
 
         <div class="answer-area">
-            <h3>Your Answer</h3>
+            <div class="answer-controls">
+                <button id="fitToScreenBtn" class="fit-btn">📏 Fit to Screen</button>
+            </div>
             <div id="measureContainer">
                 <!-- Measures will be populated by JavaScript -->
             </div>
@@ -696,6 +865,12 @@
 
             <div id="feedback"></div>
         </div>
+    </div>
+
+    <!-- Landscape Warning (only shows on mobile portrait) -->
+    <div class="landscape-warning" id="landscapeWarning">
+        <h2>🔄 Please Rotate Your Device</h2>
+        <p>This rhythm exercise works best in landscape mode.<br>Please rotate your device to continue.</p>
     </div>
 
     <script type="module" src="rhythm-student.js"></script>

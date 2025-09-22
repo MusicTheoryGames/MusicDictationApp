@@ -317,6 +317,9 @@ class RhythmStudent {
         document.getElementById('roomCode').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.joinSession();
         });
+
+        // Fit to screen button
+        document.getElementById('fitToScreenBtn').addEventListener('click', () => this.toggleFitToScreen());
     }
 
     joinSession() {
@@ -334,9 +337,12 @@ class RhythmStudent {
         document.getElementById('loginForm').classList.add('hidden');
         document.getElementById('gameArea').classList.add('active');
 
+        // Remove splash screen background
+        document.body.classList.remove('login-mode');
+
         // Update UI
-        document.getElementById('connectedRoom').textContent = this.roomCode;
-        document.getElementById('connectionStatus').textContent = 'Connected';
+        document.getElementById('connectedRoom').textContent = `Room: ${this.roomCode}`;
+        document.getElementById('connectionStatus').classList.add('connected');
 
         this.connected = true;
 
@@ -423,7 +429,8 @@ class RhythmStudent {
             setTimeout(() => this.renderTileNotation(pattern, notationDiv), index * 50);
         });
 
-        this.setupDragAndDrop();
+        // Setup drag and drop after all tiles are rendered
+        setTimeout(() => this.setupDragAndDrop(), patterns.length * 50 + 100);
     }
 
     renderTileNotation(pattern, container) {
@@ -481,7 +488,6 @@ class RhythmStudent {
         const staffDiv = document.createElement('div');
         staffDiv.className = 'answer-staff';
         staffDiv.innerHTML = `
-            <div class="answer-staff-label">Your Answer (${this.measureCount} measures)</div>
             <div class="staff-container">
                 <div class="staff-lines">
                     <div class="staff-line"></div>
@@ -491,7 +497,7 @@ class RhythmStudent {
                     <div class="time-sig-top">${this.timeSignature.split('/')[0]}</div>
                     <div class="time-sig-bottom">${this.timeSignature.split('/')[1]}</div>
                 </div>
-                <div class="beat-divisions" style="margin-left: 45px; margin-right: 20px;">
+                <div class="responsive-measures">
                     ${Array.from({length: this.measureCount * 4}, (_, i) => {
                         const beat = (i % 4) + 1;
                         const measure = Math.floor(i / 4) + 1;
@@ -516,36 +522,127 @@ class RhythmStudent {
 
     setupDragAndDrop() {
         const tiles = document.querySelectorAll('.rhythm-tile');
+        console.log('🔧 setupDragAndDrop called, found tiles:', tiles.length);
 
-        tiles.forEach(tile => {
+        tiles.forEach((tile, index) => {
+            console.log(`🎵 Setting up drag for tile ${index}:`, tile.dataset.patternId, 'draggable:', tile.draggable);
+
             tile.addEventListener('dragstart', (e) => {
+                console.log('🚀 DRAGSTART:', tile.dataset.patternId);
                 e.dataTransfer.setData('text/plain', tile.dataset.patternId);
                 tile.classList.add('dragging');
                 this.currentDragPattern = tile.dataset.patternId;
             });
 
             tile.addEventListener('dragend', () => {
+                console.log('🏁 DRAGEND:', tile.dataset.patternId);
                 tile.classList.remove('dragging');
                 this.currentDragPattern = null;
                 this.clearDragHighlights();
+            });
+
+            // Test if tile is actually clickable/interactive
+            tile.addEventListener('mousedown', () => {
+                console.log('🖱️ MOUSEDOWN on tile:', tile.dataset.patternId);
+            });
+
+            tile.addEventListener('click', () => {
+                console.log('👆 CLICK on tile:', tile.dataset.patternId);
+                alert(`Clicked tile: ${tile.dataset.patternId}`);
+            });
+
+            // Mobile touch drag support
+            let isDragging = false;
+            let startX, startY;
+            let dragPreview = null;
+
+            tile.addEventListener('touchstart', (e) => {
+                console.log('👆 TOUCHSTART on tile:', tile.dataset.patternId);
+                isDragging = true;
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                this.currentDragPattern = tile.dataset.patternId;
+                tile.classList.add('dragging');
+
+                // Create drag preview
+                this.createDragPreview(tile, e.touches[0].clientX, e.touches[0].clientY);
+
+                e.preventDefault();
+            });
+
+            tile.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+
+                const touch = e.touches[0];
+                const deltaX = Math.abs(touch.clientX - startX);
+                const deltaY = Math.abs(touch.clientY - startY);
+
+                // Only start dragging if moved significantly
+                if (deltaX > 10 || deltaY > 10) {
+                    console.log('📱 TOUCH DRAGGING:', tile.dataset.patternId);
+
+                    // Update drag preview position
+                    this.updateDragPreview(touch.clientX, touch.clientY);
+
+                    // Find element under touch point
+                    const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                    const dropZone = elementBelow?.closest('.beat-drop-zone');
+
+                    if (dropZone) {
+                        console.log('📍 Over drop zone:', dropZone.dataset.measure, dropZone.dataset.beat);
+                        this.highlightDragTarget(dropZone, true);
+                    } else {
+                        this.clearDragHighlights();
+                    }
+                }
+                e.preventDefault();
+            });
+
+            tile.addEventListener('touchend', (e) => {
+                if (!isDragging) return;
+                console.log('🏁 TOUCHEND for tile:', tile.dataset.patternId);
+
+                const touch = e.changedTouches[0];
+                const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                const dropZone = elementBelow?.closest('.beat-drop-zone');
+
+                if (dropZone) {
+                    console.log('💥 TOUCH DROP in zone:', dropZone.dataset.measure, dropZone.dataset.beat);
+                    const measure = parseInt(dropZone.dataset.measure);
+                    const beat = parseInt(dropZone.dataset.beat);
+                    this.placeTile(dropZone, tile.dataset.patternId, measure, beat);
+                }
+
+                isDragging = false;
+                tile.classList.remove('dragging');
+                this.currentDragPattern = null;
+                this.clearDragHighlights();
+                this.removeDragPreview();
+                e.preventDefault();
             });
         });
     }
 
     setupDropZones() {
         const dropZones = document.querySelectorAll('.beat-drop-zone');
+        console.log('🎯 setupDropZones called, found zones:', dropZones.length);
 
-        dropZones.forEach(zone => {
+        dropZones.forEach((zone, index) => {
+            console.log(`🎯 Setting up drop zone ${index}: measure ${zone.dataset.measure}, beat ${zone.dataset.beat}`);
+
             zone.addEventListener('dragover', (e) => {
+                console.log('🌊 DRAGOVER zone:', zone.dataset.measure, zone.dataset.beat);
                 e.preventDefault();
                 this.highlightDragTarget(zone, true);
             });
 
             zone.addEventListener('dragleave', () => {
+                console.log('🚪 DRAGLEAVE zone:', zone.dataset.measure, zone.dataset.beat);
                 this.clearDragHighlights();
             });
 
             zone.addEventListener('drop', (e) => {
+                console.log('💥 DROP in zone:', zone.dataset.measure, zone.dataset.beat);
                 e.preventDefault();
                 this.clearDragHighlights();
 
@@ -553,6 +650,7 @@ class RhythmStudent {
                 const measure = parseInt(zone.dataset.measure);
                 const beat = parseInt(zone.dataset.beat);
 
+                console.log('📦 Dropped pattern:', patternId, 'at measure:', measure, 'beat:', beat);
                 this.placeTile(zone, patternId, measure, beat);
             });
         });
@@ -793,6 +891,75 @@ class RhythmStudent {
         const feedback = document.getElementById('feedback');
         feedback.style.display = 'none';
         feedback.className = 'feedback';
+    }
+
+    toggleFitToScreen() {
+        const measureContainer = document.querySelector('.responsive-measures');
+        const fitBtn = document.getElementById('fitToScreenBtn');
+
+        if (measureContainer) {
+            measureContainer.classList.toggle('fit-mode');
+
+            if (measureContainer.classList.contains('fit-mode')) {
+                fitBtn.textContent = '🔍 Normal View';
+                fitBtn.classList.add('active');
+            } else {
+                fitBtn.textContent = '📏 Fit to Screen';
+                fitBtn.classList.remove('active');
+            }
+        }
+    }
+
+    scrollToCurrentBeat(currentBeat) {
+        const measureContainer = document.querySelector('.responsive-measures');
+        if (!measureContainer || measureContainer.classList.contains('fit-mode')) return;
+
+        const totalBeats = this.measureCount * 4;
+        const scrollWidth = measureContainer.scrollWidth - measureContainer.clientWidth;
+        const scrollPosition = (currentBeat / totalBeats) * scrollWidth;
+
+        measureContainer.scrollTo({
+            left: scrollPosition,
+            behavior: 'smooth'
+        });
+    }
+
+    createDragPreview(originalTile, x, y) {
+        this.removeDragPreview(); // Remove any existing preview
+
+        this.dragPreview = originalTile.cloneNode(true);
+        this.dragPreview.style.position = 'fixed';
+        this.dragPreview.style.pointerEvents = 'none';
+        this.dragPreview.style.zIndex = '10000';
+        this.dragPreview.style.opacity = '0.8';
+
+        // Use transform scaling but with simpler approach
+        this.dragPreview.style.transform = 'scale(0.35)';
+        this.dragPreview.style.transformOrigin = 'top left';
+        this.dragPreview.style.width = 'auto';
+        this.dragPreview.style.height = 'auto';
+        this.dragPreview.style.transition = 'none';
+        this.dragPreview.classList.add('drag-preview');
+
+        // Position at touch point
+        this.updateDragPreview(x, y);
+
+        document.body.appendChild(this.dragPreview);
+    }
+
+    updateDragPreview(x, y) {
+        if (!this.dragPreview) return;
+
+        // Position with transform-origin top left, so we can position exactly
+        this.dragPreview.style.left = (x - 20) + 'px';  // Smaller offset for 0.35 scale
+        this.dragPreview.style.top = (y - 40) + 'px';   // Above finger
+    }
+
+    removeDragPreview() {
+        if (this.dragPreview) {
+            this.dragPreview.remove();
+            this.dragPreview = null;
+        }
     }
 }
 
