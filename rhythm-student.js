@@ -732,16 +732,16 @@ class RhythmStudent {
                     img.style.width = '98%';
                     img.style.height = '98%';
                     img.style.objectFit = 'contain';
-                    img.style.objectPosition = 'center 50%'; // Align with staff line
+                    img.style.objectPosition = 'center 70%'; // Align with staff line
                     img.alt = asset.name;
 
-                    notationArea.innerHTML = `<button class="remove-btn" onclick="rhythmStudent.removeTile(${measure}, ${startBeat})">×</button>`;
+                    notationArea.innerHTML = `<button class="remove-btn" onclick="window.rhythmStudent.removeTile(${measure}, ${startBeat})">×</button>`;
                     notationArea.appendChild(img);
                     console.log('PNG image placed for pattern:', pattern.id);
                 } else {
                     // Fallback if no asset found
                     console.warn('No PNG asset found for pattern:', pattern.id);
-                    notationArea.innerHTML = `<button class="remove-btn" onclick="rhythmStudent.removeTile(${measure}, ${startBeat})">×</button><span style="color: red; font-size: 0.7rem;">Missing: ${pattern.id}</span>`;
+                    notationArea.innerHTML = `<button class="remove-btn" onclick="window.rhythmStudent.removeTile(${measure}, ${startBeat})">×</button><span style="color: red; font-size: 0.7rem;">Missing: ${pattern.id}</span>`;
                 }
                 targetZone.classList.add('filled');
                 this.userAnswer[measure - 1][b - 1] = patternId;
@@ -968,7 +968,7 @@ class RhythmStudent {
 }
 
 // Initialize the student system
-let rhythmStudent;
+window.rhythmStudent = null; // Make it globally accessible
 document.addEventListener('DOMContentLoaded', () => {
-    rhythmStudent = new RhythmStudent();
+    window.rhythmStudent = new RhythmStudent();
 });

@@ -12,10 +12,10 @@
         }
 
         :root {
-            /* Staff line positioning - staff line is now at 50% from top of staff container */
+            /* Staff line positioning - mathematically centered using flexbox */
             --staff-line-position: 50%;
-            /* Note positioning to center on staff line (50% centers notes perfectly) */
-            --note-center-position: 50%;
+            /* Note positioning to center on staff line - exact center alignment */
+            --note-center-position: center;
         }
 
         body {
@@ -303,24 +303,27 @@
             display: grid;
             grid-template-areas: "clef timesig measures";
             grid-template-columns: 30px 40px 1fr;
-            align-items: center;
+            grid-template-rows: 1fr;
+            align-items: stretch; /* Allow full height for perfect centering */
         }
 
         .staff-lines {
             position: absolute;
             width: 100%;
-            height: 20px;
-            top: 25px; /* Moved up from 30px */
+            height: 100%;
+            top: 0;
+            left: 0;
             grid-area: 1 / 1 / 2 / -1;
             z-index: 1;
+            display: flex;
+            align-items: center; /* Center the staff line vertically */
         }
 
         .staff-line {
-            position: absolute;
             width: 100%;
-            height: 1px;
+            height: 2px; /* Slightly thicker for better visibility */
             background: #333;
-            top: 15px; /* Moved up from 9px to center between time sig numbers */
+            /* No top positioning needed - parent centers it */
         }
 
         .percussion-clef {
@@ -360,8 +363,12 @@
             font-size: clamp(16px, 2.5vw, 24px);
             color: #333;
             z-index: 5;
-            line-height: 1;
+            line-height: 0.8; /* Tighter line height for better vertical centering */
             position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 100%;
         }
 
         .time-sig-top, .time-sig-bottom {
@@ -522,34 +529,43 @@
             width: 100% !important;
             height: 100% !important;
             object-fit: contain;
-            /* Position so note center aligns with staff line */
-            object-position: center var(--note-center-position);
+            /* Position notes lower so staff line goes through notehead center */
+            object-position: center 70%;
         }
 
         .beat-notation img {
             width: 100%;
             height: 100%;
             object-fit: contain;
-            /* Position so note center aligns with staff line */
-            object-position: center var(--note-center-position);
+            /* Position notes lower so staff line goes through notehead center */
+            object-position: center 70%;
         }
 
         .remove-btn {
             position: absolute;
-            top: -8px;
-            right: -8px;
-            background: #ff4757;
+            top: 2px;
+            right: 2px;
+            background: rgba(255, 71, 87, 0.9);
             color: white;
             border: none;
             border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            font-size: 9px;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            font-weight: bold;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 10;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        .remove-btn:hover {
+            background: rgba(255, 71, 87, 1);
+            transform: scale(1.1);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
         }
 
         .feedback {
@@ -752,6 +768,8 @@
             .staff-container {
                 height: 70px;
                 grid-template-columns: 25px 35px 1fr;
+                grid-template-rows: 1fr;
+                align-items: stretch;
             }
 
             .beat-drop-zone {
@@ -812,11 +830,11 @@
             }
 
             .remove-btn {
-                width: 20px;
-                height: 20px;
+                width: 18px;
+                height: 18px;
                 font-size: 10px;
-                top: -10px;
-                right: -10px;
+                top: 1px;
+                right: 1px;
             }
 
             /* Touch-friendly interactions */
@@ -848,6 +866,8 @@
             .staff-container {
                 height: 60px;
                 grid-template-columns: 20px 30px 1fr;
+                grid-template-rows: 1fr;
+                align-items: stretch;
             }
 
             .beat-drop-zone {
@@ -905,11 +925,11 @@
             }
 
             .remove-btn {
-                width: 18px;
-                height: 18px;
+                width: 16px;
+                height: 16px;
                 font-size: 9px;
-                top: -9px;
-                right: -9px;
+                top: 1px;
+                right: 1px;
             }
 
             /* Mobile notation sizing - maintain staff line alignment */
@@ -917,14 +937,14 @@
                 width: 100% !important;
                 height: 100% !important;
                 object-fit: contain !important;
-                object-position: center var(--note-center-position) !important;
+                object-position: center 70% !important;
             }
 
             .beat-notation img {
                 width: 100% !important;
                 height: 100% !important;
                 object-fit: contain !important;
-                object-position: center var(--note-center-position) !important;
+                object-position: center 70% !important;
             }
         }
 
@@ -939,6 +959,8 @@
             .staff-container {
                 height: 55px;
                 grid-template-columns: 18px 28px 1fr;
+                grid-template-rows: 1fr;
+                align-items: stretch;
             }
 
             .beat-drop-zone {
@@ -999,14 +1021,14 @@
                 width: 100% !important;
                 height: 100% !important;
                 object-fit: contain !important;
-                object-position: center var(--note-center-position) !important;
+                object-position: center 70% !important;
             }
 
             .beat-notation img {
                 width: 100% !important;
                 height: 100% !important;
                 object-fit: contain !important;
-                object-position: center var(--note-center-position) !important;
+                object-position: center 70% !important;
             }
         }
     </style>
