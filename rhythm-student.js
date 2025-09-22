@@ -497,17 +497,21 @@ class RhythmStudent {
                     <div class="time-sig-top">${this.timeSignature.split('/')[0]}</div>
                     <div class="time-sig-bottom">${this.timeSignature.split('/')[1]}</div>
                 </div>
-                <div class="responsive-measures">
-                    ${Array.from({length: this.measureCount * 4}, (_, i) => {
-                        const beat = (i % 4) + 1;
-                        const measure = Math.floor(i / 4) + 1;
-                        return `
-                            <div class="beat-drop-zone" data-beat="${beat}" data-measure="${measure}" data-absolute-beat="${i + 1}">
-                                <div class="beat-notation"></div>
-                            </div>
-                        `;
-                    }).join('')}
-                    <div class="double-bar"></div>
+                <div class="beat-divisions">
+                    <div class="responsive-measures">
+                        ${Array.from({length: this.measureCount * 4}, (_, i) => {
+                            const absoluteBeat = i + 1; // 1-8 for grid positioning
+                            const beat = (i % 4) + 1; // 1-4 for measure beat
+                            const measure = Math.floor(i / 4) + 1;
+                            return `
+                                <div class="beat-drop-zone" data-beat="${beat}" data-measure="${measure}" data-absolute-beat="${absoluteBeat}">
+                                    <div class="beat-notation"></div>
+                                </div>
+                            `;
+                        }).join('')}
+                        ${this.measureCount > 1 ? '<div class="measure-bar-line"></div>' : ''}
+                        <div class="double-bar"></div>
+                    </div>
                 </div>
             </div>
         `;
@@ -725,10 +729,10 @@ class RhythmStudent {
                     // Create PNG image for the placed notation
                     const img = document.createElement('img');
                     img.src = `./rhythm-assets/${asset.file}`;
-                    img.style.position = 'absolute';
-                    img.style.top = '55%';
-                    img.style.left = '50%';
-                    img.style.transform = 'translate(-50%, -50%) scale(0.265)';
+                    img.style.width = '98%';
+                    img.style.height = '98%';
+                    img.style.objectFit = 'contain';
+                    img.style.objectPosition = 'center 50%'; // Align with staff line
                     img.alt = asset.name;
 
                     notationArea.innerHTML = `<button class="remove-btn" onclick="rhythmStudent.removeTile(${measure}, ${startBeat})">×</button>`;

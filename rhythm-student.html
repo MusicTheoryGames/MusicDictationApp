@@ -11,6 +11,13 @@
             box-sizing: border-box;
         }
 
+        :root {
+            /* Staff line positioning - staff line is now at 50% from top of staff container */
+            --staff-line-position: 50%;
+            /* Note positioning to center on staff line (50% centers notes perfectly) */
+            --note-center-position: 50%;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(140deg, #2d3436 0%, #636e72 100%);
@@ -293,13 +300,19 @@
             position: relative;
             height: 80px;
             margin-top: 10px;
+            display: grid;
+            grid-template-areas: "clef timesig measures";
+            grid-template-columns: 30px 40px 1fr;
+            align-items: center;
         }
 
         .staff-lines {
             position: absolute;
             width: 100%;
             height: 20px;
-            top: 30px;
+            top: 25px; /* Moved up from 30px */
+            grid-area: 1 / 1 / 2 / -1;
+            z-index: 1;
         }
 
         .staff-line {
@@ -307,17 +320,17 @@
             width: 100%;
             height: 1px;
             background: #333;
-            top: 9px; /* Single line in the middle for rhythm notation */
+            top: 15px; /* Moved up from 9px to center between time sig numbers */
         }
 
         .percussion-clef {
-            position: absolute;
-            left: 5px;
-            top: 50%;
-            transform: translateY(-50%);
+            grid-area: clef;
+            justify-self: center;
+            align-self: center;
             width: 22px;
             height: 20px;
             z-index: 5;
+            position: relative;
         }
 
         .percussion-clef::before,
@@ -339,16 +352,16 @@
         }
 
         .time-signature {
-            position: absolute;
-            left: 30px;
-            top: 50%;
-            transform: translateY(-50%);
+            grid-area: timesig;
+            justify-self: center;
+            align-self: center;
             text-align: center;
             font-weight: bold;
             font-size: clamp(16px, 2.5vw, 24px);
             color: #333;
             z-index: 5;
             line-height: 1;
+            position: relative;
         }
 
         .time-sig-top, .time-sig-bottom {
@@ -358,20 +371,27 @@
         }
 
         .beat-divisions {
-            position: absolute;
+            grid-area: measures;
+            position: relative;
             width: 100%;
             height: 100%;
             display: flex;
         }
 
         .responsive-measures {
-            position: absolute;
-            left: 50px;
-            right: 10px;
+            position: relative;
+            width: 100%;
             height: 100%;
             display: grid;
-            grid-template-columns: repeat(8, minmax(80px, 1fr)) auto;
+            grid-template-areas:
+                "beat1 beat2 beat3 beat4 barline1 beat5 beat6 beat7 beat8 doublebar";
+            grid-template-columns:
+                minmax(70px, 1fr) minmax(70px, 1fr) minmax(70px, 1fr) minmax(70px, 1fr)
+                8px
+                minmax(70px, 1fr) minmax(70px, 1fr) minmax(70px, 1fr) minmax(70px, 1fr)
+                16px;
             align-items: center;
+            gap: 2px;
             overflow-x: auto;
             overflow-y: hidden;
             scroll-behavior: smooth;
@@ -379,35 +399,62 @@
         }
 
         .responsive-measures.fit-mode {
-            grid-template-columns: repeat(8, 1fr) auto;
+            grid-template-columns:
+                1fr 1fr 1fr 1fr
+                8px
+                1fr 1fr 1fr 1fr
+                16px;
             overflow-x: hidden;
         }
 
         .beat-drop-zone {
             scroll-snap-align: start;
-        }
-
-        .beat-drop-zone {
-            flex: 1;
             position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
+            min-height: 60px;
+            display: grid;
+            grid-template-areas: "notation";
+            place-items: center;
         }
 
-        /* Only show bar line in the middle (after beat 4), but not on the final measure */
-        .beat-drop-zone[data-beat="4"]:not([data-measure="2"]) {
-            border-right: 3px solid #333; /* Bar line between measures */
-            margin-right: 15px; /* Add space after bar line */
+        /* Grid area assignments for each beat using absolute beat position */
+        .beat-drop-zone[data-absolute-beat="1"] { grid-area: beat1; }
+        .beat-drop-zone[data-absolute-beat="2"] { grid-area: beat2; }
+        .beat-drop-zone[data-absolute-beat="3"] { grid-area: beat3; }
+        .beat-drop-zone[data-absolute-beat="4"] { grid-area: beat4; }
+        .beat-drop-zone[data-absolute-beat="5"] { grid-area: beat5; }
+        .beat-drop-zone[data-absolute-beat="6"] { grid-area: beat6; }
+        .beat-drop-zone[data-absolute-beat="7"] { grid-area: beat7; }
+        .beat-drop-zone[data-absolute-beat="8"] { grid-area: beat8; }
+
+        /* Bar line between measures */
+        .measure-bar-line {
+            grid-area: barline1;
+            width: 100%;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .measure-bar-line::before {
+            content: '';
+            width: 3px;
+            height: 30px; /* Shorter than container to avoid crossing staff line */
+            background: #333;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
         }
 
         /* Double bar line as separate element */
         .double-bar {
-            width: 8px;
-            height: 100%;
-            margin-left: 5px;
-            flex-shrink: 0;
+            grid-area: doublebar;
+            width: 100%;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             position: relative;
         }
 
@@ -416,17 +463,18 @@
             content: '';
             position: absolute;
             width: 3px;
-            height: 100%;
+            height: 30px; /* Shorter than container to avoid crossing staff line */
             background: #333;
-            top: 0;
+            top: 50%;
+            transform: translateY(-50%);
         }
 
         .double-bar::before {
-            left: 0;
+            left: 2px;
         }
 
         .double-bar::after {
-            right: 0;
+            right: 2px;
         }
 
         /* Beat indicators inside white area */
@@ -459,12 +507,31 @@
         }
 
         .beat-notation {
-            position: absolute;
+            grid-area: notation;
             width: 100%;
             height: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
+            z-index: 3;
+        }
+
+        /* Ensure notes are perfectly centered on staff line */
+        .beat-notation svg {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain;
+            /* Position so note center aligns with staff line */
+            object-position: center var(--note-center-position);
+        }
+
+        .beat-notation img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            /* Position so note center aligns with staff line */
+            object-position: center var(--note-center-position);
         }
 
         .remove-btn {
@@ -684,10 +751,44 @@
 
             .staff-container {
                 height: 70px;
+                grid-template-columns: 25px 35px 1fr;
             }
 
             .beat-drop-zone {
                 min-height: 70px;
+            }
+
+            .responsive-measures {
+                grid-template-columns:
+                    minmax(50px, 1fr) minmax(50px, 1fr) minmax(50px, 1fr) minmax(50px, 1fr)
+                    6px
+                    minmax(50px, 1fr) minmax(50px, 1fr) minmax(50px, 1fr) minmax(50px, 1fr)
+                    10px;
+            }
+
+            .responsive-measures.fit-mode {
+                grid-template-columns:
+                    1fr 1fr 1fr 1fr
+                    6px
+                    1fr 1fr 1fr 1fr
+                    10px;
+            }
+
+            .measure-bar-line {
+                height: 30px;
+            }
+
+            .measure-bar-line::before {
+                height: 25px;
+            }
+
+            .double-bar {
+                height: 30px;
+            }
+
+            .double-bar::before,
+            .double-bar::after {
+                height: 25px;
             }
 
             .beat-drop-zone::before {
@@ -746,10 +847,44 @@
 
             .staff-container {
                 height: 60px;
+                grid-template-columns: 20px 30px 1fr;
             }
 
             .beat-drop-zone {
                 min-height: 60px;
+            }
+
+            .responsive-measures {
+                grid-template-columns:
+                    minmax(45px, 1fr) minmax(45px, 1fr) minmax(45px, 1fr) minmax(45px, 1fr)
+                    5px
+                    minmax(45px, 1fr) minmax(45px, 1fr) minmax(45px, 1fr) minmax(45px, 1fr)
+                    8px;
+            }
+
+            .responsive-measures.fit-mode {
+                grid-template-columns:
+                    1fr 1fr 1fr 1fr
+                    5px
+                    1fr 1fr 1fr 1fr
+                    8px;
+            }
+
+            .measure-bar-line {
+                height: 25px;
+            }
+
+            .measure-bar-line::before {
+                height: 20px;
+            }
+
+            .double-bar {
+                height: 25px;
+            }
+
+            .double-bar::before,
+            .double-bar::after {
+                height: 20px;
             }
 
             .beat-drop-zone::before {
@@ -777,9 +912,19 @@
                 right: -9px;
             }
 
-            /* Smaller VexFlow notation on mobile */
+            /* Mobile notation sizing - maintain staff line alignment */
             .beat-notation svg {
-                transform: translateX(-50%) scale(1.1) !important;
+                width: 100% !important;
+                height: 100% !important;
+                object-fit: contain !important;
+                object-position: center var(--note-center-position) !important;
+            }
+
+            .beat-notation img {
+                width: 100% !important;
+                height: 100% !important;
+                object-fit: contain !important;
+                object-position: center var(--note-center-position) !important;
             }
         }
 
@@ -793,10 +938,44 @@
 
             .staff-container {
                 height: 55px;
+                grid-template-columns: 18px 28px 1fr;
             }
 
             .beat-drop-zone {
                 min-height: 55px;
+            }
+
+            .responsive-measures {
+                grid-template-columns:
+                    minmax(40px, 1fr) minmax(40px, 1fr) minmax(40px, 1fr) minmax(40px, 1fr)
+                    4px
+                    minmax(40px, 1fr) minmax(40px, 1fr) minmax(40px, 1fr) minmax(40px, 1fr)
+                    7px;
+            }
+
+            .responsive-measures.fit-mode {
+                grid-template-columns:
+                    1fr 1fr 1fr 1fr
+                    4px
+                    1fr 1fr 1fr 1fr
+                    7px;
+            }
+
+            .measure-bar-line {
+                height: 20px;
+            }
+
+            .measure-bar-line::before {
+                height: 18px;
+            }
+
+            .double-bar {
+                height: 20px;
+            }
+
+            .double-bar::before,
+            .double-bar::after {
+                height: 18px;
             }
 
             .beat-drop-zone::before {
@@ -815,9 +994,19 @@
                 font-size: 0.55rem;
             }
 
-            /* Even smaller notation for tiny screens */
+            /* Tiny screen notation sizing - maintain staff line alignment */
             .beat-notation svg {
-                transform: translateX(-50%) scale(1.0) !important;
+                width: 100% !important;
+                height: 100% !important;
+                object-fit: contain !important;
+                object-position: center var(--note-center-position) !important;
+            }
+
+            .beat-notation img {
+                width: 100% !important;
+                height: 100% !important;
+                object-fit: contain !important;
+                object-position: center var(--note-center-position) !important;
             }
         }
     </style>
