@@ -298,35 +298,12 @@ class RhythmStudent {
         this.timeSignature = '4/4';
         this.userAnswer = [];
         this.revealedBeats = [];
-        this.studentId = this.generateStudentId();
-        this.firebaseListeners = [];
 
         this.init();
     }
 
     init() {
         this.setupEventListeners();
-        this.checkForStoredCredentials();
-    }
-
-    checkForStoredCredentials() {
-        const storedName = localStorage.getItem('beatquest_name');
-        const storedRoom = localStorage.getItem('beatquest_room');
-
-        if (storedName && storedRoom) {
-            // Pre-fill the form and auto-join
-            document.getElementById('studentName').value = storedName;
-            document.getElementById('roomCode').value = storedRoom;
-
-            // Clear localStorage to prevent auto-join on refresh
-            localStorage.removeItem('beatquest_name');
-            localStorage.removeItem('beatquest_room');
-
-            // Auto-join the session
-            setTimeout(() => {
-                this.joinSession();
-            }, 500);
-        }
     }
 
     setupEventListeners() {
@@ -340,9 +317,6 @@ class RhythmStudent {
         document.getElementById('roomCode').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.joinSession();
         });
-
-        // Submit answer button
-        document.getElementById('submitAnswer').addEventListener('click', () => this.submitFinalAnswer());
     }
 
     joinSession() {
@@ -366,8 +340,8 @@ class RhythmStudent {
 
         this.connected = true;
 
-        // Connect to Firebase room
-        this.setupFirebase();
+        // In a real implementation, this would connect to WebSocket server
+        this.setupWebSocket();
         this.showFeedback('Connected to rhythm session!', 'success');
 
         // Initialize with default settings
@@ -383,14 +357,8 @@ class RhythmStudent {
         // For now, we'll simulate receiving messages from teacher
         console.log(`Student ${this.studentName} connected to room ${this.roomCode}`);
 
-        // Simulate receiving initial settings
-        setTimeout(() => {
-            this.handleTeacherMessage('new-rhythm', {
-                measureCount: 2,
-                difficulty: 'medium',
-                tempo: 100
-            });
-        }, 1000);
+        // Note: Initial settings are already handled in joinSession()
+        // This would normally set up WebSocket listeners for teacher messages
     }
 
     handleTeacherMessage(type, data) {
@@ -414,7 +382,6 @@ class RhythmStudent {
         this.measureCount = settings.measureCount;
         this.currentDifficulty = settings.difficulty;
         this.tempo = settings.tempo;
-        this.timeSignature = settings.timeSignature || '4/4';
 
         this.populateRhythmBank();
         this.updateMeasureDisplay();
@@ -534,6 +501,7 @@ class RhythmStudent {
                             </div>
                         `;
                     }).join('')}
+                    <div class="double-bar"></div>
                 </div>
             </div>
         `;
@@ -683,11 +651,8 @@ class RhythmStudent {
             }
         }
 
-        // Send answer to teacher via Firebase
-        this.submitBeatAnswer(measure, startBeat, patternId);
-
-        // Check if all beats are filled
-        this.checkSubmitButtonVisibility();
+        // Send answer to teacher (in real implementation)
+        this.sendAnswerToTeacher(measure, startBeat, patternId);
     }
 
 
@@ -713,13 +678,14 @@ class RhythmStudent {
             this.userAnswer[measure - 1][b - 1] = null;
         }
 
-        // Send removal to teacher via Firebase
-        this.submitBeatAnswer(measure, beat, null);
-
-        // Check if all beats are filled
-        this.checkSubmitButtonVisibility();
+        // Send removal to teacher
+        this.sendAnswerToTeacher(measure, beat, null);
     }
 
+    sendAnswerToTeacher(measure, beat, patternId) {
+        // In a real implementation, this would send to WebSocket server
+        console.log(`Student answer: Measure ${measure}, Beat ${beat} = ${patternId}`);
+    }
 
     playRhythm(notes, tempo) {
         this.showFeedback('Playing rhythm...', 'info');
@@ -827,181 +793,6 @@ class RhythmStudent {
         const feedback = document.getElementById('feedback');
         feedback.style.display = 'none';
         feedback.className = 'feedback';
-    }
-
-    generateStudentId() {
-        return Math.random().toString(36).substring(2, 15);
-    }
-
-    async setupFirebase() {
-        // Wait for Firebase to load
-        while (!window.firebase) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-
-        try {
-            // Add student to Firebase room
-            await this.joinFirebaseRoom();
-            // Listen for teacher updates
-            this.listenToTeacherUpdates();
-        } catch (error) {
-            console.error('Error setting up Firebase:', error);
-            this.showFeedback('Connection error. Please try again.', 'error');
-        }
-    }
-
-    async joinFirebaseRoom() {
-        try {
-            // Add student to room
-            await window.firebase.set(
-                window.firebase.ref(window.firebase.database, `rhythm-rooms/${this.roomCode}/students/${this.studentId}`),
-                {
-                    name: this.studentName,
-                    connected: true,
-                    joinedAt: window.firebase.serverTimestamp()
-                }
-            );
-
-            console.log('Joined Firebase rhythm room:', this.roomCode);
-        } catch (error) {
-            console.error('Error joining Firebase room:', error);
-            throw error;
-        }
-    }
-
-    listenToTeacherUpdates() {
-        const roomRef = window.firebase.ref(window.firebase.database, `rhythm-rooms/${this.roomCode}`);
-
-        const listener = window.firebase.onValue(roomRef, (snapshot) => {
-            if (snapshot.exists()) {
-                const roomData = snapshot.val();
-
-                // Update game settings
-                if (roomData.measureCount !== this.measureCount ||
-                    roomData.difficulty !== this.currentDifficulty ||
-                    roomData.tempo !== this.tempo ||
-                    roomData.timeSignature !== this.timeSignature) {
-                    this.updateGameSettings({
-                        measureCount: roomData.measureCount,
-                        difficulty: roomData.difficulty,
-                        tempo: roomData.tempo,
-                        timeSignature: roomData.timeSignature
-                    });
-                }
-
-                // Handle new rhythm exercise
-                if (roomData.currentRhythm && roomData.exerciseActive) {
-                    this.handleNewExercise(roomData.currentRhythm);
-                }
-
-                // Handle beat reveals
-                if (roomData.revealedBeats && roomData.revealedBeats.length > 0) {
-                    roomData.revealedBeats.forEach(beat => {
-                        if (!this.revealedBeats.includes(beat)) {
-                            this.revealBeat(beat);
-                        }
-                    });
-                }
-
-                // Handle play command
-                if (roomData.playCommand) {
-                    // Teacher pressed play - could trigger audio feedback here
-                    console.log('Teacher played rhythm at tempo:', roomData.playCommand.tempo);
-                }
-            }
-        });
-
-        this.firebaseListeners.push(listener);
-    }
-
-    handleNewExercise(rhythmData) {
-        // Clear previous answers
-        this.clearAnswers();
-        this.revealedBeats = [];
-
-        // Store the correct rhythm for checking
-        this.correctRhythm = rhythmData;
-
-        this.showFeedback('New rhythm exercise started! Listen and enter your answer.', 'info');
-        setTimeout(() => this.clearFeedback(), 3000);
-    }
-
-    async submitBeatAnswer(measure, beat, patternId) {
-        if (!this.connected || !this.roomCode) return;
-
-        try {
-            // Submit the specific beat answer
-            await window.firebase.set(
-                window.firebase.ref(window.firebase.database,
-                    `rhythm-rooms/${this.roomCode}/studentAnswers/${this.studentId}/beat${beat}`),
-                patternId
-            );
-
-            // Also update completion timestamp
-            await window.firebase.set(
-                window.firebase.ref(window.firebase.database,
-                    `rhythm-rooms/${this.roomCode}/studentAnswers/${this.studentId}/lastUpdate`),
-                window.firebase.serverTimestamp()
-            );
-
-            console.log(`Submitted to Firebase: beat${beat} = ${patternId}`);
-
-        } catch (error) {
-            console.error('Error submitting answer:', error);
-        }
-    }
-
-    checkSubmitButtonVisibility() {
-        const totalBeats = this.measureCount * 4;
-        let filledBeats = 0;
-
-        for (let m = 0; m < this.measureCount; m++) {
-            for (let b = 0; b < 4; b++) {
-                if (this.userAnswer[m][b] !== null && !this.userAnswer[m][b].includes('_continuation')) {
-                    filledBeats++;
-                }
-            }
-        }
-
-        const submitSection = document.getElementById('submitSection');
-        const submitBtn = document.getElementById('submitAnswer');
-
-        if (filledBeats === 4 * this.measureCount) { // Need to fill all beats across all measures
-            submitSection.style.display = 'block';
-            submitBtn.disabled = false;
-        } else {
-            submitSection.style.display = 'none';
-            submitBtn.disabled = true;
-        }
-    }
-
-    async submitFinalAnswer() {
-        if (!this.connected || !this.roomCode) return;
-
-        try {
-            // Mark student as submitted
-            await window.firebase.set(
-                window.firebase.ref(window.firebase.database,
-                    `rhythm-rooms/${this.roomCode}/studentAnswers/${this.studentId}/submitted`),
-                true
-            );
-
-            await window.firebase.set(
-                window.firebase.ref(window.firebase.database,
-                    `rhythm-rooms/${this.roomCode}/studentAnswers/${this.studentId}/submittedAt`),
-                window.firebase.serverTimestamp()
-            );
-
-            // Hide submit button and show waiting message
-            document.getElementById('submitSection').style.display = 'none';
-            this.showFeedback('Answer submitted! Waiting for teacher to reveal results...', 'success');
-
-            console.log('Final answer submitted');
-
-        } catch (error) {
-            console.error('Error submitting final answer:', error);
-            this.showFeedback('Error submitting answer. Please try again.', 'error');
-        }
     }
 }
 

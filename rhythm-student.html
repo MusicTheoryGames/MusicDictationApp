@@ -143,7 +143,7 @@
             text-align: center;
             color: #333;
             font-size: 0.8rem;
-            min-height: 68px;
+            min-height: 90px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -210,7 +210,8 @@
             border-radius: 8px;
             padding: 20px 50px 20px 20px;
             position: relative;
-            width: 900px;
+            width: min(900px, 95vw);
+            max-width: 900px;
             height: 120px;
         }
 
@@ -311,21 +312,37 @@
             transition: all 0.3s ease;
         }
 
-        /* Only show bar line in the middle (after beat 4) */
-        .beat-drop-zone[data-beat="4"] {
+        /* Only show bar line in the middle (after beat 4), but not on the final measure */
+        .beat-drop-zone[data-beat="4"]:not([data-measure="2"]) {
             border-right: 3px solid #333; /* Bar line between measures */
             margin-right: 15px; /* Add space after bar line */
         }
 
-        /* Add thick line to the right of the last bar to make double bar */
-        .beat-drop-zone[data-beat="4"][data-measure="2"]::after {
+        /* Double bar line as separate element */
+        .double-bar {
+            width: 8px;
+            height: 100%;
+            margin-left: 5px;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .double-bar::before,
+        .double-bar::after {
             content: '';
             position: absolute;
-            right: -10px;
+            width: 3px;
+            height: 100%;
+            background: #333;
             top: 0;
-            bottom: 0;
-            width: 4px;
-            background: #333; /* Thick line to the right */
+        }
+
+        .double-bar::before {
+            left: 0;
+        }
+
+        .double-bar::after {
+            right: 0;
         }
 
         /* Beat indicators inside white area */
@@ -407,6 +424,46 @@
             border: 1px solid #3498db;
         }
 
+        .submit-section {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .submit-btn {
+            background: linear-gradient(45deg, #27ae60, #229954);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+        }
+
+        .submit-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .submit-hint {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
 
         /* Tablet Layout */
         @media (max-width: 1024px) {
@@ -423,7 +480,7 @@
             }
 
             .rhythm-tile {
-                min-height: 75px;
+                min-height: 100px;
                 padding: 0;
             }
         }
@@ -457,13 +514,6 @@
                 height: 100px;
             }
 
-            .time-signature {
-                left: 25px;
-                top: 50%;
-                transform: translateY(-50%);
-                font-size: clamp(14px, 4vw, 20px);
-            }
-
             .staff-container {
                 height: 70px;
             }
@@ -484,7 +534,7 @@
             }
 
             .rhythm-tile {
-                min-height: 60px;
+                min-height: 80px;
                 padding: 0;
                 font-size: 0.7rem;
             }
@@ -543,7 +593,7 @@
             }
 
             .rhythm-tile {
-                min-height: 53px;
+                min-height: 70px;
                 padding: 0;
                 font-size: 0.65rem;
             }
@@ -590,7 +640,7 @@
             }
 
             .rhythm-tile {
-                min-height: 30px;
+                min-height: 40px;
                 font-size: 0.6rem;
             }
 
@@ -598,46 +648,6 @@
             .beat-notation svg {
                 transform: translateX(-50%) scale(1.0) !important;
             }
-        }
-
-        .submit-section {
-            text-align: center;
-            margin-top: 30px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .submit-btn {
-            background: linear-gradient(45deg, #27ae60, #229954);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 25px;
-            font-size: 1.2rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
-        }
-
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
-        }
-
-        .submit-btn:disabled {
-            background: #95a5a6;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .submit-hint {
-            margin-top: 10px;
-            font-size: 0.9rem;
-            opacity: 0.8;
         }
     </style>
 </head>
@@ -651,11 +661,11 @@
         <h2 style="text-align: center; margin-bottom: 20px;">Join Rhythm Session</h2>
         <div class="form-group">
             <label for="studentName">Your Name:</label>
-            <input type="text" id="studentName" placeholder="Enter your name" required>
+            <input type="text" id="studentName" placeholder="Enter your name" value="Test Student" required>
         </div>
         <div class="form-group">
             <label for="roomCode">Room Code:</label>
-            <input type="text" id="roomCode" placeholder="Enter room code" required>
+            <input type="text" id="roomCode" placeholder="Enter room code" value="TEST123" required>
         </div>
         <button class="btn-login" id="joinBtn">Join Session</button>
     </div>
@@ -688,38 +698,6 @@
         </div>
     </div>
 
-    <script type="module">
-        // Import Firebase functions
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getDatabase, ref, set, get, onValue, push, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyB_jykeKL3tbBw8dmOCRiaDmD5Jzr-l53w",
-            authDomain: "music-dictation.firebaseapp.com",
-            databaseURL: "https://music-dictation-default-rtdb.firebaseio.com",
-            projectId: "music-dictation",
-            storageBucket: "music-dictation.firebasestorage.app",
-            messagingSenderId: "440288448006",
-            appId: "1:440288448006:web:7396aee943785e1cd43d87",
-            measurementId: "G-5N6V14YGS2"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-
-        // Make Firebase functions globally available
-        window.firebase = {
-            database,
-            ref,
-            set,
-            get,
-            onValue,
-            push,
-            serverTimestamp
-        };
-    </script>
     <script type="module" src="rhythm-student.js"></script>
 </body>
 </html>
