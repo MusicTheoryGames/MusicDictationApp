@@ -905,10 +905,8 @@ class RhythmStudent {
             measureContainer.classList.toggle('fit-mode');
 
             if (measureContainer.classList.contains('fit-mode')) {
-                fitBtn.textContent = '🔍 Normal View';
                 fitBtn.classList.add('active');
             } else {
-                fitBtn.textContent = '📏 Fit to Screen';
                 fitBtn.classList.remove('active');
             }
         }
