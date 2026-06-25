@@ -11,13 +11,6 @@
             box-sizing: border-box;
         }
 
-        :root {
-            /* Staff line positioning - mathematically centered using flexbox */
-            --staff-line-position: 50%;
-            /* Note positioning to center on staff line - exact center alignment */
-            --note-center-position: center;
-        }
-
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(140deg, #2d3436 0%, #636e72 100%);
@@ -27,32 +20,6 @@
             padding: 10px;
             display: flex;
             flex-direction: column;
-        }
-
-        .game-area.active {
-            overflow: hidden;
-            height: 100vh;
-        }
-
-        body.login-mode {
-            background: url('Public/Beat-Quest-SplashPage.jpg') center/cover no-repeat;
-            position: relative;
-        }
-
-        body.login-mode::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.4);
-            z-index: 0;
-        }
-
-        body.login-mode > * {
-            position: relative;
-            z-index: 1;
         }
 
         .header {
@@ -128,33 +95,6 @@
             flex-direction: column;
         }
 
-        .compact-header {
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(10px);
-            padding: 6px 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.85rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            flex-shrink: 0;
-            margin-bottom: 20px;
-        }
-
-        .room-display {
-            font-weight: 600;
-            color: #74b9ff;
-        }
-
-        .status-dot {
-            color: #e74c3c;
-            font-size: 1.2rem;
-        }
-
-        .status-dot.connected {
-            color: #27ae60;
-        }
-
         .status-bar {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
@@ -183,7 +123,7 @@
 
         .rhythm-tiles {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: 10px;
         }
 
@@ -227,14 +167,6 @@
             margin: 0 !important;
         }
 
-        .rhythm-tile img {
-            pointer-events: none;
-            user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-        }
-
         .rhythm-tile:hover {
             transform: translateY(-3px) scale(1.02);
             box-shadow:
@@ -252,10 +184,11 @@
         }
 
         .answer-area {
-            background: white;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
             border-radius: 15px;
             padding: 15px;
-            border: 1px solid rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.18);
             flex: 1;
             min-height: 0;
         }
@@ -264,7 +197,6 @@
             text-align: center;
             margin-bottom: 20px;
             font-size: 1.2rem;
-            color: #333;
         }
 
         .measure-container {
@@ -274,13 +206,12 @@
         }
 
         .answer-staff {
+            background: white;
+            border-radius: 8px;
             padding: 20px 50px 20px 20px;
             position: relative;
-            width: min(900px, 95vw);
-            max-width: 900px;
+            width: min(900px, 96vw);
             height: 120px;
-            display: flex;
-            align-items: center; /* Center the staff vertically */
         }
 
         .answer-staff-label {
@@ -299,190 +230,65 @@
         .staff-container {
             position: relative;
             height: 80px;
-            width: 100%; /* Take full width of parent */
-            margin-top: 0px; /* Remove top margin to center in white area */
-            display: grid;
-            grid-template-areas: "clef timesig measures";
-            grid-template-columns: 30px 40px 1fr;
-            grid-template-rows: 1fr;
-            align-items: stretch; /* Allow full height for perfect centering */
+            margin-top: 10px;
         }
 
         .staff-lines {
             position: absolute;
             width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            grid-area: 1 / 1 / 2 / -1;
-            z-index: 1;
-            display: flex;
-            align-items: center; /* Center the staff line vertically */
+            height: 20px;
+            top: 30px;
         }
 
         .staff-line {
+            position: absolute;
             width: 100%;
-            height: 2px; /* Slightly thicker for better visibility */
+            height: 1px;
             background: #333;
-            /* No top positioning needed - parent centers it */
+            top: 9px; /* Single line in the middle for rhythm notation */
         }
 
         .percussion-clef {
-            grid-area: clef;
-            justify-self: center;
-            align-self: center;
-            width: 22px;
-            height: 20px;
-            z-index: 5;
-            position: relative;
-        }
-
-        .percussion-clef::before,
-        .percussion-clef::after {
-            content: '';
             position: absolute;
-            width: 8px;
-            height: 20px;
-            background: #333;
-            top: 0;
-        }
-
-        .percussion-clef::before {
-            left: 3px;
-        }
-
-        .percussion-clef::after {
-            right: 0px;
-        }
-
-        .time-signature {
-            grid-area: timesig;
-            justify-self: center;
-            align-self: center;
-            text-align: center;
+            left: 10px;
+            top: 15px;
+            font-size: 28px;
             font-weight: bold;
-            font-size: clamp(16px, 2.5vw, 24px);
             color: #333;
             z-index: 5;
-            line-height: 0.8; /* Tighter line height for better vertical centering */
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            height: 100%;
-        }
-
-        .time-sig-top, .time-sig-bottom {
-            display: block;
-            margin: 0;
-            padding: 0;
         }
 
         .beat-divisions {
-            grid-area: measures;
-            position: relative;
+            position: absolute;
             width: 100%;
             height: 100%;
             display: flex;
-        }
-
-        .responsive-measures {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            display: grid;
-            grid-template-areas:
-                "beat1 beat2 beat3 beat4 barline1 beat5 beat6 beat7 beat8 doublebar";
-            grid-template-columns:
-                minmax(70px, 1fr) minmax(70px, 1fr) minmax(70px, 1fr) minmax(70px, 1fr)
-                8px
-                minmax(70px, 1fr) minmax(70px, 1fr) minmax(70px, 1fr) minmax(70px, 1fr)
-                16px;
-            align-items: center;
-            gap: 2px;
-            overflow-x: auto;
-            overflow-y: hidden;
-            scroll-behavior: smooth;
-            scroll-snap-type: x mandatory;
-        }
-
-        .responsive-measures.fit-mode {
-            grid-template-columns:
-                1fr 1fr 1fr 1fr
-                8px
-                1fr 1fr 1fr 1fr
-                16px;
-            overflow-x: hidden;
         }
 
         .beat-drop-zone {
-            scroll-snap-align: start;
+            flex: 1;
             position: relative;
-            min-height: 60px;
-            display: grid;
-            grid-template-areas: "notation";
-            place-items: center;
-        }
-
-        /* Grid area assignments for each beat using absolute beat position */
-        .beat-drop-zone[data-absolute-beat="1"] { grid-area: beat1; }
-        .beat-drop-zone[data-absolute-beat="2"] { grid-area: beat2; }
-        .beat-drop-zone[data-absolute-beat="3"] { grid-area: beat3; }
-        .beat-drop-zone[data-absolute-beat="4"] { grid-area: beat4; }
-        .beat-drop-zone[data-absolute-beat="5"] { grid-area: beat5; }
-        .beat-drop-zone[data-absolute-beat="6"] { grid-area: beat6; }
-        .beat-drop-zone[data-absolute-beat="7"] { grid-area: beat7; }
-        .beat-drop-zone[data-absolute-beat="8"] { grid-area: beat8; }
-
-        /* Bar line between measures */
-        .measure-bar-line {
-            grid-area: barline1;
-            width: 100%;
-            height: 40px;
             display: flex;
-            justify-content: center;
             align-items: center;
-            position: relative;
-        }
-
-        .measure-bar-line::before {
-            content: '';
-            width: 3px;
-            height: 30px; /* Shorter than container to avoid crossing staff line */
-            background: #333;
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        /* Double bar line as separate element */
-        .double-bar {
-            grid-area: doublebar;
-            width: 100%;
-            height: 40px;
-            display: flex;
             justify-content: center;
-            align-items: center;
-            position: relative;
+            transition: all 0.3s ease;
         }
 
-        .double-bar::before,
-        .double-bar::after {
+        /* Only show bar line in the middle (after beat 4) */
+        .beat-drop-zone[data-beat="4"] {
+            border-right: 3px solid #333; /* Bar line between measures */
+            margin-right: 15px; /* Add space after bar line */
+        }
+
+        /* Add thick line to the right of the last bar to make double bar */
+        .beat-drop-zone[data-beat="4"][data-measure="2"]::after {
             content: '';
             position: absolute;
-            width: 1px;
-            height: 30px; /* Shorter than container to avoid crossing staff line */
-            background: #333;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        .double-bar::before {
-            left: 2px;
-        }
-
-        .double-bar::after {
-            right: 2px;
+            right: -10px;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #333; /* Thick line to the right */
         }
 
         /* Beat indicators inside white area */
@@ -515,58 +321,47 @@
         }
 
         .beat-notation {
-            grid-area: notation;
+            position: absolute;
             width: 100%;
             height: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
-            z-index: 3;
         }
 
-        /* Ensure notes are perfectly centered on staff line */
-        .beat-notation svg {
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: contain;
-            /* Position notes lower so staff line goes through notehead center */
-            object-position: center 70%;
-        }
-
-        .beat-notation img {
-            width: 100%;
+        /* A dropped rhythm PNG. Width is set inline as (beats * 100%) of one
+           responsive beat cell, so it scales with the screen and spans its
+           continuation beats. object-fit keeps the aspect ratio; object-position
+           pins the noteheads onto the single staff line. */
+        .placed-note {
+            position: absolute;
+            left: 0;
+            top: 0;
             height: 100%;
             object-fit: contain;
-            /* Position notes lower so staff line goes through notehead center */
-            object-position: center 70%;
+            object-position: center 44%;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-select: none;
+            z-index: 2;
         }
 
         .remove-btn {
             position: absolute;
-            top: 2px;
-            right: 2px;
-            background: rgba(255, 71, 87, 0.9);
+            top: -8px;
+            right: -8px;
+            background: #ff4757;
             color: white;
             border: none;
             border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            font-size: 12px;
-            font-weight: bold;
+            width: 16px;
+            height: 16px;
+            font-size: 9px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 10;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            transition: all 0.2s ease;
-        }
-
-        .remove-btn:hover {
-            background: rgba(255, 71, 87, 1);
-            transform: scale(1.1);
-            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
         }
 
         .feedback {
@@ -592,92 +387,6 @@
             border: 1px solid #3498db;
         }
 
-        .submit-section {
-            text-align: center;
-            margin-top: 30px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .submit-btn {
-            background: linear-gradient(45deg, #27ae60, #229954);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 25px;
-            font-size: 1.2rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
-        }
-
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
-        }
-
-        .submit-btn:disabled {
-            background: #95a5a6;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .submit-hint {
-            margin-top: 10px;
-            font-size: 0.9rem;
-            opacity: 0.8;
-        }
-
-        .answer-controls {
-            text-align: right;
-            margin-bottom: 10px;
-            padding-right: 10px;
-        }
-
-        .fit-btn {
-            background: rgba(0, 0, 0, 0.05);
-            border: 2px solid rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            width: 32px;
-            height: 32px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            color: #333;
-        }
-
-        .fit-btn:hover {
-            background: rgba(0, 0, 0, 0.1);
-            border-color: rgba(0, 0, 0, 0.4);
-            transform: scale(1.05);
-        }
-
-        .fit-btn.active {
-            background: rgba(52, 152, 219, 0.1);
-            border-color: #3498db;
-            color: #3498db;
-        }
-
-        .fit-btn::before {
-            content: '';
-            width: 16px;
-            height: 12px;
-            border: 2px solid currentColor;
-            border-radius: 2px;
-            position: relative;
-        }
-
-        .fit-btn.active::before {
-            border-style: dashed;
-        }
-
 
         /* Tablet Layout */
         @media (max-width: 1024px) {
@@ -694,138 +403,46 @@
             }
 
             .rhythm-tile {
-                min-height: 70px;
+                min-height: 100px;
                 padding: 0;
             }
         }
 
-        /* Force landscape orientation only for game area */
+        /* Landscape orientation hint */
         @media (max-width: 768px) and (orientation: portrait) {
-            .game-area.active {
-                display: none !important;
-            }
-
-            .landscape-warning {
-                display: flex !important;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                height: 100vh;
+            .game-area::before {
+                content: "💡 Tip: Rotate to landscape for better experience";
+                display: block;
                 text-align: center;
-                padding: 20px;
+                background: rgba(255, 255, 255, 0.1);
+                padding: 8px;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                font-size: 0.8rem;
+                border: 1px solid rgba(255, 255, 255, 0.2);
             }
-
-            .landscape-warning h2 {
-                font-size: 1.5rem;
-                margin-bottom: 20px;
-            }
-
-            .landscape-warning p {
-                font-size: 1rem;
-                opacity: 0.8;
-            }
-        }
-
-        .landscape-warning {
-            display: none;
         }
 
         /* Mobile Layout - Large phones and small tablets */
-        @media (max-width: 1024px) {
-            body {
-                padding: 0;
-                overflow: hidden;
-                height: 100vh;
-            }
-
-            .game-area.active {
-                height: 100vh;
-                padding: 0;
-                margin: 0;
-                display: flex;
-                flex-direction: column;
-            }
-
-            .compact-header {
-                margin-bottom: 0;
-                padding: 4px 10px;
-                font-size: 0.8rem;
-                flex-shrink: 0;
-                height: 32px;
-            }
-
-            .rhythm-bank {
-                flex: 1;
-                overflow-y: auto;
-                margin-bottom: 0;
-                padding: 8px 8px 35vh 8px;
-                min-height: 0;
-            }
-
-            .answer-area {
-                position: fixed !important;
-                bottom: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                background: white !important;
-                padding: 8px !important;
-                margin: 0 !important;
-                border-top: 1px solid rgba(0, 0, 0, 0.1) !important;
-                z-index: 9999 !important;
-                height: 35vh !important;
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.5rem;
+                margin: 15px 0;
             }
 
             .answer-staff {
-                width: 95vw !important;
-                max-width: none !important;
-                padding: 4px 4px 4px 4px !important;
-                height: 60px !important;
-                margin: 0 auto !important;
+                width: 95vw;
+                max-width: 700px;
+                padding: 12px 25px 12px 12px;
+                height: 100px;
             }
 
             .staff-container {
                 height: 70px;
-                grid-template-columns: 25px 35px 1fr;
-                grid-template-rows: 1fr;
-                align-items: stretch;
             }
 
             .beat-drop-zone {
                 min-height: 70px;
-            }
-
-            .responsive-measures {
-                grid-template-columns:
-                    minmax(50px, 1fr) minmax(50px, 1fr) minmax(50px, 1fr) minmax(50px, 1fr)
-                    6px
-                    minmax(50px, 1fr) minmax(50px, 1fr) minmax(50px, 1fr) minmax(50px, 1fr)
-                    10px;
-            }
-
-            .responsive-measures.fit-mode {
-                grid-template-columns:
-                    1fr 1fr 1fr 1fr
-                    6px
-                    1fr 1fr 1fr 1fr
-                    10px;
-            }
-
-            .measure-bar-line {
-                height: 30px;
-            }
-
-            .measure-bar-line::before {
-                height: 25px;
-            }
-
-            .double-bar {
-                height: 30px;
-            }
-
-            .double-bar::before,
-            .double-bar::after {
-                width: 1px;
-                height: 25px;
             }
 
             .beat-drop-zone::before {
@@ -833,27 +450,24 @@
                 bottom: 3px;
             }
 
-            .rhythm-tiles {
-                grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-                gap: 6px;
-            }
-
             .rhythm-bank {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
                 padding: 10px;
             }
 
             .rhythm-tile {
-                min-height: 60px;
+                min-height: 80px;
                 padding: 0;
-                font-size: 0.65rem;
+                font-size: 0.7rem;
             }
 
             .remove-btn {
-                width: 18px;
-                height: 18px;
+                width: 20px;
+                height: 20px;
                 font-size: 10px;
-                top: 1px;
-                right: 1px;
+                top: -10px;
+                right: -10px;
             }
 
             /* Touch-friendly interactions */
@@ -884,47 +498,10 @@
 
             .staff-container {
                 height: 60px;
-                grid-template-columns: 20px 30px 1fr;
-                grid-template-rows: 1fr;
-                align-items: stretch;
             }
 
             .beat-drop-zone {
                 min-height: 60px;
-            }
-
-            .responsive-measures {
-                grid-template-columns:
-                    minmax(45px, 1fr) minmax(45px, 1fr) minmax(45px, 1fr) minmax(45px, 1fr)
-                    5px
-                    minmax(45px, 1fr) minmax(45px, 1fr) minmax(45px, 1fr) minmax(45px, 1fr)
-                    8px;
-            }
-
-            .responsive-measures.fit-mode {
-                grid-template-columns:
-                    1fr 1fr 1fr 1fr
-                    5px
-                    1fr 1fr 1fr 1fr
-                    8px;
-            }
-
-            .measure-bar-line {
-                height: 25px;
-            }
-
-            .measure-bar-line::before {
-                height: 20px;
-            }
-
-            .double-bar {
-                height: 25px;
-            }
-
-            .double-bar::before,
-            .double-bar::after {
-                width: 1px;
-                height: 20px;
             }
 
             .beat-drop-zone::before {
@@ -939,32 +516,22 @@
             }
 
             .rhythm-tile {
-                min-height: 50px;
+                min-height: 70px;
                 padding: 0;
-                font-size: 0.6rem;
+                font-size: 0.65rem;
             }
 
             .remove-btn {
-                width: 16px;
-                height: 16px;
+                width: 18px;
+                height: 18px;
                 font-size: 9px;
-                top: 1px;
-                right: 1px;
+                top: -9px;
+                right: -9px;
             }
 
-            /* Mobile notation sizing - maintain staff line alignment */
+            /* Smaller VexFlow notation on mobile */
             .beat-notation svg {
-                width: 100% !important;
-                height: 100% !important;
-                object-fit: contain !important;
-                object-position: center 70% !important;
-            }
-
-            .beat-notation img {
-                width: 100% !important;
-                height: 100% !important;
-                object-fit: contain !important;
-                object-position: center 70% !important;
+                transform: translateX(-50%) scale(1.1) !important;
             }
         }
 
@@ -978,47 +545,10 @@
 
             .staff-container {
                 height: 55px;
-                grid-template-columns: 18px 28px 1fr;
-                grid-template-rows: 1fr;
-                align-items: stretch;
             }
 
             .beat-drop-zone {
                 min-height: 55px;
-            }
-
-            .responsive-measures {
-                grid-template-columns:
-                    minmax(40px, 1fr) minmax(40px, 1fr) minmax(40px, 1fr) minmax(40px, 1fr)
-                    4px
-                    minmax(40px, 1fr) minmax(40px, 1fr) minmax(40px, 1fr) minmax(40px, 1fr)
-                    7px;
-            }
-
-            .responsive-measures.fit-mode {
-                grid-template-columns:
-                    1fr 1fr 1fr 1fr
-                    4px
-                    1fr 1fr 1fr 1fr
-                    7px;
-            }
-
-            .measure-bar-line {
-                height: 20px;
-            }
-
-            .measure-bar-line::before {
-                height: 18px;
-            }
-
-            .double-bar {
-                height: 20px;
-            }
-
-            .double-bar::before,
-            .double-bar::after {
-                width: 1px;
-                height: 18px;
             }
 
             .beat-drop-zone::before {
@@ -1033,76 +563,57 @@
             }
 
             .rhythm-tile {
-                min-height: 35px;
-                font-size: 0.55rem;
+                min-height: 40px;
+                font-size: 0.6rem;
             }
 
-            /* Tiny screen notation sizing - maintain staff line alignment */
+            /* Even smaller notation for tiny screens */
             .beat-notation svg {
-                width: 100% !important;
-                height: 100% !important;
-                object-fit: contain !important;
-                object-position: center 70% !important;
-            }
-
-            .beat-notation img {
-                width: 100% !important;
-                height: 100% !important;
-                object-fit: contain !important;
-                object-position: center 70% !important;
+                transform: translateX(-50%) scale(1.0) !important;
             }
         }
     </style>
 </head>
-<body class="login-mode">
+<body>
+    <div class="header">
+        <h1>🥁 Rhythm Dictation - Student</h1>
+    </div>
 
     <!-- Login Form -->
     <div class="login-form" id="loginForm">
         <h2 style="text-align: center; margin-bottom: 20px;">Join Rhythm Session</h2>
         <div class="form-group">
             <label for="studentName">Your Name:</label>
-            <input type="text" id="studentName" placeholder="Enter your name" value="Test Student" required>
+            <input type="text" id="studentName" placeholder="Enter your name" required>
         </div>
         <div class="form-group">
             <label for="roomCode">Room Code:</label>
-            <input type="text" id="roomCode" placeholder="Enter room code" value="TEST123" required>
+            <input type="text" id="roomCode" placeholder="Enter room code" required>
         </div>
         <button class="btn-login" id="joinBtn">Join Session</button>
     </div>
 
     <!-- Game Area -->
     <div class="game-area" id="gameArea">
-        <div class="compact-header">
-            <span id="connectedRoom" class="room-display">Room: --</span>
-            <span id="connectionStatus" class="status-dot">●</span>
+        <div class="status-bar">
+            <div>Connected to Room: <strong id="connectedRoom">-</strong></div>
+            <div>Status: <span id="connectionStatus">Connected</span></div>
         </div>
 
         <div class="rhythm-bank">
+            <h3>Rhythm Bank</h3>
             <div class="rhythm-tiles" id="rhythmTiles">
                 <!-- Rhythm tiles will be populated by JavaScript -->
             </div>
         </div>
 
         <div class="answer-area">
-            <div class="answer-controls">
-                <button id="fitToScreenBtn" class="fit-btn" title="Toggle fit to screen"></button>
-            </div>
+            <h3>Your Answer</h3>
             <div id="measureContainer">
                 <!-- Measures will be populated by JavaScript -->
             </div>
-
-            <div class="submit-section" id="submitSection" style="display: none;">
-                <button id="submitAnswer" class="submit-btn">Submit Final Answer</button>
-            </div>
-
             <div id="feedback"></div>
         </div>
-    </div>
-
-    <!-- Landscape Warning (only shows on mobile portrait) -->
-    <div class="landscape-warning" id="landscapeWarning">
-        <h2>🔄 Please Rotate Your Device</h2>
-        <p>This rhythm exercise works best in landscape mode.<br>Please rotate your device to continue.</p>
     </div>
 
     <script type="module" src="rhythm-student.js"></script>
