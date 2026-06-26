@@ -27,8 +27,11 @@ const TYPES = {
   '.woff2': 'font/woff2',
 };
 
-http.createServer((req, res) => {
-  let urlPath = decodeURIComponent(req.url.split('?')[0]);
+const server = http.createServer((req, res) => {
+ try {
+  let urlPath;
+  try { urlPath = decodeURIComponent(req.url.split('?')[0]); }
+  catch { urlPath = req.url.split('?')[0]; }
   if (urlPath === '/') urlPath = '/home.html';
 
   const filePath = path.normalize(path.join(ROOT, urlPath));
@@ -53,6 +56,17 @@ http.createServer((req, res) => {
     });
     res.end(data);
   });
-}).listen(PORT, () => {
+ } catch (e) {
+  // Never let one bad request take the whole server down.
+  try { res.writeHead(500, { 'Content-Type': 'text/plain' }); res.end('Server error'); } catch {}
+  console.error('request error:', e && e.message);
+ }
+});
+
+// Keep the process alive through any unexpected error.
+server.on('error', (e) => console.error('server error:', e && e.message));
+process.on('uncaughtException', (e) => console.error('uncaught:', e && e.message));
+
+server.listen(PORT, () => {
   console.log(`No-cache dev server running: http://localhost:${PORT}`);
 });

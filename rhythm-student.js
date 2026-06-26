@@ -1,5 +1,16 @@
 // Import rhythm assets
 import { rhythmAssets } from './rhythm-assets/rhythm-assets.js';
+import { noteGlyphs } from './rhythm-assets/glyphs/note-glyphs.js';
+
+// "Split" placement: multi-note patterns are composed at placement time from
+// single-note glyphs dropped at their beat offsets, so every notehead is the
+// same size AND each note lands on its true beat. Offsets are in beats from the
+// start of the pattern's span. Patterns not listed here fall back to their
+// single pattern image.
+const NOTE_DECOMPOSITION = {
+    'dotted-quarter-eighth': [{ glyph: 'qd', offset: 0 }, { glyph: '8', offset: 1.5 }],
+    'eighth-quarter-eighth': [{ glyph: '8', offset: 0 }, { glyph: 'q', offset: 0.5 }, { glyph: '8', offset: 1.5 }],
+};
 
 // Rhythm Student System
 class RhythmStudent {
@@ -446,13 +457,14 @@ class RhythmStudent {
                 return;
             }
 
-            // Create img element to load the SVG
+            // Bank/choosing area uses the ORIGINAL combined pattern PNG (readable,
+            // hand-tuned). The answer area uses the split single-note glyphs.
             const img = document.createElement('img');
-            img.src = `./rhythm-assets/${asset.file}`;
+            img.src = `./rhythm-assets/${asset.file.replace(/\.svg$/, '.png')}`;
             img.style.width = '100%';
             img.style.height = '100%';
             img.style.objectFit = 'contain';
-            img.style.objectPosition = 'center top';
+            img.style.objectPosition = 'center';
             img.alt = asset.name;
 
             // Handle load success
@@ -709,30 +721,40 @@ class RhythmStudent {
                 console.log('Source tile found:', sourceTile);
                 console.log('Has child:', sourceTile?.firstChild);
 
-                // Use PNG asset instead of cloning SVG
+                const decomposition = NOTE_DECOMPOSITION[pattern.id];
                 const asset = this.rhythmAssets[pattern.id];
-                if (asset) {
-                    // Create PNG image for the placed notation
+
+                notationArea.innerHTML = `<button class="remove-btn" onclick="rhythmStudent.removeTile(${measure}, ${startBeat})">×</button>`;
+
+                if (decomposition) {
+                    // SPLIT placement: drop each single-note glyph at its beat
+                    // offset. Each glyph is a single note in a 200px-per-beat
+                    // canvas, shown at one beat-cell wide -> identical notehead
+                    // scale to every other note, positioned on its true beat.
+                    decomposition.forEach(part => {
+                        const g = noteGlyphs[part.glyph];
+                        if (!g) return;
+                        const gimg = document.createElement('img');
+                        gimg.src = `./rhythm-assets/${g.file}`;
+                        gimg.className = 'placed-note placed-glyph';
+                        gimg.style.width = '100%';                  // one beat wide
+                        gimg.style.left = (part.offset * 100) + '%'; // beat offset
+                        gimg.alt = `${pattern.id}:${part.glyph}`;
+                        notationArea.appendChild(gimg);
+                    });
+                    console.log('Split glyphs placed for pattern:', pattern.id);
+                } else if (asset) {
+                    // Single pattern image (1-beat and beamed patterns).
                     const img = document.createElement('img');
                     img.src = `./rhythm-assets/${asset.file}`;
                     img.className = 'placed-note';
-                    // Span the pattern's full beats, anchored at the span's left
-                    // edge. The assets are generated with width proportional to
-                    // beats, so (a) every pattern renders at the SAME scale at ANY
-                    // screen size (height stays constant: width/aspect is identical),
-                    // and (b) the inner notes land at their correct beat positions
-                    // (e.g. a dotted quarter on the beat, its eighth on the "and").
                     img.style.width = (beatsNeeded * 100) + '%';
                     img.style.left = '0';
                     img.alt = asset.name;
-
-                    notationArea.innerHTML = `<button class="remove-btn" onclick="rhythmStudent.removeTile(${measure}, ${startBeat})">×</button>`;
                     notationArea.appendChild(img);
-                    console.log('PNG image placed for pattern:', pattern.id);
                 } else {
-                    // Fallback if no asset found
-                    console.warn('No PNG asset found for pattern:', pattern.id);
-                    notationArea.innerHTML = `<button class="remove-btn" onclick="rhythmStudent.removeTile(${measure}, ${startBeat})">×</button><span style="color: red; font-size: 0.7rem;">Missing: ${pattern.id}</span>`;
+                    console.warn('No asset found for pattern:', pattern.id);
+                    notationArea.insertAdjacentHTML('beforeend', `<span style="color: red; font-size: 0.7rem;">Missing: ${pattern.id}</span>`);
                 }
                 targetZone.classList.add('filled');
                 this.userAnswer[measure - 1][b - 1] = patternId;
