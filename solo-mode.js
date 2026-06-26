@@ -373,6 +373,12 @@
       '.solo-ctl button.go{background:#2196f3}' +
       // primary actions (Play, Submit) sit above the rest in size/weight
       '.solo-ctl button.primary{padding:12px 24px;font-size:.98rem;border-radius:12px}' +
+      // Play is THE start action: biggest, and a distinct green (vs red Submit)
+      '.solo-ctl button.play{padding:15px 34px;font-size:1.12rem;background:#1bbf6a;color:#05291a}' +
+      '.solo-ctl button.play:hover{background:#22d978}' +
+      '.solo-ctl button.play .ic{width:1.15em;height:1.15em;stroke-width:2}' +
+      // bottom Submit bar gets a top divider since it's now under the bank
+      '#soloActions{border-top:1px solid rgba(255,255,255,.12);padding-top:14px}' +
       // hints are tertiary: smaller, muted, grouped behind a divider + label
       '.solo-ctl button.hint{font-size:.74rem;padding:7px 10px;background:rgba(255,255,255,.06);color:#cfd3e0;font-weight:600}' +
       '#soloHud .solo-hints{display:inline-flex;align-items:center;gap:6px;padding-left:12px;margin-left:2px;border-left:1px solid rgba(255,255,255,.18)}' +
@@ -410,7 +416,7 @@
         '<div class="solo-stat"><span>STREAK</span><b id="soloStreak">0</b>' + IC.flame + '</div>' +
       '</div>' +
       '<div class="solo-actions">' +
-        '<button id="soloPlay" class="primary">' + IC.play + 'Play rhythm</button>' +
+        '<button id="soloPlay" class="primary play">' + IC.play + 'Play rhythm</button>' +
         '<button id="soloMetro" class="toggle">' + IC.metro + 'Metronome</button>' +
         '<button id="soloGuide" class="toggle">' + IC.guide + 'Beat guide</button>' +
         '<span class="solo-hints"><span class="hints-label">HINTS</span>' +
@@ -425,13 +431,12 @@
     var sb = ga ? ga.querySelector('.status-bar') : null;
     if (sb) sb.insertAdjacentElement('afterend', hud); else if (ga) ga.insertBefore(hud, ga.firstChild);
 
-    // Submit / Next live in their own bar directly UNDER the answer staff.
+    // Submit / Next live in their own bar at the very bottom, under the bank.
     var actions = document.createElement('div'); actions.id = 'soloActions'; actions.className = 'solo-ctl';
     actions.innerHTML =
       '<button id="soloSubmit" class="primary go">' + IC.check + 'Submit answer</button>' +
       '<button id="soloNext" class="go" style="display:none">' + IC.next + 'Next</button>';
-    var answerArea = ga ? ga.querySelector('.answer-area') : null;
-    if (answerArea) answerArea.appendChild(actions);
+    if (ga) ga.appendChild(actions);
 
     document.getElementById('soloPlay').onclick = playTarget;
     document.getElementById('soloHintBeats').onclick = hintMistakes;
