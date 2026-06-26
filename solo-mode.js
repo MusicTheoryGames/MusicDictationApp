@@ -13,9 +13,27 @@
     target: null, measures: 2, difficulty: 'medium', tempo: 100,
     groove: 100, score: 0, streak: 0,
     correctionMode: true, metronome: false, beatGuide: false,
+    mode: 'levels', level: 1,
     hintsThisRound: 0, wrongThisRound: false, solved: false
   };
   var GROOVE_PER_WRONG = 12, GROOVE_HINT_MISTAKES = 8, GROOVE_HINT_COUNT = 5, GROOVE_GAIN_CLEAN = 15;
+
+  /* Level ladder — figures unlocked in the order Hall's "Studying Rhythm"
+     introduces them (simple-meter arc). Cumulative. "Classic" = all figures
+     (the original gameplay), always available as a fallback. */
+  var L_STEPS = [
+    ['quarter', 'two-eighths'],                                                           // L1  Ch1-3
+    ['quarter-rest', 'half'],                                                              // L2  + rests & half
+    ['dotted-quarter-eighth'],                                                             // L3  Ch4 dotted/tie
+    ['four-sixteenths', 'eighth-two-sixteenths', 'two-sixteenths-eighth', 'sixteenth-eighth-sixteenth'], // L4 Ch6 sixteenths
+    ['dotted-eighth-sixteenth', 'sixteenth-dotted-eighth'],                                // L5  Ch7 dotted eighths
+    ['eighth-rest-eighth', 'eighth-eighth-rest', 'eighth-quarter-eighth', 'eighth-rest-two-sixteenths', 'sixteenth-rest-three-sixteenths'], // L6 Ch9 rests & syncopation
+    ['triplet-eighths', 'triplet-quarters']                                                // L7  Ch12 triplets
+  ];
+  var LEVEL_LABELS = { 1: 'Quarters & eighths', 2: '+ rests & half notes', 3: '+ dotted quarter', 4: '+ sixteenths', 5: '+ dotted eighths', 6: '+ rests & syncopation', 7: '+ triplets' };
+  var LEVELS = {};
+  (function () { var acc = []; for (var i = 0; i < L_STEPS.length; i++) { acc = acc.concat(L_STEPS[i]); LEVELS[i + 1] = acc.slice(); } })();
+  function levelIds() { return S.mode === 'classic' ? null : (LEVELS[S.level] || LEVELS[7]); }
 
   /* --------------------------------------------------------- persistence */
   function load() {
@@ -26,14 +44,20 @@
       if (typeof d.correctionMode === 'boolean') S.correctionMode = d.correctionMode;
       if (typeof d.metronome === 'boolean') S.metronome = d.metronome;
       if (typeof d.beatGuide === 'boolean') S.beatGuide = d.beatGuide;
+      if (d.mode === 'levels' || d.mode === 'classic') S.mode = d.mode;
+      if (typeof d.level === 'number' && d.level >= 1 && d.level <= 7) S.level = d.level;
     } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem('beatquest-solo', JSON.stringify({ score: S.score, streak: S.streak, correctionMode: S.correctionMode, metronome: S.metronome, beatGuide: S.beatGuide })); } catch (e) {}
+    try { localStorage.setItem('beatquest-solo', JSON.stringify({ score: S.score, streak: S.streak, correctionMode: S.correctionMode, metronome: S.metronome, beatGuide: S.beatGuide, mode: S.mode, level: S.level })); } catch (e) {}
   }
 
   /* ----------------------------------------------------- target generation */
-  function patternsFor(diff) { return (rs.rhythmPatterns && rs.rhythmPatterns[diff]) || rs.rhythmPatterns.medium; }
+  function fullMedium() { return (rs.rhythmPatterns && rs.rhythmPatterns.medium) || []; }
+  function patternsFor() {
+    var ids = levelIds(), base = fullMedium();
+    return ids ? base.filter(function (p) { return ids.indexOf(p.id) !== -1; }) : base;
+  }
   function genMeasure(pats) {
     var res = [], beat = 1, guard = 0;
     while (beat <= 4 && guard++ < 20) {
@@ -46,7 +70,7 @@
     return res;
   }
   function generateTarget() {
-    var pats = patternsFor(S.difficulty), t = [];
+    var pats = patternsFor(), t = [];
     for (var m = 0; m < S.measures; m++) t.push(genMeasure(pats));
     return t;
   }
@@ -63,9 +87,17 @@
     return exp;
   }
   function findPattern(id) {
-    var pats = patternsFor(S.difficulty);
-    for (var i = 0; i < pats.length; i++) if (pats[i].id === id) return pats[i];
+    var b = fullMedium();   // search the full set so any placed/target id resolves
+    for (var i = 0; i < b.length; i++) if (b[i].id === id) return b[i];
     return null;
+  }
+  // Hide bank tiles that aren't in the current level's vocabulary (the bank is
+  // rebuilt each round by the engine; we filter it cosmetically afterwards).
+  function filterBank() {
+    var ids = levelIds();
+    document.querySelectorAll('.rhythm-tile').forEach(function (t) {
+      t.style.display = (!ids || ids.indexOf(t.dataset.patternId) !== -1) ? '' : 'none';
+    });
   }
 
   /* ----------------------------------------------------------------- audio
@@ -223,6 +255,7 @@
     S.target = generateTarget();
     S.hintsThisRound = 0; S.wrongThisRound = false; S.solved = false;
     if (rs.updateGameSettings) rs.updateGameSettings({ measureCount: S.measures, difficulty: S.difficulty, tempo: S.tempo });
+    filterBank();
     clearMarks();
     document.getElementById('soloNext').style.display = 'none';
     document.getElementById('soloSubmit').style.display = '';
@@ -323,6 +356,8 @@
       '#soloHud button{font-family:inherit;font-weight:700;font-size:.85rem;border:none;border-radius:10px;padding:10px 15px;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;transition:.12s}' +
       '#soloHud button:hover{transform:translateY(-1px);background:rgba(255,255,255,.2)}' +
       '#soloHud button.go{background:#2196f3}#soloHud button.hint{background:rgba(255,210,74,.2);color:#ffe1a0}' +
+      '#soloHud select{font-family:inherit;font-size:.82rem;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px 8px}' +
+      '#soloHud select option{color:#111}' +
       '#soloHud button.toggle.on{background:#19e07a;color:#06210f;box-shadow:0 0 0 2px rgba(25,224,122,.4)}' +
       '#soloHud .solo-toggle{display:flex;align-items:center;gap:6px;font-size:.8rem;opacity:.85;margin-left:auto;cursor:pointer}' +
       '#soloHud #soloMsg{margin-top:10px;font-size:.95rem;min-height:1.3em;font-weight:600}' +
@@ -335,9 +370,13 @@
   function buildHud() {
     if (document.getElementById('soloHud')) return;
     injectStyle();
+    var lvOpts = '';
+    for (var L = 1; L <= 7; L++) lvOpts += '<option value="' + L + '">Lvl ' + L + ' · ' + LEVEL_LABELS[L] + '</option>';
+    lvOpts += '<option value="classic">Classic (all figures)</option>';
     var hud = document.createElement('div'); hud.id = 'soloHud';
     hud.innerHTML =
       '<div class="solo-stats">' +
+        '<div class="solo-stat"><span>LEVEL</span><select id="soloLevel">' + lvOpts + '</select></div>' +
         '<div class="solo-stat groove"><span>GROOVE</span><div class="solo-bar"><i id="soloGrooveFill"></i></div><b id="soloGroovePct">100%</b></div>' +
         '<div class="solo-stat"><span>SCORE</span><b id="soloScore">0</b></div>' +
         '<div class="solo-stat"><span>STREAK</span><b id="soloStreak">0</b> 🔥</div>' +
@@ -371,6 +410,13 @@
       document.getElementById('soloSubmit').style.display = 'none';
       document.getElementById('soloNext').style.display = '';
       save(); render();
+    };
+    var lv = document.getElementById('soloLevel');
+    lv.value = (S.mode === 'classic') ? 'classic' : String(S.level);
+    lv.onchange = function () {
+      if (lv.value === 'classic') { S.mode = 'classic'; }
+      else { S.mode = 'levels'; S.level = parseInt(lv.value, 10); }
+      save(); newRound();
     };
     var cb = document.getElementById('soloCorrect');
     cb.checked = S.correctionMode;
