@@ -75,7 +75,11 @@ function generate() {
             VF.Formatter.FormatAndDraw(context, stave, notes);
 
             const inner = svg.innerHTML.replace(/<svg[^>]*>/, '').replace(/<\/svg>$/, '');
+            // VexFlow stems/brackets are stroked paths (fill:none) but the stroke
+            // colour is lost when we re-wrap the SVG, making stems invisible. Give
+            // every fill:none path a black stroke so stems actually render.
             const cleanSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="120" viewBox="0 0 ${width} 120">
+<style>path[fill="none"]{stroke:#000;}</style>
 ${inner}
 </svg>`;
 

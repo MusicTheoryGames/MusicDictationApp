@@ -336,7 +336,10 @@ function generateAssets() {
                 // Create a clean SVG without cropping - show full notation.
                 // viewBox/width scale with the proportional canvas width.
                 const viewBox = `0 0 ${width} 120`;
+                // Give fill:none paths (stems, tuplet brackets) a stroke so they
+                // render -- VexFlow's stroke colour is lost when we re-wrap the SVG.
                 const cleanSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="120" viewBox="${viewBox}">
+<style>path[fill="none"]{stroke:#000;}</style>
 ${vexFlowContent}
 </svg>`;
 
