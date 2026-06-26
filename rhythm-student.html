@@ -229,7 +229,9 @@
                vertical staff/time-sig tuning is untouched. */
             width: 100%;
             max-width: 1500px;
-            height: 120px;
+            /* Height scales with width so note size, staff line and beat numbers
+               stay proportional — notes can never grow into the numbers. */
+            height: clamp(140px, 14vw, 210px);
         }
 
         .answer-staff-label {
@@ -247,15 +249,14 @@
 
         .staff-container {
             position: relative;
-            height: 80px;
-            margin-top: 10px;
+            height: 100%;     /* fills the (scaling) answer-staff */
+            margin-top: 0;
         }
 
         .staff-lines {
             position: absolute;
             width: 100%;
-            height: 20px;
-            top: 30px;
+            top: 44%;         /* line in the upper-middle; stems + numbers fit below */
         }
 
         .staff-line {
@@ -263,7 +264,7 @@
             width: 100%;
             height: 1px;
             background: #333;
-            top: 9px; /* Single line in the middle for rhythm notation */
+            top: 0;
         }
 
         .percussion-clef {
@@ -282,7 +283,7 @@
         .answer-time-sig {
             position: absolute;
             left: 2px;
-            top: 35px;
+            top: 44%;
             transform: translateY(-50%);
             display: flex;
             flex-direction: column;
@@ -332,8 +333,8 @@
         .beat-drop-zone::before {
             content: attr(data-beat);
             position: absolute;
-            /* Below the staff so stems-down notes don't cover the numbers. */
-            bottom: -10px;
+            /* At the bottom of the (now scaling) cell — always below the notes. */
+            bottom: 6px;
             /* Anchored to the beat ONSET (cell's left edge) so the number sits
                where the beat actually starts and notes line up under it. */
             left: 0;
@@ -380,7 +381,7 @@
                assets are width-proportional to beats, so height (auto) is identical
                for every pattern at any screen size. Anchored left so inner notes
                align to their beats. */
-            top: 47%;
+            top: 44%;
             transform: translateY(-50%);
             height: auto;
             pointer-events: none;
@@ -477,11 +478,11 @@
                 width: 95vw;
                 max-width: 700px;
                 padding: 12px 25px 12px 12px;
-                height: 100px;
+                /* height comes from the responsive clamp (base rule) */
             }
 
             .staff-container {
-                height: 70px;
+                height: 100%;
             }
 
             .beat-drop-zone {
@@ -540,7 +541,7 @@
             }
 
             .staff-container {
-                height: 60px;
+                height: 100%;
             }
 
             .beat-drop-zone {
@@ -587,7 +588,7 @@
             }
 
             .staff-container {
-                height: 55px;
+                height: 100%;
             }
 
             .beat-drop-zone {
