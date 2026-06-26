@@ -1,0 +1,141 @@
+/* ============================================================================
+   BeatQuest Suite — THEME SKINS (cosmetic only)
+   Applied via a class on <body>: theme-mpc | theme-manuscript | theme-arcade |
+   theme-brutalist. These rules ONLY change color, background, font, border,
+   shadow and image tint. They never touch layout/position/size of the staff,
+   beats, notes, time signature or bar lines — the alignment engine is frozen.
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800&family=Share+Tech+Mono&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Caveat:wght@700&family=Press+Start+2P&family=VT323&family=Anton&family=Space+Mono:wght@400;700&display=swap');
+
+/* ============================ 01 · MPC (hardware) ========================== */
+body.theme-mpc{
+  font-family:'Saira Condensed',sans-serif;color:#e9e9ec;
+  background:
+    repeating-linear-gradient(91deg,rgba(255,255,255,.05) 0 1px,rgba(0,0,0,.06) 1px 2px),
+    linear-gradient(180deg,#46464a,#2c2c30 60%,#1c1c1f) !important;
+}
+body.theme-mpc .header h1{font-family:'Saira Condensed';font-weight:800;letter-spacing:.28em;text-transform:uppercase;
+  color:#ececed;text-shadow:0 1px 0 #000,0 -1px 0 rgba(255,255,255,.15)}
+body.theme-mpc .status-bar{background:linear-gradient(180deg,#3a3a3e,#242427);border:1px solid #0c0c0d;
+  color:#cfcfd3;box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
+body.theme-mpc #connectedRoom,body.theme-mpc #connectionStatus{font-family:'Share Tech Mono',monospace;
+  color:#39ff8b;letter-spacing:.1em;text-shadow:0 0 8px #39ff8b}
+body.theme-mpc .rhythm-bank,body.theme-mpc .answer-area{
+  background:linear-gradient(180deg,#3a3a3e,#26262a) !important;border:1px solid #0c0c0d !important;backdrop-filter:none !important}
+body.theme-mpc .rhythm-bank h3,body.theme-mpc .answer-area h3{font-family:'Saira Condensed';font-weight:700;
+  letter-spacing:.2em;text-transform:uppercase;color:#cfcfd3}
+body.theme-mpc .rhythm-tile{background:linear-gradient(180deg,#2a2a2d,#161618) !important;border:1px solid #0c0c0d !important;
+  box-shadow:inset 0 2px 1px rgba(255,255,255,.08),inset 0 -4px 8px rgba(0,0,0,.6),0 3px 0 #0a0a0b !important}
+body.theme-mpc .rhythm-tile:hover{box-shadow:inset 0 0 22px rgba(60,160,255,.55),0 1px 0 #0a0a0b !important}
+body.theme-mpc .rhythm-tile img{filter:invert(1) brightness(1.5) drop-shadow(0 0 6px rgba(80,180,255,.7))}
+body.theme-mpc .answer-staff{background:#c9d6b9 !important;border:2px solid #1c1c1e !important;border-radius:8px !important;
+  box-shadow:inset 0 3px 12px rgba(0,0,0,.4),inset 0 0 40px rgba(120,140,90,.4) !important}
+body.theme-mpc .staff-line{background:#26301c !important}
+body.theme-mpc .answer-time-sig{color:#26301c !important}
+body.theme-mpc .beat-drop-zone::before{color:#5a6a48}
+body.theme-mpc .placed-note{filter:none;mix-blend-mode:multiply}
+body.theme-mpc .btn-login,body.theme-mpc .submit-btn,body.theme-mpc #submitAnswer{
+  font-family:'Saira Condensed';font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#1a0d0d;
+  background:linear-gradient(180deg,#ff5a4d,#d23023) !important;border:1px solid #7a1a12 !important;border-radius:8px !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 3px 0 #7a1a12 !important}
+
+/* ========================= 02 · Manuscript (paper) ======================== */
+body.theme-manuscript{
+  font-family:'Cormorant Garamond',serif;color:#2a2118;
+  background:
+    radial-gradient(60% 50% at 80% 90%,rgba(160,130,80,.10),transparent 60%),
+    radial-gradient(40% 40% at 12% 14%,rgba(150,120,70,.10),transparent 60%),
+    #efe6cf !important;
+}
+body.theme-manuscript .header h1{font-family:'Cormorant Garamond';font-weight:600;font-size:2.4rem;color:#2a2118}
+body.theme-manuscript .status-bar{background:rgba(255,255,255,.35);border:1px solid #c3b393;color:#3a3024;font-style:italic;font-size:1.1rem}
+body.theme-manuscript #connectedRoom{font-variant:small-caps;letter-spacing:.06em;color:#8a2b22}
+body.theme-manuscript #connectionStatus{color:#5c4f3c}
+body.theme-manuscript .rhythm-bank,body.theme-manuscript .answer-area{
+  background:rgba(255,252,242,.7) !important;border:1px solid #c3b393 !important;backdrop-filter:none !important}
+body.theme-manuscript .rhythm-bank h3,body.theme-manuscript .answer-area h3{font-family:'Cormorant Garamond';
+  font-variant:small-caps;letter-spacing:.12em;font-weight:600;color:#2a2118}
+body.theme-manuscript .rhythm-tile{background:#fbf6e7 !important;border:1px solid #d8c9a6 !important;border-radius:4px !important;
+  box-shadow:0 1px 2px rgba(120,95,55,.2) !important}
+body.theme-manuscript .rhythm-tile:hover{background:#fff;box-shadow:0 4px 10px rgba(120,95,55,.25) !important}
+body.theme-manuscript .rhythm-tile img{filter:none;mix-blend-mode:multiply}
+body.theme-manuscript .answer-staff{background:#f5ecd6 !important;border:1.5px solid #2a2118 !important;border-radius:3px !important;
+  box-shadow:0 1px 0 #fff,inset 0 0 40px rgba(150,120,70,.15) !important}
+body.theme-manuscript .staff-line{background:#2a2118 !important}
+body.theme-manuscript .answer-time-sig{color:#2a2118 !important}
+body.theme-manuscript .beat-drop-zone::before{color:#9a8a6a;font-style:italic}
+body.theme-manuscript .placed-note{filter:none;mix-blend-mode:multiply}
+body.theme-manuscript .btn-login,body.theme-manuscript .submit-btn,body.theme-manuscript #submitAnswer{
+  font-family:'Cormorant Garamond';font-style:italic;font-weight:600;font-size:1.25rem;color:#f3ead4;
+  background:radial-gradient(circle at 38% 32%,#c0392b,#7d211a 70%) !important;border:2px solid #4e120d !important;border-radius:6px !important;
+  box-shadow:inset 0 2px 4px rgba(255,255,255,.25),0 4px 10px rgba(0,0,0,.3) !important}
+
+/* ============================ 03 · Arcade (CRT) =========================== */
+body.theme-arcade{
+  font-family:'VT323',monospace;color:#d6f7ff;
+  background:
+    radial-gradient(900px 500px at 12% -10%,rgba(124,92,255,.25),transparent 55%),
+    radial-gradient(900px 500px at 95% 0,rgba(34,211,238,.16),transparent 55%),
+    #05030f !important;
+}
+body.theme-arcade::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9998;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.22) 0 2px,transparent 2px 4px)}
+body.theme-arcade .header h1{font-family:'Press Start 2P';font-size:1.4rem;color:#fff;
+  text-shadow:0 0 6px #ff2ea6,0 0 16px #ff2ea6,0 0 34px #b3007a}
+body.theme-arcade .status-bar{background:rgba(124,92,255,.12);border:1px solid #2a1860;color:#8a7adf}
+body.theme-arcade #connectedRoom,body.theme-arcade #connectionStatus{font-family:'Press Start 2P';font-size:.7rem;
+  color:#fff;text-shadow:0 0 8px #16f0ff}
+body.theme-arcade .rhythm-bank,body.theme-arcade .answer-area{
+  background:rgba(22,8,43,.6) !important;border:2px solid #2a1860 !important;backdrop-filter:none !important}
+body.theme-arcade .rhythm-bank h3,body.theme-arcade .answer-area h3{font-family:'Press Start 2P';font-size:.75rem;
+  color:#fff;text-shadow:0 0 8px #ff2ea6}
+body.theme-arcade .rhythm-tile{background:radial-gradient(120% 120% at 50% 20%,#3a1170,#1a0840) !important;
+  border:2px solid #ff2ea6 !important;border-radius:12px !important;
+  box-shadow:0 0 12px rgba(255,46,166,.5),inset 0 0 16px rgba(255,46,166,.25),0 5px 0 #7a0f52 !important}
+body.theme-arcade .rhythm-tile:nth-child(even){border-color:#16f0ff !important;
+  box-shadow:0 0 12px rgba(22,240,255,.5),inset 0 0 16px rgba(22,240,255,.2),0 5px 0 #0a6e78 !important}
+body.theme-arcade .rhythm-tile img{filter:invert(1) brightness(1.7) drop-shadow(0 0 6px #fff)}
+body.theme-arcade .answer-staff{background:radial-gradient(120% 120% at 50% 0,#10082b,#060219) !important;
+  border:2px solid #16f0ff !important;border-radius:6px !important;box-shadow:inset 0 0 40px rgba(22,240,255,.18),0 0 18px rgba(22,240,255,.25) !important}
+body.theme-arcade .staff-line{background:#16f0ff !important;box-shadow:0 0 10px #16f0ff}
+body.theme-arcade .answer-time-sig{color:#ffe44d !important;text-shadow:0 0 10px #ffae00}
+body.theme-arcade .beat-drop-zone::before{color:#6df0ff}
+body.theme-arcade .placed-note{filter:invert(1) brightness(1.6) drop-shadow(0 0 8px #16f0ff)}
+body.theme-arcade .btn-login,body.theme-arcade .submit-btn,body.theme-arcade #submitAnswer{
+  font-family:'Press Start 2P';font-size:.8rem;color:#06121f;
+  background:linear-gradient(180deg,#16f0ff,#06b6c9) !important;border:none !important;border-radius:6px !important;
+  box-shadow:0 0 20px rgba(22,240,255,.6),0 6px 0 #066 !important}
+
+/* ========================= 04 · Brutalist (editorial) ===================== */
+body.theme-brutalist{font-family:'Space Mono',monospace;color:#111;background:#f2f0eb !important}
+body.theme-brutalist .header h1{font-family:'Anton';font-weight:400;text-transform:uppercase;letter-spacing:-.01em;color:#111;font-size:2.6rem}
+body.theme-brutalist .status-bar{background:#fff;border:2px solid #111;color:#111;text-transform:uppercase;letter-spacing:.05em;font-size:.78rem}
+body.theme-brutalist #connectedRoom{color:#111}
+body.theme-brutalist #connectionStatus{background:#e3231b;color:#fff;padding:1px 8px;font-weight:700}
+body.theme-brutalist .rhythm-bank,body.theme-brutalist .answer-area{background:#fff !important;border:2px solid #111 !important;border-radius:0 !important;backdrop-filter:none !important}
+body.theme-brutalist .rhythm-bank h3,body.theme-brutalist .answer-area h3{font-family:'Anton';text-transform:uppercase;letter-spacing:.02em;color:#111}
+body.theme-brutalist .rhythm-tile{background:#fff !important;border:2px solid #111 !important;border-radius:0 !important;box-shadow:none !important}
+body.theme-brutalist .rhythm-tile:hover{background:#111 !important}
+body.theme-brutalist .rhythm-tile:hover img{filter:invert(1)}
+body.theme-brutalist .rhythm-tile img{filter:none;mix-blend-mode:multiply}
+body.theme-brutalist .answer-staff{background:#fff !important;border:3px solid #111 !important;border-radius:0 !important;box-shadow:none !important}
+body.theme-brutalist .staff-line{background:#111 !important;height:3px !important}
+body.theme-brutalist .answer-time-sig{color:#111 !important}
+body.theme-brutalist .beat-drop-zone::before{color:#999;font-weight:700}
+body.theme-brutalist .placed-note{filter:none;mix-blend-mode:multiply}
+body.theme-brutalist .btn-login,body.theme-brutalist .submit-btn,body.theme-brutalist #submitAnswer{
+  font-family:'Anton';text-transform:uppercase;letter-spacing:.02em;color:#fff;background:#e3231b !important;border:2px solid #111 !important;border-radius:0 !important;box-shadow:none !important}
+
+/* ===================== Shared: the theme switcher control ================= */
+#themeSwitcher{position:fixed;top:14px;right:14px;z-index:9999;display:flex;gap:6px;
+  background:rgba(15,15,20,.78);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.18);
+  padding:6px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+#themeSwitcher button{font-family:system-ui,sans-serif;font-size:.7rem;font-weight:700;letter-spacing:.04em;
+  color:#cfd2e6;background:transparent;border:1px solid transparent;border-radius:8px;padding:7px 10px;cursor:pointer;transition:.12s;text-transform:uppercase}
+#themeSwitcher button:hover{background:rgba(255,255,255,.08)}
+#themeSwitcher button.active{color:#0b0f1e;background:#fff;border-color:#fff}
+#themeSwitcher .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.t-dot-mpc{background:linear-gradient(135deg,#39ff8b,#1c1c1f)}
+.t-dot-manuscript{background:linear-gradient(135deg,#c0392b,#efe6cf)}
+.t-dot-arcade{background:linear-gradient(135deg,#ff2ea6,#16f0ff)}
+.t-dot-brutalist{background:linear-gradient(135deg,#e3231b,#111)}
