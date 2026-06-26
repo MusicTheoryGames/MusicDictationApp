@@ -267,6 +267,25 @@
             z-index: 5;
         }
 
+        /* Time signature at the left of the answer staff. Centered vertically on
+           the staff line (top:39px = staff-lines top 30 + staff-line top 9), so
+           the line passes between the two stacked numbers. */
+        .answer-time-sig {
+            position: absolute;
+            left: 2px;
+            top: 39px;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 0.78;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-weight: 700;
+            font-size: 30px;
+            color: #333;
+            z-index: 5;
+        }
+
         .beat-divisions {
             position: absolute;
             width: 100%;
@@ -305,7 +324,9 @@
             content: attr(data-beat);
             position: absolute;
             bottom: 5px;
-            left: 50%;
+            /* Anchored to the beat ONSET (cell's left edge) so the number sits
+               where the beat actually starts and notes line up under it. */
+            left: 0;
             transform: translateX(-50%);
             font-size: 1.2rem;
             color: #ddd;
@@ -628,6 +649,6 @@
         </div>
     </div>
 
-    <script type="module" src="rhythm-student.js?v=20260626a"></script>
+    <script type="module" src="rhythm-student.js?v=20260626c"></script>
 </body>
 </html>

@@ -10,7 +10,13 @@ import { noteGlyphs } from './rhythm-assets/glyphs/note-glyphs.js';
 const NOTE_DECOMPOSITION = {
     'dotted-quarter-eighth': [{ glyph: 'qd', offset: 0 }, { glyph: '8', offset: 1.5 }],
     'eighth-quarter-eighth': [{ glyph: '8', offset: 0 }, { glyph: 'q', offset: 0.5 }, { glyph: '8', offset: 1.5 }],
+    'half': [{ glyph: 'h', offset: 0 }],
 };
+
+// A glyph's notehead centre sits ~14% in from the glyph's left edge (VexFlow
+// stave padding). Subtract that so a note placed at beat offset N lands its
+// NOTEHEAD on beat N's onset, not 14% past it.
+const GLYPH_NOTEHEAD_OFFSET = 14;
 
 // Rhythm Student System
 class RhythmStudent {
@@ -496,6 +502,8 @@ class RhythmStudent {
         const measureContainer = document.createElement('div');
         measureContainer.className = 'measure-container';
 
+        const [tsTop, tsBottom] = (this.timeSignature || '4/4').split('/');
+
         const staffDiv = document.createElement('div');
         staffDiv.className = 'answer-staff';
         staffDiv.innerHTML = `
@@ -504,6 +512,7 @@ class RhythmStudent {
                 <div class="staff-lines">
                     <div class="staff-line"></div>
                 </div>
+                <div class="answer-time-sig"><span>${tsTop}</span><span>${tsBottom}</span></div>
                 <div class="beat-divisions" style="margin-left: 30px; margin-right: 20px;">
                     ${Array.from({length: this.measureCount * 4}, (_, i) => {
                         const beat = (i % 4) + 1;
@@ -738,7 +747,9 @@ class RhythmStudent {
                         gimg.src = `./rhythm-assets/${g.file}`;
                         gimg.className = 'placed-note placed-glyph';
                         gimg.style.width = '100%';                  // one beat wide
-                        gimg.style.left = (part.offset * 100) + '%'; // beat offset
+                        // beat offset, minus the glyph's internal notehead inset so
+                        // the notehead lands on the beat onset.
+                        gimg.style.left = (part.offset * 100 - GLYPH_NOTEHEAD_OFFSET) + '%';
                         gimg.alt = `${pattern.id}:${part.glyph}`;
                         notationArea.appendChild(gimg);
                     });
@@ -749,7 +760,9 @@ class RhythmStudent {
                     img.src = `./rhythm-assets/${asset.file}`;
                     img.className = 'placed-note';
                     img.style.width = (beatsNeeded * 100) + '%';
-                    img.style.left = '0';
+                    // Same notehead-inset shift as glyphs so the first note lands
+                    // on the beat onset and patterns/glyphs align consistently.
+                    img.style.left = (-GLYPH_NOTEHEAD_OFFSET) + '%';
                     img.alt = asset.name;
                     notationArea.appendChild(img);
                 } else {

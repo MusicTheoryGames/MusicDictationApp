@@ -68,6 +68,7 @@ function generate() {
             stave.setContext(context);
 
             const note = new VF.StaveNote({ clef: 'percussion', keys: ['b/4'], duration: g.duration });
+            note.setStemDirection(VF.StaveNote.STEM_DOWN); // match the beamed patterns (stems down)
             if (g.dots) note.addModifier(new VF.Dot(), 0);
 
             const notes = [note];
