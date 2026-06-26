@@ -1,9 +1,11 @@
 {
   "scripts": {
-    "dev": "python3 -m http.server 8000",
-    "start": "python3 -m http.server 8000"
+    "dev": "node dev-server.js",
+    "start": "node dev-server.js"
   },
   "dependencies": {
+    "jsdom": "^27.0.0",
+    "puppeteer": "^24.22.0",
     "vexflow": "^5.0.0"
   }
 }
