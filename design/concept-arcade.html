@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concept 3 — Arcade</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'VT323',monospace;min-height:100vh;display:grid;place-items:center;padding:24px;
+    background:#05030f;color:#d6f7ff}
+  .cab{width:1020px;max-width:100%;position:relative;border-radius:8px;padding:22px;overflow:hidden;
+    background:linear-gradient(180deg,#160a2e,#0a0420);border:3px solid #2a1860;
+    box-shadow:0 0 0 4px #07021a,0 0 60px rgba(255,40,160,.35),0 30px 70px rgba(0,0,0,.7)}
+  /* CRT scanlines + vignette */
+  .cab::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:8px;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 2px,transparent 2px 4px);
+    box-shadow:inset 0 0 120px rgba(0,0,0,.8)}
+  .neon{color:#fff;text-shadow:0 0 6px #ff2ea6,0 0 14px #ff2ea6,0 0 30px #b3007a}
+  .neon-c{color:#fff;text-shadow:0 0 6px #16f0ff,0 0 16px #16f0ff,0 0 34px #008b99}
+
+  .hud{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
+  .px{font-family:'Press Start 2P',monospace}
+  .logo{font-size:1.5rem;line-height:1.5}
+  .logo .sub{font-family:'VT323';font-size:1.3rem;letter-spacing:.2em;color:#8a7adf}
+  .stats{text-align:right;line-height:1.1}
+  .stats .lbl{font-family:'Press Start 2P';font-size:.55rem;color:#ff8ad1;letter-spacing:.05em}
+  .stats .big{font-family:'Press Start 2P';font-size:1.1rem;margin:4px 0 10px}
+  .insert{font-family:'Press Start 2P';font-size:.6rem;color:#ffe44d;animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+
+  .screen{position:relative;border:2px solid #16f0ff;border-radius:6px;padding:18px 16px 10px;margin-bottom:18px;
+    background:radial-gradient(120% 120% at 50% 0,#10082b,#060219);box-shadow:inset 0 0 40px rgba(22,240,255,.18),0 0 18px rgba(22,240,255,.25)}
+  .scr-top{display:flex;justify-content:space-between;font-family:'Press Start 2P';font-size:.55rem;color:#16f0ff;margin-bottom:14px}
+  .staff{position:relative;height:118px;padding:0 16px}
+  .tsig{position:absolute;left:2px;top:50%;transform:translateY(-50%);font-family:'Press Start 2P';font-size:18px;line-height:1.15;display:flex;flex-direction:column;align-items:center;color:#ffe44d;text-shadow:0 0 10px #ffae00}
+  .sline{position:absolute;left:50px;right:10px;top:50%;height:2px;background:#16f0ff;box-shadow:0 0 10px #16f0ff}
+  .beats{position:absolute;left:50px;right:10px;top:0;bottom:0;display:flex}
+  .beat{flex:1;position:relative;border-left:1px dashed rgba(22,240,255,.18)}
+  .beat .n{position:absolute;left:0;bottom:2px;transform:translateX(-50%);font-family:'Press Start 2P';font-size:.6rem;color:#6df0ff}
+  .beat.me{border-right:3px solid #ff2ea6;margin-right:12px;box-shadow:6px 0 12px rgba(255,46,166,.4)}
+  .note{position:absolute;top:50%;height:54px;transform:translateY(-50%);pointer-events:none;filter:invert(1) brightness(1.6) drop-shadow(0 0 8px #16f0ff)}
+  .rm{position:absolute;top:2px;width:18px;height:18px;background:#ff2ea6;color:#0a0420;border:none;font-family:'Press Start 2P';font-size:.5rem;cursor:pointer;box-shadow:0 0 8px #ff2ea6}
+
+  .ctrl-lbl{font-family:'Press Start 2P';font-size:.6rem;color:#ff8ad1;margin-bottom:12px}
+  .buttons{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+  .pbtn{aspect-ratio:1.3/1;border-radius:50px/40px;display:grid;place-items:center;cursor:pointer;position:relative;
+    background:radial-gradient(120% 120% at 50% 20%,#3a1170,#1a0840);border:2px solid #ff2ea6;
+    box-shadow:0 0 12px rgba(255,46,166,.5),inset 0 0 16px rgba(255,46,166,.25),0 5px 0 #7a0f52;transition:.08s}
+  .pbtn:nth-child(even){border-color:#16f0ff;box-shadow:0 0 12px rgba(22,240,255,.5),inset 0 0 16px rgba(22,240,255,.2),0 5px 0 #0a6e78}
+  .pbtn:hover{transform:translateY(3px);box-shadow:0 0 22px #ff2ea6,inset 0 0 22px rgba(255,46,166,.4),0 2px 0 #7a0f52}
+  .pbtn img{max-width:74%;max-height:38px;filter:invert(1) brightness(1.7) drop-shadow(0 0 6px #fff)}
+
+  .actions{display:flex;gap:14px;margin-top:18px}
+  .start{flex:1;font-family:'Press Start 2P';font-size:.8rem;padding:16px;border:none;border-radius:6px;cursor:pointer;color:#06121f;
+    background:linear-gradient(180deg,#16f0ff,#06b6c9);box-shadow:0 0 20px rgba(22,240,255,.6),0 6px 0 #066}
+  .start.fire{color:#fff;background:linear-gradient(180deg,#ff2ea6,#b3007a);box-shadow:0 0 20px rgba(255,46,166,.7),0 6px 0 #6e0048}
+  .tag{position:fixed;left:16px;bottom:12px;font-family:'Press Start 2P';font-size:.55rem;color:#8a7adf}
+</style>
+</head>
+<body>
+  <div class="cab">
+    <div class="hud">
+      <div class="logo px neon">BEAT<span class="neon-c">QUEST</span><div class="sub">▸ rhythm arcade</div></div>
+      <div class="stats">
+        <div class="lbl">SCORE</div><div class="big neon-c">028,400</div>
+        <div class="lbl">COMBO</div><div class="big neon">x4 🔥</div>
+        <div class="insert">● ROOM TEST123 — CONNECTED</div>
+      </div>
+    </div>
+
+    <div class="screen">
+      <div class="scr-top"><span class="px" style="color:#16f0ff">▸ YOUR ANSWER</span><span class="px">STAGE 1-4 · 4/4</span></div>
+      <div class="staff">
+        <div class="tsig"><span>4</span><span>4</span></div>
+        <div class="sline"></div>
+        <div class="beats">
+          <div class="beat"><span class="n">1</span><img class="note" src="../rhythm-assets/four-sixteenths.png" style="left:0;width:100%"><button class="rm" style="left:0;transform:translateX(-50%)">x</button></div>
+          <div class="beat"><span class="n">2</span><img class="note" src="../rhythm-assets/two-eighths.png" style="left:0;width:100%"><button class="rm" style="left:0;transform:translateX(-50%)">x</button></div>
+          <div class="beat"><span class="n">3</span></div>
+          <div class="beat me"><span class="n">4</span></div>
+          <div class="beat"><span class="n">1</span><img class="note" src="../rhythm-assets/quarter.png" style="left:0;width:100%"><button class="rm" style="left:0;transform:translateX(-50%)">x</button></div>
+          <div class="beat"><span class="n">2</span></div>
+          <div class="beat"><span class="n">3</span><img class="note" src="../rhythm-assets/half.png" style="left:0;width:200%"><button class="rm" style="left:0;transform:translateX(-50%)">x</button></div>
+          <div class="beat"><span class="n">4</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ctrl-lbl">▸ SELECT A NOTE</div>
+    <div class="buttons">
+      <div class="pbtn"><img src="../rhythm-assets/quarter.png"></div>
+      <div class="pbtn"><img src="../rhythm-assets/two-eighths.png"></div>
+      <div class="pbtn"><img src="../rhythm-assets/four-sixteenths.png"></div>
+      <div class="pbtn"><img src="../rhythm-assets/eighth-two-sixteenths.png"></div>
+      <div class="pbtn"><img src="../rhythm-assets/two-sixteenths-eighth.png"></div>
+      <div class="pbtn"><img src="../rhythm-assets/dotted-quarter-eighth.png"></div>
+      <div class="pbtn"><img src="../rhythm-assets/half.png"></div>
+      <div class="pbtn"><img src="../rhythm-assets/quarter-rest.png"></div>
+      <div class="pbtn"><img src="../rhythm-assets/triplet-eighths.png"></div>
+      <div class="pbtn"><img src="../rhythm-assets/eighth-rest-eighth.png"></div>
+    </div>
+
+    <div class="actions">
+      <button class="start">▶ REPLAY</button>
+      <button class="start fire">▶ SUBMIT — GO!</button>
+    </div>
+  </div>
+  <div class="tag">CONCEPT 3 · ARCADE</div>
+</body>
+</html>

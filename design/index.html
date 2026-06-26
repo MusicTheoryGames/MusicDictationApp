@@ -3,38 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BeatQuest — Design Mockups</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>BeatQuest — Design Concepts</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Anton&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Inter',system-ui,sans-serif;background:#0b0f1e;color:#eef1fb;min-height:100vh;padding:40px}
-  .wrap{max-width:900px;margin:0 auto}
-  h1{font-size:1.8rem;font-weight:800;letter-spacing:-.02em;margin-bottom:6px}
-  p.sub{color:#9aa3c0;margin-bottom:28px}
-  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
-  a.card{display:block;text-decoration:none;color:inherit;border-radius:18px;padding:22px;border:1px solid rgba(255,255,255,.12);
-    background:rgba(255,255,255,.05);transition:.18s}
-  a.card:hover{transform:translateY(-3px);border-color:rgba(124,92,255,.6);box-shadow:0 14px 30px rgba(124,92,255,.3)}
-  .swatch{height:54px;border-radius:12px;margin-bottom:14px}
-  .a{background:linear-gradient(135deg,#5b5bd6,#13c4a3)}
-  .b{background:linear-gradient(135deg,#7c5cff,#22d3ee)}
-  .c{background:linear-gradient(135deg,#ff6f61,#16c2b0)}
-  .card h2{font-size:1.1rem;margin-bottom:4px}
-  .card span{color:#9aa3c0;font-size:.88rem}
-  .compare{margin-top:26px;font-size:.9rem;color:#9aa3c0}
-  .compare a{color:#7c9cff}
+  body{font-family:'Space Mono',monospace;background:#f2f0eb;color:#111;min-height:100vh;padding:40px}
+  .wrap{max-width:960px;margin:0 auto}
+  h1{font-family:'Anton';font-size:3rem;text-transform:uppercase;line-height:.9;margin-bottom:6px}
+  h1 em{font-style:normal;color:#e3231b}
+  p.sub{margin-bottom:26px;font-size:.85rem;text-transform:uppercase;letter-spacing:.05em;color:#555}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:0;border:2px solid #111}
+  a.c{display:block;text-decoration:none;color:#111;border-right:2px solid #111;border-bottom:2px solid #111;padding:18px;transition:.15s}
+  a.c:hover{background:#111;color:#fff}
+  a.c .no{font-family:'Anton';font-size:2rem}
+  a.c h2{font-size:1rem;margin:4px 0 6px;text-transform:uppercase}
+  a.c span{font-size:.74rem;color:#666}a.c:hover span{color:#bbb}
+  .legacy{margin-top:24px;font-size:.78rem;color:#555}.legacy a{color:#e3231b}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>BeatQuest · Design Directions</h1>
-  <p class="sub">Three takes on a modern, sleek redesign — the notation engine is unchanged. Open each and compare.</p>
-  <div class="cards">
-    <a class="card" href="mockup-aurora.html"><div class="swatch a"></div><h2>A · Aurora</h2><span>Light, clean, indigo accent. Calm & professional.</span></a>
-    <a class="card" href="mockup-midnight.html"><div class="swatch b"></div><h2>B · Midnight</h2><span>Premium dark glass, neon-violet/cyan. Cool & focused.</span></a>
-    <a class="card" href="mockup-playful.html"><div class="swatch c"></div><h2>C · Playful</h2><span>Bright, chunky, gamified. Fun for classrooms.</span></a>
+  <h1>Beatquest · <em>Concepts.</em></h1>
+  <p class="sub">Four divergent worlds — different layout, type, texture, voice. Notation engine unchanged.</p>
+  <div class="grid">
+    <a class="c" href="concept-mpc.html"><div class="no">01</div><h2>MPC</h2><span>Drum-machine hardware. Brushed metal, backlit pads, LCD readouts.</span></a>
+    <a class="c" href="concept-manuscript.html"><div class="no">02</div><h2>Manuscript</h2><span>Composer's ink-on-paper page. Wax seal, marginalia, engraving serif.</span></a>
+    <a class="c" href="concept-arcade.html"><div class="no">03</div><h2>Arcade</h2><span>CRT rhythm game. Neon, scanlines, pixel font, score &amp; combo.</span></a>
+    <a class="c" href="concept-brutalist.html"><div class="no">04</div><h2>Brutalist</h2><span>Swiss editorial. Huge type, hard grid, black/white/one ink.</span></a>
   </div>
-  <p class="compare">Current app for reference: <a href="../rhythm-student.html">rhythm-student.html</a></p>
+  <p class="legacy">Earlier (generic) drafts: <a href="mockup-aurora.html">Aurora</a> · <a href="mockup-midnight.html">Midnight</a> · <a href="mockup-playful.html">Playful</a> &nbsp;|&nbsp; Live app: <a href="../rhythm-student.html">rhythm-student.html</a></p>
 </div>
 </body>
 </html>

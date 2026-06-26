@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concept 1 — MPC Hardware</title>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Saira Condensed',sans-serif;min-height:100vh;display:grid;place-items:center;padding:30px;
+    background:#14110f radial-gradient(120% 90% at 50% 0%,#2a2622,#0c0a09 70%);color:#1a1714}
+  .device{width:1040px;max-width:100%;border-radius:22px;padding:26px 28px 30px;position:relative;
+    /* brushed graphite faceplate */
+    background:
+      repeating-linear-gradient(91deg, rgba(255,255,255,.05) 0 1px, rgba(0,0,0,.06) 1px 2px),
+      linear-gradient(180deg,#5a5a5e,#3c3c40 50%,#2c2c30);
+    box-shadow:0 40px 80px rgba(0,0,0,.6), inset 0 2px 0 rgba(255,255,255,.18), inset 0 -3px 8px rgba(0,0,0,.6),
+      0 0 0 2px #1b1b1d}
+  .screw{position:absolute;width:16px;height:16px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#cfd0d3,#6a6b6e 60%,#3a3b3d);box-shadow:inset 0 -2px 3px rgba(0,0,0,.5)}
+  .screw::after{content:"";position:absolute;inset:4px;border-top:2px solid #2c2c2e;transform:rotate(35deg)}
+  .screw.tl{top:12px;left:12px}.screw.tr{top:12px;right:12px}.screw.bl{bottom:12px;left:12px}.screw.br{bottom:12px;right:12px}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:18px}
+  .brand{color:#e9e9ec;letter-spacing:.32em;font-weight:800;font-size:1.5rem;text-shadow:0 1px 0 #000,0 -1px 0 rgba(255,255,255,.15)}
+  .brand small{display:block;letter-spacing:.2em;font-size:.62rem;color:#a8a8ad;font-weight:600}
+  .readouts{display:flex;gap:14px;align-items:center}
+  .lcd-mini{font-family:'Share Tech Mono',monospace;background:#0a1a10;color:#39ff8b;padding:7px 12px;border-radius:5px;
+    letter-spacing:.12em;font-size:.95rem;border:1px solid #051008;box-shadow:inset 0 0 14px rgba(57,255,139,.25),0 1px 0 rgba(255,255,255,.1);text-shadow:0 0 8px #39ff8b}
+  .led{display:flex;align-items:center;gap:6px;color:#cfcfd3;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase}
+  .led i{width:9px;height:9px;border-radius:50%;background:#19e07a;box-shadow:0 0 10px #19e07a}
+  .vu{display:flex;gap:3px;align-items:flex-end;height:22px}
+  .vu span{width:5px;background:#2f7d4f;border-radius:1px}
+  .vu span:nth-child(1){height:7px}.vu span:nth-child(2){height:11px}.vu span:nth-child(3){height:16px;background:#5fd089}
+  .vu span:nth-child(4){height:22px;background:#ffd24a;box-shadow:0 0 6px #ffd24a}.vu span:nth-child(5){height:13px;background:#2f7d4f}
+
+  .layout{display:grid;grid-template-columns:1fr 360px;gap:22px}
+
+  /* the screen = answer staff */
+  .screen{background:#c9d6b9;border-radius:10px;padding:18px 20px 8px;position:relative;height:100%;
+    border:2px solid #1c1c1e;box-shadow:inset 0 3px 12px rgba(0,0,0,.45),inset 0 0 40px rgba(120,140,90,.4)}
+  .screen::after{content:"";position:absolute;inset:0;border-radius:8px;pointer-events:none;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.05) 0 2px,transparent 2px 4px)}
+  .scr-h{display:flex;justify-content:space-between;font-family:'Share Tech Mono',monospace;color:#3a4a2c;font-size:.72rem;letter-spacing:.1em;margin-bottom:6px}
+  .staff{position:relative;height:120px;padding:0 18px}
+  .tsig{position:absolute;left:6px;top:50%;transform:translateY(-50%);font-family:Georgia,serif;font-weight:700;font-size:30px;line-height:.7;display:flex;flex-direction:column;align-items:center;color:#26301c}
+  .sline{position:absolute;left:44px;right:14px;top:50%;height:2px;background:#26301c}
+  .beats{position:absolute;left:44px;right:14px;top:0;bottom:0;display:flex}
+  .beat{flex:1;position:relative}
+  .beat .n{position:absolute;left:0;bottom:6px;transform:translateX(-50%);font-family:'Share Tech Mono',monospace;color:#4a5a39;font-size:.8rem}
+  .beat.me{border-right:2px solid #26301c;margin-right:12px}
+  .note{position:absolute;top:50%;height:58px;transform:translateY(-50%);pointer-events:none;
+    filter:brightness(0) saturate(1) opacity(.85);mix-blend-mode:multiply}
+  .rm{position:absolute;top:4px;width:18px;height:18px;border-radius:50%;background:#7a2c2c;color:#f3d6b3;border:none;font-size:11px;cursor:pointer}
+
+  /* pad grid = rhythm bank */
+  .pads{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .pad-label{grid-column:1/-1;color:#cfcfd3;font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;margin-bottom:-2px}
+  .pad{aspect-ratio:1.25/1;border-radius:9px;display:grid;place-items:center;cursor:pointer;position:relative;
+    background:linear-gradient(180deg,#2a2a2d,#161618);border:1px solid #0c0c0d;
+    box-shadow:inset 0 2px 1px rgba(255,255,255,.08),inset 0 -4px 8px rgba(0,0,0,.6),0 3px 0 #0a0a0b;transition:.1s}
+  .pad img{max-width:78%;max-height:42px;filter:invert(1) brightness(1.5) drop-shadow(0 0 6px rgba(80,180,255,.6))}
+  .pad::before{content:"";position:absolute;inset:5px;border-radius:6px;box-shadow:inset 0 0 12px rgba(40,140,255,.25);opacity:.5}
+  .pad:hover{transform:translateY(2px);box-shadow:inset 0 2px 1px rgba(255,255,255,.08),inset 0 0 22px rgba(60,160,255,.55),0 1px 0 #0a0a0b}
+  .pad:hover img{filter:invert(1) brightness(1.8) drop-shadow(0 0 12px rgba(80,180,255,1))}
+
+  .transport{grid-column:1/-1;display:flex;gap:12px;margin-top:14px}
+  .tbtn{flex:1;font-family:'Saira Condensed';font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:1rem;
+    padding:14px;border-radius:8px;border:1px solid #0c0c0d;cursor:pointer;color:#e9e9ec;
+    background:linear-gradient(180deg,#3a3a3e,#242427);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 3px 0 #0a0a0b}
+  .tbtn.rec{color:#1a0d0d;background:linear-gradient(180deg,#ff5a4d,#d23023);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 3px 0 #7a1a12}
+  .tag{position:fixed;left:16px;bottom:14px;font-family:'Share Tech Mono',monospace;font-size:.72rem;color:#8a8a8e}
+</style>
+</head>
+<body>
+  <div class="device">
+    <span class="screw tl"></span><span class="screw tr"></span><span class="screw bl"></span><span class="screw br"></span>
+    <div class="topbar">
+      <div class="brand">BEATQUEST<small>RHYTHM SEQUENCER · MK-IV</small></div>
+      <div class="readouts">
+        <div class="vu"><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="led"><i></i> LIVE</div>
+        <div class="lcd-mini">ROOM&nbsp;TEST123</div>
+        <div class="lcd-mini">STRK&nbsp;04</div>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div class="screen">
+        <div class="scr-h"><span>YOUR ANSWER — 2 BARS</span><span>4/4 · 120BPM</span></div>
+        <div class="staff">
+          <div class="tsig"><span>4</span><span>4</span></div>
+          <div class="sline"></div>
+          <div class="beats">
+            <div class="beat"><span class="n">1</span><img class="note" src="../rhythm-assets/four-sixteenths.png" style="left:0;width:100%"><button class="rm" style="left:0;transform:translateX(-50%)">×</button></div>
+            <div class="beat"><span class="n">2</span><img class="note" src="../rhythm-assets/two-eighths.png" style="left:0;width:100%"><button class="rm" style="left:0;transform:translateX(-50%)">×</button></div>
+            <div class="beat"><span class="n">3</span></div>
+            <div class="beat me"><span class="n">4</span></div>
+            <div class="beat"><span class="n">1</span><img class="note" src="../rhythm-assets/quarter.png" style="left:0;width:100%"><button class="rm" style="left:0;transform:translateX(-50%)">×</button></div>
+            <div class="beat"><span class="n">2</span></div>
+            <div class="beat"><span class="n">3</span><img class="note" src="../rhythm-assets/half.png" style="left:0;width:200%"><button class="rm" style="left:0;transform:translateX(-50%)">×</button></div>
+            <div class="beat"><span class="n">4</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pads">
+        <div class="pad-label">▸ PAD BANK — tap & drop to sequence</div>
+        <div class="pad"><img src="../rhythm-assets/quarter.png"></div>
+        <div class="pad"><img src="../rhythm-assets/two-eighths.png"></div>
+        <div class="pad"><img src="../rhythm-assets/four-sixteenths.png"></div>
+        <div class="pad"><img src="../rhythm-assets/eighth-two-sixteenths.png"></div>
+        <div class="pad"><img src="../rhythm-assets/two-sixteenths-eighth.png"></div>
+        <div class="pad"><img src="../rhythm-assets/dotted-quarter-eighth.png"></div>
+        <div class="pad"><img src="../rhythm-assets/half.png"></div>
+        <div class="pad"><img src="../rhythm-assets/quarter-rest.png"></div>
+        <div class="pad"><img src="../rhythm-assets/triplet-eighths.png"></div>
+        <div class="transport">
+          <button class="tbtn">▶ PLAY</button>
+          <button class="tbtn rec">● SUBMIT</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tag">CONCEPT 1 · "MPC" — drum-machine hardware</div>
+</body>
+</html>

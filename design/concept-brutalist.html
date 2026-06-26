@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concept 4 — Brutalist</title>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Space Mono',monospace;background:#f2f0eb;color:#111;min-height:100vh;padding:0}
+  .sheet{max-width:1100px;margin:0 auto;min-height:100vh;border-left:2px solid #111;border-right:2px solid #111;background:#fff}
+  .mono{font-family:'Space Mono',monospace}
+  .red{color:#e3231b}
+  .anton{font-family:'Anton',sans-serif;font-weight:400;letter-spacing:-.01em;line-height:.86;text-transform:uppercase}
+
+  /* masthead */
+  .mast{display:flex;justify-content:space-between;align-items:flex-end;padding:14px 22px;border-bottom:2px solid #111}
+  .mast .meta{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase}
+  .mast .live{background:#e3231b;color:#fff;padding:2px 8px;font-weight:700}
+  .hero{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;padding:8px 22px 16px;border-bottom:4px solid #111}
+  .hero h1{font-family:'Anton';font-size:5.6rem;line-height:.82;text-transform:uppercase}
+  .hero h1 em{font-style:normal;color:#e3231b}
+  .hero .idx{text-align:right;font-size:.74rem;text-transform:uppercase;letter-spacing:.05em}
+  .hero .idx b{font-family:'Anton';font-size:2.2rem;display:block}
+
+  .grid2{display:grid;grid-template-columns:1fr 300px}
+  .colL{border-right:2px solid #111}
+
+  /* answer */
+  .sect-h{display:flex;justify-content:space-between;align-items:baseline;padding:10px 22px;border-bottom:2px solid #111;text-transform:uppercase;letter-spacing:.06em;font-size:.78rem}
+  .sect-h b{font-family:'Anton';font-size:1.5rem;letter-spacing:0}
+  .answer{padding:30px 22px}
+  .staff{position:relative;height:130px;border-top:2px solid #111;border-bottom:2px solid #111;padding:0 14px}
+  .tsig{position:absolute;left:0;top:50%;transform:translateY(-50%);font-family:'Anton';font-size:42px;line-height:.62;display:flex;flex-direction:column;align-items:center}
+  .sline{position:absolute;left:54px;right:6px;top:50%;height:3px;background:#111}
+  .beats{position:absolute;left:54px;right:6px;top:0;bottom:0;display:flex}
+  .beat{flex:1;position:relative;border-left:1px solid #ccc}
+  .beat .n{position:absolute;left:0;bottom:6px;transform:translateX(-50%);font-weight:700;font-size:.9rem;color:#999}
+  .beat.me{border-right:4px solid #111;margin-right:14px}
+  .note{position:absolute;top:50%;height:64px;transform:translateY(-50%);pointer-events:none;mix-blend-mode:multiply}
+  .rm{position:absolute;top:0;width:20px;height:20px;background:#e3231b;color:#fff;border:none;font-weight:700;font-size:.7rem;cursor:pointer}
+  .footnote{margin-top:18px;font-size:.74rem;letter-spacing:.04em;text-transform:uppercase;color:#444;border-top:1px solid #111;padding-top:10px}
+
+  .actions{display:flex;border-top:2px solid #111}
+  .actions button{flex:1;font-family:'Anton';font-size:1.5rem;text-transform:uppercase;letter-spacing:.02em;padding:18px;border:none;cursor:pointer;background:#fff;color:#111;border-right:2px solid #111}
+  .actions button:last-child{border-right:none;background:#111;color:#fff}
+  .actions button.fire{background:#e3231b;color:#fff}
+
+  /* bank as a stark index grid */
+  .bank{}
+  .fitem{display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:2px solid #111;cursor:grab}
+  .fitem:hover{background:#111}
+  .fitem:hover .num,.fitem:hover .nm{color:#fff}
+  .fitem:hover img{filter:invert(1)}
+  .fitem .num{font-family:'Anton';font-size:1.3rem;width:34px}
+  .fitem img{height:30px;mix-blend-mode:multiply}
+  .fitem .nm{margin-left:auto;font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;color:#777}
+  .tag{padding:10px 22px;font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;color:#777;border-top:2px solid #111}
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="mast">
+      <div class="meta">Beatquest · Aural Studies — No. 04 · 4/4</div>
+      <div class="meta"><span class="live">● LIVE</span> &nbsp; ROOM / TEST123 &nbsp; STREAK / 04</div>
+    </div>
+    <div class="hero">
+      <h1>Rhythm<br><em>Dictation.</em></h1>
+      <div class="idx">Exercise<b>04</b>two bars</div>
+    </div>
+
+    <div class="grid2">
+      <div class="colL">
+        <div class="sect-h"><b>Your Answer</b><span>Notate · 2 bars · drag from index →</span></div>
+        <div class="answer">
+          <div class="staff">
+            <div class="tsig"><span>4</span><span>4</span></div>
+            <div class="sline"></div>
+            <div class="beats">
+              <div class="beat"><span class="n">1</span><img class="note" src="../rhythm-assets/four-sixteenths.png" style="left:0;width:100%"><button class="rm" style="left:0;transform:translateX(-50%)">×</button></div>
+              <div class="beat"><span class="n">2</span><img class="note" src="../rhythm-assets/two-eighths.png" style="left:0;width:100%"><button class="rm" style="left:0;transform:translateX(-50%)">×</button></div>
+              <div class="beat"><span class="n">3</span></div>
+              <div class="beat me"><span class="n">4</span></div>
+              <div class="beat"><span class="n">1</span><img class="note" src="../rhythm-assets/quarter.png" style="left:0;width:100%"><button class="rm" style="left:0;transform:translateX(-50%)">×</button></div>
+              <div class="beat"><span class="n">2</span></div>
+              <div class="beat"><span class="n">3</span><img class="note" src="../rhythm-assets/half.png" style="left:0;width:200%"><button class="rm" style="left:0;transform:translateX(-50%)">×</button></div>
+              <div class="beat"><span class="n">4</span></div>
+            </div>
+          </div>
+          <div class="footnote">Fig. 1 — Place each figure on its beat. Bar line at 4. Double bar terminates.</div>
+        </div>
+        <div class="actions">
+          <button>↺ Replay</button>
+          <button class="fire">Submit →</button>
+        </div>
+      </div>
+
+      <div class="bank">
+        <div class="sect-h" style="border-left:0"><b>Index</b><span>figures</span></div>
+        <div class="fitem"><span class="num">01</span><img src="../rhythm-assets/quarter.png"><span class="nm">quarter</span></div>
+        <div class="fitem"><span class="num">02</span><img src="../rhythm-assets/two-eighths.png"><span class="nm">eighths</span></div>
+        <div class="fitem"><span class="num">03</span><img src="../rhythm-assets/four-sixteenths.png"><span class="nm">16ths</span></div>
+        <div class="fitem"><span class="num">04</span><img src="../rhythm-assets/dotted-quarter-eighth.png"><span class="nm">dotted</span></div>
+        <div class="fitem"><span class="num">05</span><img src="../rhythm-assets/half.png"><span class="nm">half</span></div>
+        <div class="fitem"><span class="num">06</span><img src="../rhythm-assets/quarter-rest.png"><span class="nm">rest</span></div>
+        <div class="fitem"><span class="num">07</span><img src="../rhythm-assets/triplet-eighths.png"><span class="nm">triplet</span></div>
+        <div class="fitem"><span class="num">08</span><img src="../rhythm-assets/eighth-two-sixteenths.png"><span class="nm">8+16+16</span></div>
+      </div>
+    </div>
+    <div class="tag">Concept 04 · Brutalist / Swiss editorial — black · white · one ink</div>
+  </div>
+</body>
+</html>
