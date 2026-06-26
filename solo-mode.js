@@ -111,16 +111,20 @@
     var c = ctx(); if (!c) return;
     stopPulse();
     pulse.running = true; pulse.beat = 0; pulse.nextTime = startTime;
-    var total = S.measures * 4;
+    var endBeat = 4 + S.measures * 4;   // count-in (4) + one pass of the example
     (function sched() {
       if (!pulse.running) return;
       var cc = ctx(); if (!cc) return;
       while (pulse.nextTime < cc.currentTime + 0.12) {
-        var bt = pulse.beat, countIn = bt < 4;
+        var bt = pulse.beat;
+        if (bt >= endBeat) {            // example finished — stop after the last beat
+          setTimeout(stopPulse, Math.max(0, (pulse.nextTime - cc.currentTime) * 1000));
+          return;
+        }
+        var countIn = bt < 4;
         if (countIn || S.metronome) metroTick(pulse.nextTime, (bt % 4) === 0);
-        if (!countIn && S.beatGuide) lightBeat((bt - 4) % total, pulse.nextTime);
+        if (!countIn && S.beatGuide) lightBeat(bt - 4, pulse.nextTime);
         pulse.beat++; pulse.nextTime += 60 / S.tempo;
-        if (!countIn && !S.metronome && !S.beatGuide) { stopPulse(); return; }
       }
       pulse.timer = setTimeout(sched, 25);
     })();
@@ -344,6 +348,7 @@
         '<button id="soloGuide" class="toggle">👁 Beat guide</button>' +
         '<button id="soloHintBeats" class="hint">💡 Find mistakes</button>' +
         '<button id="soloHintCount" class="hint">💡 Count a beat</button>' +
+        '<button id="soloReveal" class="hint">👀 Show answer</button>' +
         '<button id="soloSubmit" class="go">✓ Submit</button>' +
         '<button id="soloNext" class="go" style="display:none">⏭ Next</button>' +
         '<label class="solo-toggle"><input type="checkbox" id="soloCorrect"> Fix-it mode</label>' +
@@ -358,16 +363,27 @@
     document.getElementById('soloHintCount').onclick = hintCount;
     document.getElementById('soloSubmit').onclick = submit;
     document.getElementById('soloNext').onclick = newRound;
+    document.getElementById('soloReveal').onclick = function () {
+      if (S.solved) return;
+      S.solved = true; S.streak = 0; S.wrongThisRound = true;
+      stopPulse(); clearMarks(); revealCorrect();
+      msg('👀 Here’s the correct rhythm. (No points — hit Next for a new one.)');
+      document.getElementById('soloSubmit').style.display = 'none';
+      document.getElementById('soloNext').style.display = '';
+      save(); render();
+    };
     var cb = document.getElementById('soloCorrect');
     cb.checked = S.correctionMode;
     cb.onchange = function () { S.correctionMode = cb.checked; save(); };
+    // Metronome / Beat-guide are PLAYBACK aids: toggling just sets the flag;
+    // they only sound/animate during the count-in + example (startPulse stops after).
     var mb = document.getElementById('soloMetro');
     mb.classList.toggle('on', S.metronome);
-    mb.onclick = function () { S.metronome = !S.metronome; mb.classList.toggle('on', S.metronome); save(); ensurePulse(); };
+    mb.onclick = function () { S.metronome = !S.metronome; mb.classList.toggle('on', S.metronome); save(); };
     var gb = document.getElementById('soloGuide');
     gb.classList.toggle('on', S.beatGuide);
     gb.onclick = function () {
-      S.beatGuide = !S.beatGuide; gb.classList.toggle('on', S.beatGuide); save(); ensurePulse();
+      S.beatGuide = !S.beatGuide; gb.classList.toggle('on', S.beatGuide); save();
       if (!S.beatGuide && pulse.lastHl) { pulse.lastHl.classList.remove('solo-beat-on'); pulse.lastHl = null; }
     };
   }

@@ -711,11 +711,18 @@ class RhythmStudent {
             return;
         }
 
-        // Check if any of the target beats are already filled
+        // Drag-to-replace: if any target beat is occupied, remove the pattern(s)
+        // occupying it first (find each occupant's start beat), then place the new
+        // one. No alignment/grid logic changes — only what happens on overlap.
         for (let b = startBeat; b <= endBeat; b++) {
             if (this.userAnswer[measure - 1][b - 1] !== null) {
-                alert(`Beat ${b} is already filled! Clear it first.`);
-                return;
+                let sb = b;
+                while (sb >= 1) {
+                    const v = this.userAnswer[measure - 1][sb - 1];
+                    if (v && !String(v).includes('_continuation')) break; // sb = occupant start
+                    sb--;
+                }
+                if (sb >= 1) this.removeTile(measure, sb);
             }
         }
 
