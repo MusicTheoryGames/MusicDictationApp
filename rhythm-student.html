@@ -344,14 +344,14 @@
            pins the noteheads onto the single staff line. */
         .placed-note {
             position: absolute;
-            /* `left` is set inline to (beats * 50%) so the note centres over its
-               span; the transform re-centres on that point. Height is fixed so
-               every pattern renders at the SAME scale (a sixteenth notehead and a
-               half notehead match), with width following the aspect ratio. */
-            top: 46%;
-            transform: translate(-50%, -50%);
-            height: 82%;
-            width: auto;
+            left: 0;
+            /* width is set inline to (beats * 100%) to span the pattern's beats;
+               assets are width-proportional to beats, so height (auto) is identical
+               for every pattern at any screen size. Anchored left so inner notes
+               align to their beats. */
+            top: 47%;
+            transform: translateY(-50%);
+            height: auto;
             pointer-events: none;
             user-select: none;
             -webkit-user-select: none;
@@ -628,6 +628,6 @@
         </div>
     </div>
 
-    <script type="module" src="rhythm-student.js?v=20260625c"></script>
+    <script type="module" src="rhythm-student.js?v=20260625f"></script>
 </body>
 </html>
