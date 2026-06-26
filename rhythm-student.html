@@ -256,15 +256,16 @@
         .staff-lines {
             position: absolute;
             width: 100%;
-            top: 44%;         /* line in the upper-middle; stems + numbers fit below */
+            top: 0;
+            height: 100%;     /* full-height wrapper so the line anchors reliably */
         }
 
         .staff-line {
             position: absolute;
             width: 100%;
-            height: 1px;
+            height: 2px;       /* clearly visible */
             background: #333;
-            top: 0;
+            top: 44%;          /* upper-middle; stems + numbers fit below */
         }
 
         .percussion-clef {
@@ -648,19 +649,20 @@
             <div>Status: <span id="connectionStatus">Connected</span></div>
         </div>
 
-        <div class="rhythm-bank">
-            <h3>Rhythm Bank</h3>
-            <div class="rhythm-tiles" id="rhythmTiles">
-                <!-- Rhythm tiles will be populated by JavaScript -->
-            </div>
-        </div>
-
+        <!-- Answer staff on top (your work); rhythm bank below as the palette -->
         <div class="answer-area">
             <h3>Your Answer</h3>
             <div id="measureContainer">
                 <!-- Measures will be populated by JavaScript -->
             </div>
             <div id="feedback"></div>
+        </div>
+
+        <div class="rhythm-bank">
+            <h3>Rhythm Bank</h3>
+            <div class="rhythm-tiles" id="rhythmTiles">
+                <!-- Rhythm tiles will be populated by JavaScript -->
+            </div>
         </div>
     </div>
 
