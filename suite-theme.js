@@ -30,8 +30,33 @@
     document.body.appendChild(bar);
   }
 
+  // Inject theme-specific decorative chrome (screws, VU meter, score HUD…).
+  // Hidden by default; each theme's CSS reveals what belongs to its world.
+  // Purely decorative DOM — game logic and the staff are never touched.
+  function mountDecor() {
+    ['.rhythm-bank', '.answer-area'].forEach(function (sel) {
+      Array.prototype.forEach.call(document.querySelectorAll(sel), function (panel) {
+        if (panel.querySelector(':scope > .dq-screws')) return;
+        var s = document.createElement('div');
+        s.className = 'dq-screws'; s.setAttribute('aria-hidden', 'true');
+        s.innerHTML = '<i class="dq-screw s-tl"></i><i class="dq-screw s-tr"></i><i class="dq-screw s-bl"></i><i class="dq-screw s-br"></i>';
+        panel.appendChild(s);
+      });
+    });
+    var header = document.querySelector('.header');
+    if (header && !header.querySelector('.dq-extra')) {
+      var ex = document.createElement('div');
+      ex.className = 'dq-extra'; ex.setAttribute('aria-hidden', 'true');
+      ex.innerHTML =
+        '<div class="dq-vu"><span></span><span></span><span></span><span></span><span></span></div>' +
+        '<div class="dq-hud"><div><b>SCORE</b> 028,400</div><div><b>COMBO</b> x4 🔥</div></div>';
+      header.appendChild(ex);
+    }
+  }
+
   function init() {
     mount();
+    mountDecor();
     var saved = DEFAULT;
     try { saved = localStorage.getItem(KEY) || DEFAULT; } catch (e) {}
     apply(saved);

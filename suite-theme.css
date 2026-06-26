@@ -139,3 +139,49 @@ body.theme-brutalist .btn-login,body.theme-brutalist .submit-btn,body.theme-brut
 .t-dot-manuscript{background:linear-gradient(135deg,#c0392b,#efe6cf)}
 .t-dot-arcade{background:linear-gradient(135deg,#ff2ea6,#16f0ff)}
 .t-dot-brutalist{background:linear-gradient(135deg,#e3231b,#111)}
+
+/* ============================================================================
+   THEME DECORATIONS (injected by suite-theme.js — cosmetic chrome only)
+   ========================================================================== */
+/* Panel screws (MPC: panels look bolted to a faceplate) */
+.dq-screws{display:none;position:absolute;inset:0;pointer-events:none;z-index:6}
+.dq-screw{position:absolute;width:13px;height:13px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#d3d4d7,#6a6b6e 60%,#3a3b3d);
+  box-shadow:inset 0 -2px 3px rgba(0,0,0,.55),0 1px 1px rgba(0,0,0,.4)}
+.dq-screw::after{content:"";position:absolute;left:3px;right:3px;top:5px;border-top:2px solid #2c2c2e;transform:rotate(38deg)}
+.s-tl{top:10px;left:10px}.s-tr{top:10px;right:10px}.s-bl{bottom:10px;left:10px}.s-br{bottom:10px;right:10px}
+body.theme-mpc .dq-screws{display:block}
+body.theme-mpc .rhythm-bank,body.theme-mpc .answer-area{position:relative}
+
+/* Header extras: VU meter (MPC) + score/combo HUD (Arcade) */
+.dq-extra{display:none}
+body.theme-mpc .header,body.theme-arcade .header{position:relative}
+body.theme-mpc .dq-extra,body.theme-arcade .dq-extra{display:block;position:absolute;left:14px;top:50%;transform:translateY(-50%)}
+.dq-vu{display:none;gap:3px;align-items:flex-end;height:22px}
+body.theme-mpc .dq-vu{display:flex}
+.dq-vu span{width:5px;background:#2f7d4f;border-radius:1px}
+.dq-vu span:nth-child(1){height:7px}.dq-vu span:nth-child(2){height:12px}
+.dq-vu span:nth-child(3){height:18px;background:#5fd089}
+.dq-vu span:nth-child(4){height:22px;background:#ffd24a;box-shadow:0 0 6px #ffd24a}
+.dq-vu span:nth-child(5){height:13px}
+.dq-hud{display:none}
+body.theme-arcade .dq-hud{display:block;font-family:'Press Start 2P';font-size:.5rem;line-height:1.9;color:#16f0ff;text-shadow:0 0 8px #16f0ff;text-align:left}
+body.theme-arcade .dq-hud b{color:#ff8ad1}
+
+/* MPC: LCD scanlines + readout-style label on the answer screen */
+body.theme-mpc .answer-staff::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:8px;z-index:4;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.05) 0 2px,transparent 2px 4px)}
+body.theme-mpc .answer-staff-label{background:#0a1a10 !important;color:#39ff8b !important;
+  font-family:'Share Tech Mono',monospace !important;letter-spacing:.08em;text-shadow:0 0 8px #39ff8b;border:1px solid #051008}
+
+/* Manuscript: double "deckle" border + round wax-seal submit */
+body.theme-manuscript .answer-staff{border-color:transparent !important;
+  box-shadow:0 0 0 2px #f5ecd6,0 0 0 3.5px #2a2118,inset 0 0 40px rgba(150,120,70,.15) !important}
+body.theme-manuscript .submit-btn,body.theme-manuscript #submitAnswer{border-radius:50% !important;width:96px;height:96px;line-height:1.05}
+
+/* Arcade: scanline tint already global; brighten the screen label */
+body.theme-arcade .answer-staff-label{background:#10082b !important;color:#16f0ff !important;
+  font-family:'Press Start 2P',monospace !important;font-size:.5rem;border:1px solid #16f0ff;text-shadow:0 0 8px #16f0ff}
+
+/* Brutalist: bigger masthead */
+body.theme-brutalist .header h1{font-size:3.4rem;line-height:.9}
