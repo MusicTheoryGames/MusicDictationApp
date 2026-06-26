@@ -476,6 +476,7 @@ class RhythmStudent {
     }
 
     updateMeasureDisplay() {
+      try {
         const container = document.getElementById('measureContainer');
         container.innerHTML = '';
 
@@ -510,6 +511,18 @@ class RhythmStudent {
 
         this.setupDropZones();
         this.userAnswer = Array(this.measureCount).fill(null).map(() => Array(4).fill(null));
+      } catch (err) {
+        // Surface the failure on-screen instead of silently leaving an empty
+        // answer area, so it can be diagnosed without opening dev tools.
+        const container = document.getElementById('measureContainer');
+        if (container) {
+            container.innerHTML = `<div style="background:#fff;color:#c0392b;padding:16px;border-radius:8px;font-size:0.85rem;">
+                <strong>Could not build the answer staff.</strong><br>${err && err.message ? err.message : err}<br>
+                <span style="color:#888;font-size:0.75rem;">${(err && err.stack ? err.stack.split('\n')[1] || '' : '').trim()}</span>
+            </div>`;
+        }
+        console.error('updateMeasureDisplay failed:', err);
+    }
     }
 
 
