@@ -203,8 +203,8 @@
             border-radius: 15px;
             padding: 15px;
             border: 1px solid rgba(255, 255, 255, 0.18);
-            flex: 1;
-            min-height: 0;
+            /* Size to the staff's content — no flex-grow dead space. */
+            flex: 0 0 auto;
         }
 
         .answer-area h3 {
@@ -666,7 +666,7 @@
         </div>
     </div>
 
-    <script type="module" src="rhythm-student.js?v=20260626e"></script>
+    <script type="module" src="rhythm-student.js?v=20260626g"></script>
     <script src="suite-theme.js"></script>
     <script src="solo-mode.js"></script>
 </body>

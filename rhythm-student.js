@@ -513,7 +513,7 @@ class RhythmStudent {
                     <div class="staff-line"></div>
                 </div>
                 <div class="answer-time-sig"><span>${tsTop}</span><span>${tsBottom}</span></div>
-                <div class="beat-divisions" style="margin-left: 30px; margin-right: 20px;">
+                <div class="beat-divisions" style="margin-left: 70px; margin-right: 20px;">
                     ${Array.from({length: this.measureCount * 4}, (_, i) => {
                         const beat = (i % 4) + 1;
                         const measure = Math.floor(i / 4) + 1;
