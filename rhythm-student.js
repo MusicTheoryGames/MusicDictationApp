@@ -466,7 +466,9 @@ class RhythmStudent {
             // Bank/choosing area uses the ORIGINAL combined pattern PNG (readable,
             // hand-tuned). The answer area uses the split single-note glyphs.
             const img = document.createElement('img');
-            img.src = `./rhythm-assets/${asset.file.replace(/\.svg$/, '.png')}`;
+            // Use the centered/normalized bank versions (trimmed to content, so
+            // the actual glyph is centered in the tile, not the image box).
+            img.src = `./rhythm-assets/bank/${asset.file.replace(/\.svg$/, '.png')}`;
             img.style.width = '100%';
             img.style.height = '100%';
             img.style.objectFit = 'contain';
