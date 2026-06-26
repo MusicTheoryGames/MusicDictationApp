@@ -373,10 +373,15 @@
       '.solo-ctl button.go{background:#2196f3}' +
       // primary actions (Play, Submit) sit above the rest in size/weight
       '.solo-ctl button.primary{padding:12px 24px;font-size:.98rem;border-radius:12px}' +
-      // Play is THE start action: biggest, and a distinct green (vs red Submit)
-      '.solo-ctl button.play{padding:15px 34px;font-size:1.12rem;background:#1bbf6a;color:#05291a}' +
-      '.solo-ctl button.play:hover{background:#22d978}' +
-      '.solo-ctl button.play .ic{width:1.15em;height:1.15em;stroke-width:2}' +
+      // Play is THE start action: biggest, distinct green, and visibly RAISED
+      // (gradient + border + hard bottom edge + drop shadow) so it reads as the
+      // primary button at rest — no hover needed, which matters on touch.
+      '#soloHud button.play{padding:15px 34px;font-size:1.12rem;color:#04240f;' +
+        'background:linear-gradient(180deg,#2ee082,#15a857);border:1px solid #0b7a40;' +
+        'box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 3px 0 #0c6e3c,0 6px 14px rgba(0,0,0,.38)}' +
+      '#soloHud button.play:hover{background:linear-gradient(180deg,#37ef8d,#19bb63);transform:translateY(-1px)}' +
+      '#soloHud button.play:active{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 1px 0 #0c6e3c,0 2px 6px rgba(0,0,0,.3)}' +
+      '#soloHud button.play .ic{width:1.15em;height:1.15em;stroke-width:2.1}' +
       // bottom Submit bar gets a top divider since it's now under the bank
       '#soloActions{border-top:1px solid rgba(255,255,255,.12);padding-top:14px}' +
       // hints are tertiary: smaller, muted, grouped behind a divider + label
