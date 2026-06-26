@@ -12,7 +12,8 @@
   var S = {
     target: null, measures: 2, difficulty: 'medium', tempo: 100,
     groove: 100, score: 0, streak: 0,
-    correctionMode: true, hintsThisRound: 0, wrongThisRound: false, solved: false
+    correctionMode: true, metronome: false, beatGuide: false,
+    hintsThisRound: 0, wrongThisRound: false, solved: false
   };
   var GROOVE_PER_WRONG = 12, GROOVE_HINT_MISTAKES = 8, GROOVE_HINT_COUNT = 5, GROOVE_GAIN_CLEAN = 15;
 
@@ -23,10 +24,12 @@
       if (typeof d.score === 'number') S.score = d.score;
       if (typeof d.streak === 'number') S.streak = d.streak;
       if (typeof d.correctionMode === 'boolean') S.correctionMode = d.correctionMode;
+      if (typeof d.metronome === 'boolean') S.metronome = d.metronome;
+      if (typeof d.beatGuide === 'boolean') S.beatGuide = d.beatGuide;
     } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem('beatquest-solo', JSON.stringify({ score: S.score, streak: S.streak, correctionMode: S.correctionMode })); } catch (e) {}
+    try { localStorage.setItem('beatquest-solo', JSON.stringify({ score: S.score, streak: S.streak, correctionMode: S.correctionMode, metronome: S.metronome, beatGuide: S.beatGuide })); } catch (e) {}
   }
 
   /* ----------------------------------------------------- target generation */
@@ -65,41 +68,154 @@
     return null;
   }
 
-  /* ----------------------------------------------------------------- audio */
+  /* ----------------------------------------------------------------- audio
+     Distinct timbres: metronome = short high SINE "tick" (beat 1 accented);
+     the rhythm example = lower TRIANGLE "thump". A lookahead scheduler runs the
+     count-in (always) and an optional steady metronome + beat-highlight. */
+  var actx = null;
+  function ctx() {
+    if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+    if (actx && actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  function tone(freq, when, dur, type, gain) {
+    var c = ctx(); if (!c) return;
+    var o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, when);
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.linearRampToValueAtTime(gain, when + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    o.connect(g); g.connect(c.destination);
+    o.start(when); o.stop(when + dur + 0.03);
+  }
+  function metroTick(when, accent) { tone(accent ? 2300 : 1550, when, 0.035, 'sine', accent ? 0.32 : 0.2); }
+  function rhythmHit(when) { tone(320, when, 0.12, 'triangle', 0.5); }
+
+  var pulse = { running: false, timer: null, nextTime: 0, beat: 0, lastHl: null };
+  function stopPulse() {
+    pulse.running = false;
+    if (pulse.timer) { clearTimeout(pulse.timer); pulse.timer = null; }
+    if (pulse.lastHl) { pulse.lastHl.classList.remove('solo-beat-on'); pulse.lastHl = null; }
+  }
+  function lightBeat(answerBeatIndex, when) {
+    var c = ctx(); if (!c) return;
+    var m = Math.floor(answerBeatIndex / 4) + 1, b = (answerBeatIndex % 4) + 1;
+    setTimeout(function () {
+      if (!pulse.running) return;
+      if (pulse.lastHl) pulse.lastHl.classList.remove('solo-beat-on');
+      var z = document.querySelector('.beat-drop-zone[data-measure="' + m + '"][data-beat="' + b + '"]');
+      if (z) { z.classList.add('solo-beat-on'); pulse.lastHl = z; }
+    }, Math.max(0, (when - c.currentTime) * 1000));
+  }
+  function startPulse(startTime) {
+    var c = ctx(); if (!c) return;
+    stopPulse();
+    pulse.running = true; pulse.beat = 0; pulse.nextTime = startTime;
+    var total = S.measures * 4;
+    (function sched() {
+      if (!pulse.running) return;
+      var cc = ctx(); if (!cc) return;
+      while (pulse.nextTime < cc.currentTime + 0.12) {
+        var bt = pulse.beat, countIn = bt < 4;
+        if (countIn || S.metronome) metroTick(pulse.nextTime, (bt % 4) === 0);
+        if (!countIn && S.beatGuide) lightBeat((bt - 4) % total, pulse.nextTime);
+        pulse.beat++; pulse.nextTime += 60 / S.tempo;
+        if (!countIn && !S.metronome && !S.beatGuide) { stopPulse(); return; }
+      }
+      pulse.timer = setTimeout(sched, 25);
+    })();
+  }
+  function ensurePulse() {
+    if (S.metronome || S.beatGuide) { if (!pulse.running) startPulse(ctx() ? ctx().currentTime + 0.1 : 0); }
+    else stopPulse();
+  }
+  function noteBeats(n) {
+    var d = 0.25; try { d = rs.getNoteDuration(n.duration); } catch (e) {}
+    if (n.dots === 1) d *= 1.5; else if (n.dots === 2) d *= 1.75;
+    return d || 0.25;
+  }
+
   function playTarget() {
     if (!S.target) return;
-    var notes = [];
-    for (var c = 0; c < 4; c++) notes.push({ duration: 'q' }); // count-in
+    var c = ctx(); if (!c) { msg('Tap a button to enable sound.'); return; }
+    stopPulse();
+    var beatDur = 60 / S.tempo;
+    var t0 = c.currentTime + 0.2;          // count-in start
+    var t = t0 + 4 * beatDur;              // rhythm starts after the 4-beat count-in
     S.target.forEach(function (meas) {
       meas.forEach(function (it) {
         var pat = findPattern(it.patternId);
-        if (pat && pat.vexflow) pat.vexflow.forEach(function (n) { notes.push({ duration: n.duration }); });
+        if (!pat || !pat.vexflow) { t += (it.beats || 1) * beatDur; return; }
+        var raw = pat.vexflow.map(noteBeats);
+        var sum = raw.reduce(function (a, x) { return a + x; }, 0) || 1;
+        var scale = (it.beats || 1) / sum;  // make the figure occupy exactly its beats
+        pat.vexflow.forEach(function (nn, i) {
+          if (nn.duration.indexOf('r') === -1) rhythmHit(t);
+          t += raw[i] * scale * beatDur;
+        });
       });
     });
-    msg('🎧 Count-in… then the rhythm. Build your answer below.');
-    try { rs.playWithWebAudio(notes, S.tempo); } catch (e) {}
+    startPulse(t0);   // count-in always ticks; metronome/guide continue per toggles
+    msg('🎧 Count-in… then the rhythm' + (S.metronome ? ' · metronome on' : '') + (S.beatGuide ? ' · beat guide on' : '') + '. Build your answer.');
   }
 
-  /* --------------------------------------------------------------- checking */
-  function checkAnswer() {
-    var exp = expectedGrid(S.target), wrong = [], allCorrect = true;
-    for (var mi = 0; mi < S.measures; mi++) {
-      for (var bi = 0; bi < 4; bi++) {
-        var want = exp[mi][bi], got = rs.userAnswer[mi] ? rs.userAnswer[mi][bi] : null;
-        if (want !== got) {
-          allCorrect = false;
-          if (want && want.indexOf('_continuation') === -1) wrong.push({ m: mi + 1, b: bi + 1 });
-          else if (got && got.indexOf('_continuation') === -1) wrong.push({ m: mi + 1, b: bi + 1 });
-        }
+  /* --------------------------------------------------------------- checking
+     Compare by RHYTHMIC ONSETS, not exact tile choice. With percussive clicks a
+     half note and a quarter+rest sound identical, a bar can be tiled several
+     ways, and rests can be left empty — any answer with the same attacks on the
+     grid is correct. */
+  var RES = 12; // grid units per beat (divisible by 16ths=3 and triplets=4)
+  function gridFromItems(items) {
+    var grid = [], i; for (i = 0; i < S.measures * 4 * RES; i++) grid[i] = 0;
+    items.forEach(function (it) {
+      var pat = findPattern(it.patternId); if (!pat || !pat.vexflow) return;
+      var raw = pat.vexflow.map(function (n) { return noteBeats(n) * RES; });
+      var sum = raw.reduce(function (a, x) { return a + x; }, 0) || 1;
+      var scale = ((it.beats || pat.beats || 1) * RES) / sum; // figure occupies exactly its beats
+      var pos = (it.mi * 4 + (it.startBeat - 1)) * RES;
+      pat.vexflow.forEach(function (n, k) {
+        var idx = Math.round(pos);
+        if (n.duration.indexOf('r') === -1 && idx >= 0 && idx < grid.length) grid[idx] = 1;
+        pos += raw[k] * scale;
+      });
+    });
+    return grid;
+  }
+  function targetItems() {
+    var a = []; S.target.forEach(function (meas, mi) { meas.forEach(function (it) { a.push({ mi: mi, startBeat: it.startBeat, patternId: it.patternId, beats: it.beats }); }); }); return a;
+  }
+  function answerItems() {
+    var a = [], mi, bi;
+    for (mi = 0; mi < S.measures; mi++) {
+      if (!rs.userAnswer[mi]) continue;
+      for (bi = 0; bi < 4; bi++) {
+        var v = rs.userAnswer[mi][bi];
+        if (v && v.indexOf('_continuation') === -1) { var p = findPattern(v); a.push({ mi: mi, startBeat: bi + 1, patternId: v, beats: p ? p.beats : 1 }); }
       }
     }
+    return a;
+  }
+  function checkAnswer() {
+    var tg = gridFromItems(targetItems()), ag = gridFromItems(answerItems());
+    var wrong = [], allCorrect = true, mi, bi, k;
+    for (mi = 0; mi < S.measures; mi++) for (bi = 0; bi < 4; bi++) {
+      var start = (mi * 4 + bi) * RES, diff = false;
+      for (k = 0; k < RES; k++) if (tg[start + k] !== ag[start + k]) { diff = true; break; }
+      if (diff) { allCorrect = false; wrong.push({ m: mi + 1, b: bi + 1 }); }
+    }
     return { allCorrect: allCorrect, wrong: wrong };
+  }
+  function beatSoundCount(mi, bi) {
+    var tg = gridFromItems(targetItems()), n = 0, start = (mi * 4 + bi) * RES, k;
+    for (k = 0; k < RES; k++) if (tg[start + k]) n++;
+    return n;
   }
   function markZone(m, b, cls) { var z = document.querySelector('.beat-drop-zone[data-measure="' + m + '"][data-beat="' + b + '"]'); if (z) z.classList.add(cls); }
   function clearMarks() { document.querySelectorAll('.beat-drop-zone.solo-wrong,.beat-drop-zone.solo-right').forEach(function (z) { z.classList.remove('solo-wrong', 'solo-right'); }); }
 
   /* ----------------------------------------------------------------- rounds */
   function newRound() {
+    stopPulse();
     S.target = generateTarget();
     S.hintsThisRound = 0; S.wrongThisRound = false; S.solved = false;
     if (rs.updateGameSettings) rs.updateGameSettings({ measureCount: S.measures, difficulty: S.difficulty, tempo: S.tempo });
@@ -167,25 +283,14 @@
   }
   function hintCount() {
     if (S.solved) return;
-    var exp = expectedGrid(S.target);
-    for (var mi = 0; mi < S.measures; mi++) {
-      for (var bi = 0; bi < 4; bi++) {
-        var want = exp[mi][bi];
-        if (want && want.indexOf('_continuation') === -1) {
-          var got = rs.userAnswer[mi] ? rs.userAnswer[mi][bi] : null;
-          if (got !== want) {
-            var pat = findPattern(want);
-            var sounds = pat && pat.vexflow ? pat.vexflow.filter(function (n) { return n.duration.indexOf('r') === -1; }).length : '?';
-            S.hintsThisRound++; S.groove = Math.max(0, S.groove - GROOVE_HINT_COUNT);
-            markZone(mi + 1, bi + 1, 'solo-right');
-            msg('💡 Measure ' + (mi + 1) + ', beat ' + (bi + 1) + ' has ' + sounds + ' sound(s) — narrows your options.');
-            if (S.groove <= 0) grooveBroken();
-            save(); render(); return;
-          }
-        }
-      }
-    }
-    msg('💡 Every beat is already correct — hit Submit!');
+    var r = checkAnswer();
+    if (!r.wrong.length) { msg('💡 Every beat already matches — hit Submit!'); return; }
+    var w = r.wrong[0], n = beatSoundCount(w.m - 1, w.b - 1);
+    S.hintsThisRound++; S.groove = Math.max(0, S.groove - GROOVE_HINT_COUNT);
+    clearMarks(); markZone(w.m, w.b, 'solo-right');
+    msg('💡 Measure ' + w.m + ', beat ' + w.b + ' has ' + n + ' sound(s) — narrows your options.');
+    if (S.groove <= 0) grooveBroken();
+    save(); render();
   }
 
   /* -------------------------------------------------------------------- UI */
@@ -214,10 +319,12 @@
       '#soloHud button{font-family:inherit;font-weight:700;font-size:.85rem;border:none;border-radius:10px;padding:10px 15px;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;transition:.12s}' +
       '#soloHud button:hover{transform:translateY(-1px);background:rgba(255,255,255,.2)}' +
       '#soloHud button.go{background:#2196f3}#soloHud button.hint{background:rgba(255,210,74,.2);color:#ffe1a0}' +
+      '#soloHud button.toggle.on{background:#19e07a;color:#06210f;box-shadow:0 0 0 2px rgba(25,224,122,.4)}' +
       '#soloHud .solo-toggle{display:flex;align-items:center;gap:6px;font-size:.8rem;opacity:.85;margin-left:auto;cursor:pointer}' +
       '#soloHud #soloMsg{margin-top:10px;font-size:.95rem;min-height:1.3em;font-weight:600}' +
       '.beat-drop-zone.solo-wrong{outline:2px solid #ff5a4d;outline-offset:-2px;background:rgba(255,90,77,.13)!important}' +
-      '.beat-drop-zone.solo-right{background:rgba(25,224,122,.16)!important}';
+      '.beat-drop-zone.solo-right{background:rgba(25,224,122,.16)!important}' +
+      '.beat-drop-zone.solo-beat-on{background:rgba(33,150,243,.22)!important;box-shadow:inset 0 0 0 2px rgba(33,150,243,.7)}';
     document.head.appendChild(st);
   }
 
@@ -233,6 +340,8 @@
       '</div>' +
       '<div class="solo-actions">' +
         '<button id="soloPlay">▶ Play rhythm</button>' +
+        '<button id="soloMetro" class="toggle">🔉 Metronome</button>' +
+        '<button id="soloGuide" class="toggle">👁 Beat guide</button>' +
         '<button id="soloHintBeats" class="hint">💡 Find mistakes</button>' +
         '<button id="soloHintCount" class="hint">💡 Count a beat</button>' +
         '<button id="soloSubmit" class="go">✓ Submit</button>' +
@@ -252,6 +361,15 @@
     var cb = document.getElementById('soloCorrect');
     cb.checked = S.correctionMode;
     cb.onchange = function () { S.correctionMode = cb.checked; save(); };
+    var mb = document.getElementById('soloMetro');
+    mb.classList.toggle('on', S.metronome);
+    mb.onclick = function () { S.metronome = !S.metronome; mb.classList.toggle('on', S.metronome); save(); ensurePulse(); };
+    var gb = document.getElementById('soloGuide');
+    gb.classList.toggle('on', S.beatGuide);
+    gb.onclick = function () {
+      S.beatGuide = !S.beatGuide; gb.classList.toggle('on', S.beatGuide); save(); ensurePulse();
+      if (!S.beatGuide && pulse.lastHl) { pulse.lastHl.classList.remove('solo-beat-on'); pulse.lastHl = null; }
+    };
   }
 
   function start() {
