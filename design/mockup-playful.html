@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Playful — Bright & Gamified</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#fff7ed; --surface:#ffffff; --ink:#3a2e4f; --muted:#8a7fa3; --line:#f0e7f7;
+    --teal:#16c2b0; --coral:#ff6f61; --yellow:#ffc94d; --purple:#7b61ff; --warn:#ff5d6c;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Nunito',system-ui,sans-serif;color:var(--ink);min-height:100vh;padding:22px;
+    background:radial-gradient(1000px 460px at 90% -10%,#ffe6c7 0,transparent 55%),var(--bg)}
+  .wrap{max-width:1080px;margin:0 auto}
+  h1,h2,.brand{font-family:'Baloo 2',cursive}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;background:var(--surface);
+    border:3px solid #efe7f7;border-radius:24px;padding:12px 16px;margin-bottom:18px;
+    box-shadow:0 6px 0 #efe2f3}
+  .brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:1.25rem;color:var(--purple)}
+  .logo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:22px;color:#fff;
+    background:linear-gradient(135deg,var(--coral),var(--yellow));box-shadow:0 5px 0 #e7a93f}
+  .pills{display:flex;align-items:center;gap:10px}
+  .chip{display:flex;align-items:center;gap:7px;border-radius:999px;padding:8px 14px;font-weight:800;font-size:.9rem}
+  .chip.streak{background:#fff0d6;color:#d98a16;border:2px solid #ffe0a6}
+  .chip.live{background:#e3fbf4;color:#0e9e8e;border:2px solid #b9f0e5}
+  .chip.live .dot{width:9px;height:9px;border-radius:50%;background:var(--teal)}
+  .chip.room{background:linear-gradient(135deg,var(--purple),#9b8bff);color:#fff;letter-spacing:.05em}
+
+  .card{background:var(--surface);border:3px solid #efe7f7;border-radius:26px;box-shadow:0 8px 0 #efe2f3;margin-bottom:18px}
+  .card-h{display:flex;align-items:center;justify-content:space-between;padding:16px 22px}
+  .card-h h2{font-size:1.15rem;color:var(--ink)}
+  .card-h .hint{font-size:.86rem;color:var(--muted);font-weight:700}
+
+  .bank-body{padding:6px 16px 18px}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:14px}
+  .tile{height:84px;border-radius:18px;display:grid;place-items:center;cursor:grab;position:relative;
+    background:#fbf7ff;border:2.5px solid #ece3fb;transition:.16s;box-shadow:0 4px 0 #ece3fb}
+  .tile:hover{transform:translateY(-3px);box-shadow:0 7px 0 #d9c9fb;border-color:#cdb7ff}
+  .tile:nth-child(4n+1){background:#fff4f2;border-color:#ffd9d2;box-shadow:0 4px 0 #ffd9d2}
+  .tile:nth-child(4n+2){background:#fffaeb;border-color:#ffe7ad;box-shadow:0 4px 0 #ffe7ad}
+  .tile:nth-child(4n+3){background:#ecfdf8;border-color:#bdf0e4;box-shadow:0 4px 0 #bdf0e4}
+  .tile img{max-width:82%;max-height:54px;object-fit:contain}
+
+  .answer-body{padding:22px}
+  .staff-wrap{position:relative;background:#fff;border:3px dashed #e2d6f2;border-radius:20px;height:152px;padding:0 26px}
+  .tsig{position:absolute;left:18px;top:50%;transform:translateY(-50%);font-family:Georgia,serif;font-weight:700;
+    font-size:34px;line-height:.72;display:flex;flex-direction:column;align-items:center;color:var(--purple)}
+  .staffline{position:absolute;left:62px;right:24px;top:50%;height:3px;background:#d9ccef;border-radius:3px}
+  .beats{position:absolute;left:62px;right:24px;top:0;bottom:0;display:flex}
+  .beat{flex:1;position:relative}
+  .beat .num{position:absolute;left:0;bottom:12px;transform:translateX(-50%);color:#c9bce0;font-weight:800;font-size:1.05rem}
+  .beat.measure-end{border-right:3px solid #c9bce0;margin-right:14px}
+  .note{position:absolute;top:50%;height:64px;transform:translateY(-50%);pointer-events:none}
+  .rm{position:absolute;top:6px;width:24px;height:24px;border-radius:50%;background:var(--warn);color:#fff;border:none;
+    display:grid;place-items:center;font-size:14px;font-weight:800;box-shadow:0 4px 0 #d63d4c;cursor:pointer}
+
+  .actionbar{display:flex;justify-content:center;gap:14px;padding:18px 22px}
+  .btn{border:none;border-radius:16px;padding:14px 26px;font-weight:800;font-size:1rem;cursor:pointer;font-family:'Baloo 2',cursive;transition:.12s}
+  .btn.primary{background:linear-gradient(135deg,var(--teal),#3ad6c2);color:#fff;box-shadow:0 6px 0 #0e9e8e}
+  .btn.primary:hover{transform:translateY(-2px);box-shadow:0 8px 0 #0e9e8e}
+  .btn.ghost{background:#f3ecfb;color:var(--purple);box-shadow:0 6px 0 #e0d3f3}
+  .tag{position:fixed;left:16px;bottom:14px;font-size:.78rem;color:var(--muted);background:#fff;border:2px solid var(--line);padding:6px 12px;border-radius:999px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand"><div class="logo">🥁</div> BeatQuest</div>
+    <div class="pills">
+      <div class="chip streak">🔥 4</div>
+      <div class="chip live"><span class="dot"></span> Live</div>
+      <div class="chip room">ROOM · TEST123</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>🎵 Rhythm Bank</h2><span class="hint">Drag a tile down to build your answer!</span></div>
+    <div class="bank-body">
+      <div class="tiles">
+        <div class="tile"><img src="../rhythm-assets/quarter.png"></div>
+        <div class="tile"><img src="../rhythm-assets/two-eighths.png"></div>
+        <div class="tile"><img src="../rhythm-assets/four-sixteenths.png"></div>
+        <div class="tile"><img src="../rhythm-assets/eighth-two-sixteenths.png"></div>
+        <div class="tile"><img src="../rhythm-assets/two-sixteenths-eighth.png"></div>
+        <div class="tile"><img src="../rhythm-assets/dotted-quarter-eighth.png"></div>
+        <div class="tile"><img src="../rhythm-assets/half.png"></div>
+        <div class="tile"><img src="../rhythm-assets/quarter-rest.png"></div>
+        <div class="tile"><img src="../rhythm-assets/eighth-rest-eighth.png"></div>
+        <div class="tile"><img src="../rhythm-assets/triplet-eighths.png"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h"><h2>✏️ Your Answer</h2><span class="hint">2 measures · 4/4</span></div>
+    <div class="answer-body">
+      <div class="staff-wrap">
+        <div class="tsig"><span>4</span><span>4</span></div>
+        <div class="staffline"></div>
+        <div class="beats">
+          <div class="beat"><span class="num">1</span><img class="note" src="../rhythm-assets/four-sixteenths.png" style="left:0;width:100%"><button class="rm" style="left:0;transform:translateX(-50%)">×</button></div>
+          <div class="beat"><span class="num">2</span><img class="note" src="../rhythm-assets/two-eighths.png" style="left:0;width:100%"><button class="rm" style="left:0;transform:translateX(-50%)">×</button></div>
+          <div class="beat"><span class="num">3</span></div>
+          <div class="beat measure-end"><span class="num">4</span></div>
+          <div class="beat"><span class="num">1</span><img class="note" src="../rhythm-assets/quarter.png" style="left:0;width:100%"><button class="rm" style="left:0;transform:translateX(-50%)">×</button></div>
+          <div class="beat"><span class="num">2</span></div>
+          <div class="beat"><span class="num">3</span><img class="note" src="../rhythm-assets/half.png" style="left:0;width:200%"><button class="rm" style="left:0;transform:translateX(-50%)">×</button></div>
+          <div class="beat"><span class="num">4</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="actionbar">
+      <button class="btn ghost">▶ Replay</button>
+      <button class="btn primary">Submit ✓</button>
+    </div>
+  </div>
+</div>
+<div class="tag">Mockup C · “Playful” — bright & gamified</div>
+</body>
+</html>

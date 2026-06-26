@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BeatQuest — Design Mockups</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:#0b0f1e;color:#eef1fb;min-height:100vh;padding:40px}
+  .wrap{max-width:900px;margin:0 auto}
+  h1{font-size:1.8rem;font-weight:800;letter-spacing:-.02em;margin-bottom:6px}
+  p.sub{color:#9aa3c0;margin-bottom:28px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+  a.card{display:block;text-decoration:none;color:inherit;border-radius:18px;padding:22px;border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.05);transition:.18s}
+  a.card:hover{transform:translateY(-3px);border-color:rgba(124,92,255,.6);box-shadow:0 14px 30px rgba(124,92,255,.3)}
+  .swatch{height:54px;border-radius:12px;margin-bottom:14px}
+  .a{background:linear-gradient(135deg,#5b5bd6,#13c4a3)}
+  .b{background:linear-gradient(135deg,#7c5cff,#22d3ee)}
+  .c{background:linear-gradient(135deg,#ff6f61,#16c2b0)}
+  .card h2{font-size:1.1rem;margin-bottom:4px}
+  .card span{color:#9aa3c0;font-size:.88rem}
+  .compare{margin-top:26px;font-size:.9rem;color:#9aa3c0}
+  .compare a{color:#7c9cff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>BeatQuest · Design Directions</h1>
+  <p class="sub">Three takes on a modern, sleek redesign — the notation engine is unchanged. Open each and compare.</p>
+  <div class="cards">
+    <a class="card" href="mockup-aurora.html"><div class="swatch a"></div><h2>A · Aurora</h2><span>Light, clean, indigo accent. Calm & professional.</span></a>
+    <a class="card" href="mockup-midnight.html"><div class="swatch b"></div><h2>B · Midnight</h2><span>Premium dark glass, neon-violet/cyan. Cool & focused.</span></a>
+    <a class="card" href="mockup-playful.html"><div class="swatch c"></div><h2>C · Playful</h2><span>Bright, chunky, gamified. Fun for classrooms.</span></a>
+  </div>
+  <p class="compare">Current app for reference: <a href="../rhythm-student.html">rhythm-student.html</a></p>
+</div>
+</body>
+</html>

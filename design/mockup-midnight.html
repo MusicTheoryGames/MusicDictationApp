@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Midnight — Premium Dark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0f1e; --surface:rgba(255,255,255,.05); --surface-2:rgba(255,255,255,.08);
+    --ink:#eef1fb; --muted:#9aa3c0; --line:rgba(255,255,255,.10);
+    --v1:#7c5cff; --v2:#22d3ee; --pink:#ff5d9e; --warn:#ff6b6b;
+    --radius:20px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;color:var(--ink);min-height:100vh;padding:22px;
+    background:
+      radial-gradient(900px 500px at 12% -10%, rgba(124,92,255,.30), transparent 55%),
+      radial-gradient(900px 500px at 95% 0%, rgba(34,211,238,.18), transparent 55%),
+      var(--bg)}
+  .wrap{max-width:1100px;margin:0 auto}
+  .glass{background:var(--surface);border:1px solid var(--line);backdrop-filter:blur(18px);
+    border-radius:var(--radius);box-shadow:0 20px 50px rgba(0,0,0,.45)}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;margin-bottom:18px}
+  .brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:1.12rem;letter-spacing:-.02em}
+  .brand .sub{color:var(--muted);font-weight:600}
+  .logo{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;font-size:20px;
+    background:linear-gradient(135deg,var(--v1),var(--pink));box-shadow:0 8px 22px rgba(124,92,255,.5)}
+  .pills{display:flex;align-items:center;gap:10px}
+  .pill{display:flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--line);
+    padding:8px 14px;border-radius:999px;font-weight:600;font-size:.85rem}
+  .pill .dot{width:9px;height:9px;border-radius:50%;background:#22d3ee;box-shadow:0 0 10px #22d3ee}
+  .pill.room{background:linear-gradient(135deg,var(--v1),var(--v2));color:#06121f;border:none;font-weight:800;letter-spacing:.06em}
+  .xp{display:flex;align-items:center;gap:7px;color:var(--muted);font-weight:600;font-size:.85rem}.xp b{color:#fff}
+
+  .grid{display:grid;gap:18px}
+  .card-h{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line)}
+  .card-h h2{font-size:1rem;font-weight:700}
+  .card-h .hint{font-size:.8rem;color:var(--muted)}
+
+  .bank-body{padding:16px}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:12px}
+  .tile{height:80px;border-radius:15px;display:grid;place-items:center;cursor:grab;position:relative;
+    background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.03));
+    border:1px solid var(--line);transition:.18s cubic-bezier(.2,.8,.2,1)}
+  .tile:hover{transform:translateY(-3px);border-color:rgba(124,92,255,.6);
+    box-shadow:0 12px 28px rgba(124,92,255,.35), inset 0 0 0 1px rgba(124,92,255,.3)}
+  .tile img{max-width:84%;max-height:54px;object-fit:contain;filter:invert(1) brightness(1.6)}
+
+  .answer-body{padding:26px 22px 18px}
+  .staff-wrap{position:relative;height:152px;padding:0 26px;border-radius:18px;
+    background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+    border:1px solid var(--line);box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+  .tsig{position:absolute;left:18px;top:50%;transform:translateY(-50%);font-family:Georgia,serif;
+    font-weight:700;font-size:34px;line-height:.72;display:flex;flex-direction:column;align-items:center;color:#dfe4ff}
+  .staffline{position:absolute;left:62px;right:24px;top:50%;height:2px;border-radius:2px;
+    background:linear-gradient(90deg,rgba(124,92,255,.5),rgba(34,211,238,.5))}
+  .beats{position:absolute;left:62px;right:24px;top:0;bottom:0;display:flex}
+  .beat{flex:1;position:relative}
+  .beat .num{position:absolute;left:0;bottom:14px;transform:translateX(-50%);color:#6a7197;font-weight:600;font-size:1rem}
+  .beat.measure-end{border-right:2px solid rgba(255,255,255,.25);margin-right:14px}
+  .note{position:absolute;top:50%;height:64px;transform:translateY(-50%);pointer-events:none;filter:invert(1) brightness(1.7)}
+  .rm{position:absolute;top:8px;width:22px;height:22px;border-radius:50%;background:var(--warn);color:#fff;border:none;
+    display:grid;place-items:center;font-size:13px;box-shadow:0 4px 14px rgba(255,107,107,.5);cursor:pointer}
+
+  .actionbar{display:flex;justify-content:center;gap:12px;padding:16px 20px;border-top:1px solid var(--line)}
+  .btn{border:none;border-radius:12px;padding:12px 22px;font-weight:700;font-size:.92rem;cursor:pointer;transition:.15s;font-family:inherit}
+  .btn.primary{background:linear-gradient(135deg,var(--v1),var(--v2));color:#06121f;box-shadow:0 10px 24px rgba(124,92,255,.45)}
+  .btn.primary:hover{transform:translateY(-2px)}
+  .btn.ghost{background:var(--surface-2);color:var(--ink);border:1px solid var(--line)}
+  .tag{position:fixed;left:16px;bottom:14px;font-size:.74rem;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);padding:6px 12px;border-radius:999px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar glass">
+    <div class="brand"><div class="logo">🥁</div> BeatQuest <span class="sub">· Rhythm Dictation</span></div>
+    <div class="pills">
+      <div class="xp">🔥 <b>4</b></div>
+      <div class="pill"><span class="dot"></span> Connected</div>
+      <div class="pill room">ROOM · TEST123</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="glass">
+      <div class="card-h"><h2>Rhythm Bank</h2><span class="hint">Drag a tile onto your answer ↓</span></div>
+      <div class="bank-body">
+        <div class="tiles">
+          <div class="tile"><img src="../rhythm-assets/quarter.png"></div>
+          <div class="tile"><img src="../rhythm-assets/two-eighths.png"></div>
+          <div class="tile"><img src="../rhythm-assets/four-sixteenths.png"></div>
+          <div class="tile"><img src="../rhythm-assets/eighth-two-sixteenths.png"></div>
+          <div class="tile"><img src="../rhythm-assets/two-sixteenths-eighth.png"></div>
+          <div class="tile"><img src="../rhythm-assets/dotted-quarter-eighth.png"></div>
+          <div class="tile"><img src="../rhythm-assets/half.png"></div>
+          <div class="tile"><img src="../rhythm-assets/quarter-rest.png"></div>
+          <div class="tile"><img src="../rhythm-assets/eighth-rest-eighth.png"></div>
+          <div class="tile"><img src="../rhythm-assets/triplet-eighths.png"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass">
+      <div class="card-h"><h2>Your Answer</h2><span class="hint">2 measures · 4/4</span></div>
+      <div class="answer-body">
+        <div class="staff-wrap">
+          <div class="tsig"><span>4</span><span>4</span></div>
+          <div class="staffline"></div>
+          <div class="beats">
+            <div class="beat"><span class="num">1</span><img class="note" src="../rhythm-assets/four-sixteenths.png" style="left:0;width:100%"><button class="rm" style="left:0;transform:translateX(-50%)">×</button></div>
+            <div class="beat"><span class="num">2</span><img class="note" src="../rhythm-assets/two-eighths.png" style="left:0;width:100%"><button class="rm" style="left:0;transform:translateX(-50%)">×</button></div>
+            <div class="beat"><span class="num">3</span></div>
+            <div class="beat measure-end"><span class="num">4</span></div>
+            <div class="beat"><span class="num">1</span><img class="note" src="../rhythm-assets/quarter.png" style="left:0;width:100%"><button class="rm" style="left:0;transform:translateX(-50%)">×</button></div>
+            <div class="beat"><span class="num">2</span></div>
+            <div class="beat"><span class="num">3</span><img class="note" src="../rhythm-assets/half.png" style="left:0;width:200%"><button class="rm" style="left:0;transform:translateX(-50%)">×</button></div>
+            <div class="beat"><span class="num">4</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="actionbar">
+        <button class="btn ghost">▶ Replay rhythm</button>
+        <button class="btn primary">Submit answer</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="tag">Mockup B · “Midnight” — premium dark</div>
+</body>
+</html>
