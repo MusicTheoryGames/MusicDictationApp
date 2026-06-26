@@ -127,8 +127,11 @@
         }
 
         .rhythm-tiles {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            /* Flex-wrap with FIXED-width tiles so each tile is always the same
+               size no matter how many figures the level shows (2 or 18). */
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
             gap: 10px;
             /* Cap the bank so it can't push the answer staff off-screen; it
                scrolls internally if there are more tiles than fit. */
@@ -137,6 +140,8 @@
         }
 
         .rhythm-tile {
+            width: 150px;          /* fixed size — consistent across all levels */
+            flex: 0 0 150px;
             background: rgba(255, 255, 255, 0.08);
             backdrop-filter: blur(16px) saturate(180%);
             border-radius: 18px;
@@ -219,7 +224,11 @@
             border-radius: 8px;
             padding: 20px 50px 20px 20px;
             position: relative;
-            width: min(900px, 96vw);
+            /* Fill the width like the rhythm bank (capped so beat cells/notes
+               don't get oversized on ultra-wide screens). Horizontal only —
+               vertical staff/time-sig tuning is untouched. */
+            width: 100%;
+            max-width: 1500px;
             height: 120px;
         }
 
