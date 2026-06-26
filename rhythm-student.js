@@ -716,10 +716,11 @@ class RhythmStudent {
                     const img = document.createElement('img');
                     img.src = `./rhythm-assets/${asset.file}`;
                     img.className = 'placed-note';
-                    // Width is relative to ONE responsive (flex:1) beat cell, so the
-                    // note scales with the screen and never overlaps its neighbours.
-                    // Multi-beat patterns span their continuation cells to the right.
-                    img.style.width = (beatsNeeded * 100) + '%';
+                    // All PNGs share one canvas/scale, so size is controlled by a
+                    // fixed CSS height (consistent note size for every pattern).
+                    // Only the horizontal CENTER shifts to sit over the beat span:
+                    // 1 beat -> 50% of the cell, 2 beats -> 100% (the span's centre).
+                    img.style.left = (beatsNeeded * 50) + '%';
                     img.alt = asset.name;
 
                     notationArea.innerHTML = `<button class="remove-btn" onclick="rhythmStudent.removeTile(${measure}, ${startBeat})">×</button>`;
