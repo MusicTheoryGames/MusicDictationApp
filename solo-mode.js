@@ -35,6 +35,20 @@
   (function () { var acc = []; for (var i = 0; i < L_STEPS.length; i++) { acc = acc.concat(L_STEPS[i]); LEVELS[i + 1] = acc.slice(); } })();
   function levelIds() { return S.mode === 'classic' ? null : (LEVELS[S.level] || LEVELS[7]); }
 
+  /* Inline SVG icons — stroke/fill use currentColor so they inherit each
+     theme's text color automatically (no emojis, ever). */
+  var IC = {
+    play:  '<svg viewBox="0 0 20 20" class="ic ic-fill"><path d="M6 4l11 6-11 6z"/></svg>',
+    metro: '<svg viewBox="0 0 20 20" class="ic"><path d="M7.2 17h5.6l-1.3-12H8.5z"/><path d="M10 14l3.6-7.4"/><path d="M6 17h8"/></svg>',
+    guide: '<svg viewBox="0 0 20 20" class="ic"><path d="M2 11h3l2-5 3 9 2-6 1.4 2H18"/></svg>',
+    search:'<svg viewBox="0 0 20 20" class="ic"><circle cx="9" cy="9" r="5"/><path d="M13 13l4.5 4.5"/></svg>',
+    count: '<svg viewBox="0 0 20 20" class="ic"><path d="M5 15V8M10 15V5M15 15v-4"/></svg>',
+    eye:   '<svg viewBox="0 0 20 20" class="ic"><path d="M1.5 10S5 4.5 10 4.5 18.5 10 18.5 10 15 15.5 10 15.5 1.5 10 1.5 10z"/><circle cx="10" cy="10" r="2.4"/></svg>',
+    check: '<svg viewBox="0 0 20 20" class="ic"><path d="M4 10.5l4 4 8-9"/></svg>',
+    next:  '<svg viewBox="0 0 20 20" class="ic ic-fill"><path d="M5 4l8 6-8 6z"/><path d="M14.5 4v12" class="ic-stroke"/></svg>',
+    flame: '<svg viewBox="0 0 20 20" class="ic ic-fill ic-sm"><path d="M10 2c1.1 3 4 4.2 4 8a4 4 0 11-8 0c0-2.2 1.1-3.2 2-4.2.2 1.2 1 2 2 2.2.3-2.4-2-3.6-2-8z"/></svg>'
+  };
+
   /* --------------------------------------------------------- persistence */
   function load() {
     try {
@@ -192,7 +206,7 @@
       });
     });
     startPulse(t0);   // count-in always ticks; metronome/guide continue per toggles
-    msg('🎧 Count-in… then the rhythm' + (S.metronome ? ' · metronome on' : '') + (S.beatGuide ? ' · beat guide on' : '') + '. Build your answer.');
+    msg('Count-in… then the rhythm' + (S.metronome ? ' · metronome on' : '') + (S.beatGuide ? ' · beat guide on' : '') + '. Build your answer.');
   }
 
   /* --------------------------------------------------------------- checking
@@ -274,8 +288,8 @@
       else { S.streak = 0; }
       var pts = 100 + (clean ? S.streak * 20 : 0);
       S.score += pts;
-      msg(clean ? '✓ Nailed it first try! +' + pts + '  ·  Groove +' + GROOVE_GAIN_CLEAN + '  ·  streak ×' + S.streak
-                : '✓ Correct! +' + pts);
+      msg(clean ? 'Nailed it first try! +' + pts + '  ·  Groove +' + GROOVE_GAIN_CLEAN + '  ·  streak ×' + S.streak
+                : 'Correct! +' + pts);
       document.getElementById('soloSubmit').style.display = 'none';
       document.getElementById('soloNext').style.display = '';
       save(); render(); return;
@@ -284,10 +298,10 @@
     S.groove = Math.max(0, S.groove - GROOVE_PER_WRONG * r.wrong.length);
     if (S.correctionMode) {
       r.wrong.forEach(function (w) { markZone(w.m, w.b, 'solo-wrong'); });
-      msg('✗ ' + r.wrong.length + ' beat(s) off — fix the red beats, then submit again.');
+      msg(r.wrong.length + ' beat(s) off — fix the red beats, then submit again.');
     } else {
       S.streak = 0; revealCorrect();
-      msg('✗ Not quite — here’s the correct rhythm.');
+      msg('Not quite — here’s the correct rhythm.');
       document.getElementById('soloSubmit').style.display = 'none';
       document.getElementById('soloNext').style.display = '';
     }
@@ -304,7 +318,7 @@
       });
     });
   }
-  function grooveBroken() { msg('💔 You lost the groove! Score ' + S.score + '. Restarting the set…'); S.groove = 100; S.streak = 0; setTimeout(newRound, 1600); }
+  function grooveBroken() { msg('You lost the groove! Score ' + S.score + '. Restarting the set…'); S.groove = 100; S.streak = 0; setTimeout(newRound, 1600); }
 
   /* ------------------------------------------------------------------ hints */
   function hintMistakes() {
@@ -314,18 +328,18 @@
     var r = checkAnswer();
     var filledWrong = r.wrong.filter(function (w) { return rs.userAnswer[w.m - 1][w.b - 1]; });
     filledWrong.forEach(function (w) { markZone(w.m, w.b, 'solo-wrong'); });
-    msg(filledWrong.length ? '💡 ' + filledWrong.length + ' placed beat(s) are wrong (red).' : '💡 Nothing placed is wrong — you’re just missing beats.');
+    msg(filledWrong.length ? filledWrong.length + ' placed beat(s) are wrong (red).' : 'Nothing placed is wrong — you’re just missing beats.');
     if (S.groove <= 0) grooveBroken();
     save(); render();
   }
   function hintCount() {
     if (S.solved) return;
     var r = checkAnswer();
-    if (!r.wrong.length) { msg('💡 Every beat already matches — hit Submit!'); return; }
+    if (!r.wrong.length) { msg('Every beat already matches — hit Submit!'); return; }
     var w = r.wrong[0], n = beatSoundCount(w.m - 1, w.b - 1);
     S.hintsThisRound++; S.groove = Math.max(0, S.groove - GROOVE_HINT_COUNT);
     clearMarks(); markZone(w.m, w.b, 'solo-right');
-    msg('💡 Measure ' + w.m + ', beat ' + w.b + ' has ' + n + ' sound(s) — narrows your options.');
+    msg('Measure ' + w.m + ', beat ' + w.b + ' has ' + n + ' sound(s) — narrows your options.');
     if (S.groove <= 0) grooveBroken();
     save(); render();
   }
@@ -353,12 +367,26 @@
       '#soloHud .solo-bar{flex:1;max-width:240px;height:10px;border-radius:6px;background:rgba(255,255,255,.15);overflow:hidden}' +
       '#soloHud .solo-bar i{display:block;height:100%;width:100%;background:#19e07a;transition:width .35s,background .35s}' +
       '#soloHud .solo-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}' +
-      '#soloHud button{font-family:inherit;font-weight:700;font-size:.85rem;border:none;border-radius:10px;padding:10px 15px;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;transition:.12s}' +
-      '#soloHud button:hover{transform:translateY(-1px);background:rgba(255,255,255,.2)}' +
-      '#soloHud button.go{background:#2196f3}#soloHud button.hint{background:rgba(255,210,74,.2);color:#ffe1a0}' +
+      // shared button styling across the top HUD and the bottom action bar (.solo-ctl)
+      '.solo-ctl button{display:inline-flex;align-items:center;font-family:inherit;font-weight:700;font-size:.85rem;border:none;border-radius:10px;padding:9px 14px;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;transition:.12s}' +
+      '.solo-ctl button:hover{transform:translateY(-1px);background:rgba(255,255,255,.2)}' +
+      '.solo-ctl button.go{background:#2196f3}' +
+      // primary actions (Play, Submit) sit above the rest in size/weight
+      '.solo-ctl button.primary{padding:12px 24px;font-size:.98rem;border-radius:12px}' +
+      // hints are tertiary: smaller, muted, grouped behind a divider + label
+      '.solo-ctl button.hint{font-size:.74rem;padding:7px 10px;background:rgba(255,255,255,.06);color:#cfd3e0;font-weight:600}' +
+      '#soloHud .solo-hints{display:inline-flex;align-items:center;gap:6px;padding-left:12px;margin-left:2px;border-left:1px solid rgba(255,255,255,.18)}' +
+      '#soloHud .solo-hints .hints-label{font-size:.6rem;letter-spacing:.14em;opacity:.5;font-weight:800}' +
+      // icons inherit the button text color so they restyle per theme
+      '.solo-ctl .ic{width:1.05em;height:1.05em;margin-right:7px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}' +
+      '.solo-ctl .ic-sm{width:.95em;height:.95em;margin:0 0 0 5px}' +
+      '.solo-ctl .ic-fill{fill:currentColor;stroke:none}' +
+      '.solo-ctl .ic-fill .ic-stroke{fill:none;stroke:currentColor;stroke-width:1.7}' +
+      // bottom action bar (Submit / Next) directly under the staff
+      '#soloActions{display:flex;justify-content:center;gap:12px;margin-top:14px}' +
       '#soloHud select{font-family:inherit;font-size:.82rem;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px 8px}' +
       '#soloHud select option{color:#111}' +
-      '#soloHud button.toggle.on{background:#19e07a;color:#06210f;box-shadow:0 0 0 2px rgba(25,224,122,.4)}' +
+      '.solo-ctl button.toggle.on{background:#19e07a;color:#06210f;box-shadow:0 0 0 2px rgba(25,224,122,.4)}' +
       '#soloHud .solo-toggle{display:flex;align-items:center;gap:6px;font-size:.8rem;opacity:.85;margin-left:auto;cursor:pointer}' +
       '#soloHud #soloMsg{margin-top:10px;font-size:.95rem;min-height:1.3em;font-weight:600}' +
       '.beat-drop-zone.solo-wrong{outline:2px solid #ff5a4d;outline-offset:-2px;background:rgba(255,90,77,.13)!important}' +
@@ -373,29 +401,37 @@
     var lvOpts = '';
     for (var L = 1; L <= 7; L++) lvOpts += '<option value="' + L + '">Lvl ' + L + ' · ' + LEVEL_LABELS[L] + '</option>';
     lvOpts += '<option value="classic">Classic (all figures)</option>';
-    var hud = document.createElement('div'); hud.id = 'soloHud';
+    var hud = document.createElement('div'); hud.id = 'soloHud'; hud.className = 'solo-ctl';
     hud.innerHTML =
       '<div class="solo-stats">' +
         '<div class="solo-stat"><span>LEVEL</span><select id="soloLevel">' + lvOpts + '</select></div>' +
         '<div class="solo-stat groove"><span>GROOVE</span><div class="solo-bar"><i id="soloGrooveFill"></i></div><b id="soloGroovePct">100%</b></div>' +
         '<div class="solo-stat"><span>SCORE</span><b id="soloScore">0</b></div>' +
-        '<div class="solo-stat"><span>STREAK</span><b id="soloStreak">0</b> 🔥</div>' +
+        '<div class="solo-stat"><span>STREAK</span><b id="soloStreak">0</b>' + IC.flame + '</div>' +
       '</div>' +
       '<div class="solo-actions">' +
-        '<button id="soloPlay">▶ Play rhythm</button>' +
-        '<button id="soloMetro" class="toggle">🔉 Metronome</button>' +
-        '<button id="soloGuide" class="toggle">👁 Beat guide</button>' +
-        '<button id="soloHintBeats" class="hint">💡 Find mistakes</button>' +
-        '<button id="soloHintCount" class="hint">💡 Count a beat</button>' +
-        '<button id="soloReveal" class="hint">👀 Show answer</button>' +
-        '<button id="soloSubmit" class="go">✓ Submit</button>' +
-        '<button id="soloNext" class="go" style="display:none">⏭ Next</button>' +
+        '<button id="soloPlay" class="primary">' + IC.play + 'Play rhythm</button>' +
+        '<button id="soloMetro" class="toggle">' + IC.metro + 'Metronome</button>' +
+        '<button id="soloGuide" class="toggle">' + IC.guide + 'Beat guide</button>' +
+        '<span class="solo-hints"><span class="hints-label">HINTS</span>' +
+          '<button id="soloHintBeats" class="hint">' + IC.search + 'Find mistakes</button>' +
+          '<button id="soloHintCount" class="hint">' + IC.count + 'Count a beat</button>' +
+          '<button id="soloReveal" class="hint">' + IC.eye + 'Show answer</button>' +
+        '</span>' +
         '<label class="solo-toggle"><input type="checkbox" id="soloCorrect"> Fix-it mode</label>' +
       '</div>' +
       '<div id="soloMsg"></div>';
     var ga = document.getElementById('gameArea');
     var sb = ga ? ga.querySelector('.status-bar') : null;
     if (sb) sb.insertAdjacentElement('afterend', hud); else if (ga) ga.insertBefore(hud, ga.firstChild);
+
+    // Submit / Next live in their own bar directly UNDER the answer staff.
+    var actions = document.createElement('div'); actions.id = 'soloActions'; actions.className = 'solo-ctl';
+    actions.innerHTML =
+      '<button id="soloSubmit" class="primary go">' + IC.check + 'Submit answer</button>' +
+      '<button id="soloNext" class="go" style="display:none">' + IC.next + 'Next</button>';
+    var answerArea = ga ? ga.querySelector('.answer-area') : null;
+    if (answerArea) answerArea.appendChild(actions);
 
     document.getElementById('soloPlay').onclick = playTarget;
     document.getElementById('soloHintBeats').onclick = hintMistakes;
@@ -406,7 +442,7 @@
       if (S.solved) return;
       S.solved = true; S.streak = 0; S.wrongThisRound = true;
       stopPulse(); clearMarks(); revealCorrect();
-      msg('👀 Here’s the correct rhythm. (No points — hit Next for a new one.)');
+      msg('Here’s the correct rhythm. (No points — hit Next for a new one.)');
       document.getElementById('soloSubmit').style.display = 'none';
       document.getElementById('soloNext').style.display = '';
       save(); render();
@@ -441,8 +477,8 @@
     document.getElementById('loginForm').classList.add('hidden');
     document.getElementById('gameArea').classList.add('active');
     document.body.classList.remove('login-mode');
-    var room = document.getElementById('connectedRoom'); if (room) room.textContent = 'Solo Practice';
-    var stat = document.getElementById('connectionStatus'); if (stat) stat.textContent = 'Self-study';
+    // Solo has no classroom — hide the "Connected to Room / Status" bar entirely.
+    var statusBar = document.querySelector('.status-bar'); if (statusBar) statusBar.style.display = 'none';
     rs.connected = true;
     buildHud();
     S.groove = 100;

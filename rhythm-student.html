@@ -456,7 +456,7 @@
         /* Landscape orientation hint */
         @media (max-width: 768px) and (orientation: portrait) {
             .game-area::before {
-                content: "💡 Tip: Rotate to landscape for better experience";
+                content: "Tip: Rotate to landscape for a better experience";
                 display: block;
                 text-align: center;
                 background: rgba(255, 255, 255, 0.1);
@@ -623,7 +623,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>🥁 Rhythm Dictation - Student</h1>
+        <h1>Rhythm Dictation — Student</h1>
     </div>
 
     <!-- Login Form -->
@@ -639,7 +639,7 @@
         </div>
         <button class="btn-login" id="joinBtn">Join Session</button>
         <div style="text-align:center;margin:14px 0 4px;opacity:.7;font-size:.85rem">— or —</div>
-        <button class="btn-login" id="soloBtn" style="background:linear-gradient(45deg,#16c2b0,#0e9e8e)">🎯 Practice on your own</button>
+        <button class="btn-login" id="soloBtn" style="background:linear-gradient(45deg,#16c2b0,#0e9e8e)">Practice on your own</button>
     </div>
 
     <!-- Game Area -->
@@ -651,7 +651,7 @@
 
         <!-- Answer staff on top (your work); rhythm bank below as the palette -->
         <div class="answer-area">
-            <h3>Your Answer</h3>
+            <!-- label is the themed pill inside the staff ("Your Answer (N measures)") -->
             <div id="measureContainer">
                 <!-- Measures will be populated by JavaScript -->
             </div>

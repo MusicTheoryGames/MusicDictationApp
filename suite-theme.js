@@ -49,7 +49,7 @@
       ex.className = 'dq-extra'; ex.setAttribute('aria-hidden', 'true');
       ex.innerHTML =
         '<div class="dq-vu"><span></span><span></span><span></span><span></span><span></span></div>' +
-        '<div class="dq-hud"><div><b>SCORE</b> 028,400</div><div><b>COMBO</b> x4 🔥</div></div>';
+        '<div class="dq-hud"><div><b>SCORE</b> 028,400</div><div><b>COMBO</b> x4</div></div>';
       header.appendChild(ex);
     }
   }

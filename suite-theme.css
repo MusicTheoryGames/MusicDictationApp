@@ -19,7 +19,7 @@ body.theme-mpc .header h1{font-family:'Saira Condensed';font-weight:800;letter-s
 body.theme-mpc .status-bar{background:linear-gradient(180deg,#3a3a3e,#242427);border:1px solid #0c0c0d;
   color:#cfcfd3;box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
 body.theme-mpc #connectedRoom,body.theme-mpc #connectionStatus{font-family:'Share Tech Mono',monospace;
-  color:#39ff8b;letter-spacing:.1em;text-shadow:0 0 8px #39ff8b}
+  color:#39ff8b;letter-spacing:.1em;text-shadow:0 0 2px rgba(57,255,139,.55)}
 body.theme-mpc .rhythm-bank,body.theme-mpc .answer-area{
   background:linear-gradient(180deg,#3a3a3e,#26262a) !important;border:1px solid #0c0c0d !important;backdrop-filter:none !important}
 body.theme-mpc .rhythm-bank h3,body.theme-mpc .answer-area h3{font-family:'Saira Condensed';font-weight:700;
@@ -172,7 +172,7 @@ body.theme-arcade .dq-hud b{color:#ff8ad1}
 body.theme-mpc .answer-staff::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:8px;z-index:4;
   background:repeating-linear-gradient(0deg,rgba(0,0,0,.05) 0 2px,transparent 2px 4px)}
 body.theme-mpc .answer-staff-label{background:#0a1a10 !important;color:#39ff8b !important;
-  font-family:'Share Tech Mono',monospace !important;letter-spacing:.08em;text-shadow:0 0 8px #39ff8b;border:1px solid #051008}
+  font-family:'Share Tech Mono',monospace !important;letter-spacing:.08em;text-shadow:0 0 2px rgba(57,255,139,.55);border:1px solid #051008}
 
 /* Manuscript: double "deckle" border + round wax-seal submit */
 body.theme-manuscript .answer-staff{border-color:transparent !important;
@@ -192,19 +192,19 @@ body.theme-brutalist .header h1{font-size:3.4rem;line-height:.9}
 /* ---- MPC: brushed-metal transport controls ---- */
 body.theme-mpc #soloHud{background:linear-gradient(180deg,#3a3a3e,#242427);border:1px solid #0c0c0d;box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
 body.theme-mpc #soloHud .solo-stat>span,body.theme-mpc #soloHud .solo-toggle{color:#cfcfd3;font-family:'Saira Condensed',sans-serif;letter-spacing:.12em;text-transform:uppercase}
-body.theme-mpc #soloHud button{font-family:'Saira Condensed',sans-serif;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#e9e9ec;background:linear-gradient(180deg,#3a3a3e,#242427);border:1px solid #0c0c0d;border-radius:7px;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 3px 0 #0a0a0b}
-body.theme-mpc #soloHud button.go{color:#1a0d0d;background:linear-gradient(180deg,#ff5a4d,#d23023);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 3px 0 #7a1a12}
-body.theme-mpc #soloHud button.toggle.on{color:#06210f;background:linear-gradient(180deg,#39ff8b,#19c46a);box-shadow:0 0 10px rgba(57,255,139,.6),0 3px 0 #0e7a3f}
-body.theme-mpc #soloHud select{font-family:'Share Tech Mono',monospace;background:#0a1a10;color:#39ff8b;border:1px solid #051008;text-shadow:0 0 6px #39ff8b}
+body.theme-mpc .solo-ctl button{font-family:'Saira Condensed',sans-serif;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#e9e9ec;background:linear-gradient(180deg,#3a3a3e,#242427);border:1px solid #0c0c0d;border-radius:7px;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 3px 0 #0a0a0b}
+body.theme-mpc .solo-ctl button.go{color:#1a0d0d;background:linear-gradient(180deg,#ff5a4d,#d23023);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 3px 0 #7a1a12}
+body.theme-mpc .solo-ctl button.toggle.on{color:#06210f;background:linear-gradient(180deg,#39ff8b,#19c46a);box-shadow:0 0 10px rgba(57,255,139,.6),0 3px 0 #0e7a3f}
+body.theme-mpc #soloHud select{font-family:'Share Tech Mono',monospace;background:#0a1a10;color:#39ff8b;border:1px solid #051008;text-shadow:0 0 2px rgba(57,255,139,.55)}
 
 /* ---- Manuscript: ink on parchment ---- */
 body.theme-manuscript #soloHud{background:rgba(255,252,242,.78);border:1px solid #c3b393;color:#2a2118}
 body.theme-manuscript #soloHud .solo-stat>span,body.theme-manuscript #soloHud .solo-toggle{color:#5c4f3c;font-family:'Cormorant Garamond',serif;font-variant:small-caps;letter-spacing:.1em}
 body.theme-manuscript #soloHud .solo-stat b{color:#2a2118}
-body.theme-manuscript #soloHud button{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:1rem;color:#2a2118;background:#fbf6e7;border:1.5px solid #2a2118;border-radius:4px;box-shadow:0 1px 2px rgba(120,95,55,.25)}
-body.theme-manuscript #soloHud button.go{color:#f3ead4;background:radial-gradient(circle at 38% 32%,#c0392b,#7d211a 70%);border:2px solid #4e120d}
-body.theme-manuscript #soloHud button.hint{color:#7d211a;background:#f3ead4}
-body.theme-manuscript #soloHud button.toggle.on{color:#f3ead4;background:#5c7a4a;border-color:#3a5230}
+body.theme-manuscript .solo-ctl button{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:1rem;color:#2a2118;background:#fbf6e7;border:1.5px solid #2a2118;border-radius:4px;box-shadow:0 1px 2px rgba(120,95,55,.25)}
+body.theme-manuscript .solo-ctl button.go{color:#f3ead4;background:radial-gradient(circle at 38% 32%,#c0392b,#7d211a 70%);border:2px solid #4e120d}
+body.theme-manuscript .solo-ctl button.hint{color:#7d211a;background:#f3ead4}
+body.theme-manuscript .solo-ctl button.toggle.on{color:#f3ead4;background:#5c7a4a;border-color:#3a5230}
 body.theme-manuscript #soloHud select{font-family:'Cormorant Garamond',serif;background:#fbf6e7;color:#2a2118;border:1.5px solid #2a2118}
 body.theme-manuscript #soloHud select option{color:#2a2118}
 
@@ -212,18 +212,18 @@ body.theme-manuscript #soloHud select option{color:#2a2118}
 body.theme-arcade #soloHud{background:rgba(22,8,43,.7);border:2px solid #2a1860}
 body.theme-arcade #soloHud .solo-stat>span,body.theme-arcade #soloHud .solo-toggle{color:#8a7adf;font-family:'Press Start 2P',monospace;font-size:.5rem}
 body.theme-arcade #soloHud .solo-stat b,body.theme-arcade #soloHud #soloGroovePct{font-family:'Press Start 2P',monospace;font-size:.7rem;color:#16f0ff;text-shadow:0 0 8px #16f0ff}
-body.theme-arcade #soloHud button{font-family:'Press Start 2P',monospace;font-size:.55rem;color:#fff;background:radial-gradient(120% 120% at 50% 20%,#3a1170,#1a0840);border:2px solid #16f0ff;border-radius:8px;box-shadow:0 0 10px rgba(22,240,255,.5),0 4px 0 #0a6e78}
-body.theme-arcade #soloHud button.go{border-color:#ff2ea6;box-shadow:0 0 12px rgba(255,46,166,.6),0 4px 0 #7a0f52}
-body.theme-arcade #soloHud button.hint{border-color:#ffe44d;box-shadow:0 0 10px rgba(255,228,77,.4),0 4px 0 #8a7a10;color:#ffe44d}
-body.theme-arcade #soloHud button.toggle.on{background:linear-gradient(180deg,#16f0ff,#06b6c9);color:#06121f;box-shadow:0 0 14px #16f0ff}
+body.theme-arcade .solo-ctl button{font-family:'Press Start 2P',monospace;font-size:.55rem;color:#fff;background:radial-gradient(120% 120% at 50% 20%,#3a1170,#1a0840);border:2px solid #16f0ff;border-radius:8px;box-shadow:0 0 10px rgba(22,240,255,.5),0 4px 0 #0a6e78}
+body.theme-arcade .solo-ctl button.go{border-color:#ff2ea6;box-shadow:0 0 12px rgba(255,46,166,.6),0 4px 0 #7a0f52}
+body.theme-arcade .solo-ctl button.hint{border-color:#ffe44d;box-shadow:0 0 10px rgba(255,228,77,.4),0 4px 0 #8a7a10;color:#ffe44d}
+body.theme-arcade .solo-ctl button.toggle.on{background:linear-gradient(180deg,#16f0ff,#06b6c9);color:#06121f;box-shadow:0 0 14px #16f0ff}
 body.theme-arcade #soloHud select{font-family:'Press Start 2P',monospace;font-size:.5rem;background:#10082b;color:#16f0ff;border:1px solid #16f0ff}
 
 /* ---- Brutalist: hard editorial controls ---- */
 body.theme-brutalist #soloHud{background:#fff;border:2px solid #111;border-radius:0;color:#111}
 body.theme-brutalist #soloHud .solo-stat>span,body.theme-brutalist #soloHud .solo-toggle{color:#111;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
 body.theme-brutalist #soloHud .solo-bar{background:#eee;border:1px solid #111}
-body.theme-brutalist #soloHud button{font-family:'Anton',sans-serif;text-transform:uppercase;letter-spacing:.02em;color:#111;background:#fff;border:2px solid #111;border-radius:0;box-shadow:none}
-body.theme-brutalist #soloHud button:hover{background:#111;color:#fff}
-body.theme-brutalist #soloHud button.go{background:#e3231b;color:#fff;border-color:#111}
-body.theme-brutalist #soloHud button.toggle.on{background:#111;color:#fff}
+body.theme-brutalist .solo-ctl button{font-family:'Anton',sans-serif;text-transform:uppercase;letter-spacing:.02em;color:#111;background:#fff;border:2px solid #111;border-radius:0;box-shadow:none}
+body.theme-brutalist .solo-ctl button:hover{background:#111;color:#fff}
+body.theme-brutalist .solo-ctl button.go{background:#e3231b;color:#fff;border-color:#111}
+body.theme-brutalist .solo-ctl button.toggle.on{background:#111;color:#fff}
 body.theme-brutalist #soloHud select{font-family:'Space Mono',monospace;font-weight:700;background:#fff;color:#111;border:2px solid #111;border-radius:0}
