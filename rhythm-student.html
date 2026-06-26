@@ -273,12 +273,12 @@
         .answer-time-sig {
             position: absolute;
             left: 2px;
-            top: 39px;
+            top: 35px;
             transform: translateY(-50%);
             display: flex;
             flex-direction: column;
             align-items: center;
-            line-height: 0.78;
+            line-height: 0.72;
             font-family: Georgia, 'Times New Roman', serif;
             font-weight: 700;
             font-size: 30px;
@@ -323,7 +323,8 @@
         .beat-drop-zone::before {
             content: attr(data-beat);
             position: absolute;
-            bottom: 5px;
+            /* Below the staff so stems-down notes don't cover the numbers. */
+            bottom: -10px;
             /* Anchored to the beat ONSET (cell's left edge) so the number sits
                where the beat actually starts and notes line up under it. */
             left: 0;
@@ -649,6 +650,6 @@
         </div>
     </div>
 
-    <script type="module" src="rhythm-student.js?v=20260626c"></script>
+    <script type="module" src="rhythm-student.js?v=20260626d"></script>
 </body>
 </html>
