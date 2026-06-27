@@ -386,7 +386,11 @@
     var mobile = false; try { mobile = window.matchMedia('(pointer: coarse) and (max-width: 1400px)').matches; } catch (e) {}
     var ga = document.getElementById('gameArea'); var bank = document.querySelector('.rhythm-bank');
     if (!ga || !bank) return;
-    ga.style.paddingBottom = mobile ? (bank.offsetHeight + 10) + 'px' : '';
+    if (!mobile) { ga.style.paddingBottom = ''; return; }
+    // Reserve everything from the (floating) bank's top down to the viewport bottom,
+    // so the last staff row clears the bank AND its bottom gap.
+    var top = bank.getBoundingClientRect().top;
+    ga.style.paddingBottom = Math.max(0, Math.round(window.innerHeight - top + 8)) + 'px';
   }
 
   /* ----------------------------------------------------------------- audio
