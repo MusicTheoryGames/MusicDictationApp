@@ -19,7 +19,7 @@
     changing: false, changePool: null, curMeters: null,  // changing-meter mode
     hintsThisRound: 0, wrongThisRound: false, solved: false
   };
-  var GROOVE_PER_WRONG = 12, GROOVE_HINT_MISTAKES = 8, GROOVE_HINT_COUNT = 5, GROOVE_HINT_NARROW = 10, GROOVE_GAIN_CLEAN = 15;
+  var GROOVE_PER_WRONG = 12, GROOVE_HINT_MISTAKES = 8, GROOVE_HINT_COUNT = 5, GROOVE_HINT_NARROW = 10, GROOVE_HINT_PLAY = 6, GROOVE_GAIN_CLEAN = 15;
   var SPEEDS = { slow: 72, medium: 100, fast: 132 };   // beat BPM (dotted-quarter in compound)
 
   /* Level ladder — figures unlocked in the order Hall's "Studying Rhythm"
@@ -234,6 +234,7 @@
     search:'<svg viewBox="0 0 20 20" class="ic"><circle cx="9" cy="9" r="5"/><path d="M13 13l4.5 4.5"/></svg>',
     count: '<svg viewBox="0 0 20 20" class="ic"><path d="M5 15V8M10 15V5M15 15v-4"/></svg>',
     filter: '<svg viewBox="0 0 20 20" class="ic"><path d="M2.5 4h15l-6 7.2v4.6l-3 1.6v-6.2z"/></svg>',
+    hear: '<svg viewBox="0 0 20 20" class="ic"><path d="M3 8v4h3l4 3V5L6 8z"/><path d="M13.5 7c1.6 1.4 1.6 5.6 0 7"/></svg>',
     eye:   '<svg viewBox="0 0 20 20" class="ic"><path d="M1.5 10S5 4.5 10 4.5 18.5 10 18.5 10 15 15.5 10 15.5 1.5 10 1.5 10z"/><circle cx="10" cy="10" r="2.4"/></svg>',
     check: '<svg viewBox="0 0 20 20" class="ic"><path d="M4 10.5l4 4 8-9"/></svg>',
     next:  '<svg viewBox="0 0 20 20" class="ic ic-fill"><path d="M5 4l8 6-8 6z"/><path d="M14.5 4v12" class="ic-stroke"/></svg>',
@@ -560,6 +561,7 @@
     var fb = document.getElementById('feedback'); if (fb) { fb.style.display = 'none'; fb.textContent = ''; } // solo uses #soloMsg
     filterBank();
     S.narrowed = false; S.narrowCharged = false; setNarrowBtn();   // reset the narrow toggle
+    S.pick = null; setPickBtns();                                  // disarm the pick-a-beat hints
     clearMarks();
     document.getElementById('soloNext').style.display = 'none';
     document.getElementById('soloSubmit').style.display = '';
@@ -622,14 +624,37 @@
     if (S.groove <= 0) grooveBroken();
     save(); render();
   }
-  function hintCount() {
+  /* Pick-a-beat hints. The student ARMS a mode ("Count sounds" or "Hear a beat")
+     then TAPS the beat they want — no more guessing a random beat. */
+  function setPickBtns() {
+    var c = document.getElementById('soloHintCount'), h = document.getElementById('soloHearBeat');
+    if (c) c.classList.toggle('on', S.pick === 'count');
+    if (h) h.classList.toggle('on', S.pick === 'play');
+  }
+  function armPick(mode) {
     if (S.solved) return;
-    var r = checkAnswer();
-    if (!r.wrong.length) { msg('Every beat already matches — hit Submit!'); return; }
-    var w = r.wrong[0], n = beatSoundCount(w.m - 1, w.b - 1);
+    S.pick = (S.pick === mode) ? null : mode;     // toggle; stays armed for multiple taps
+    setPickBtns();
+    msg(S.pick === 'count' ? 'Tap a beat to count its sounds.' : S.pick === 'play' ? 'Tap a beat to hear just that beat.' : '');
+  }
+  function doCountBeat(m, b) {
+    var n = beatSoundCount(m - 1, b - 1);
     S.hintsThisRound++; S.groove = Math.max(0, S.groove - GROOVE_HINT_COUNT);
-    clearMarks(); markZone(w.m, w.b, 'solo-right');
-    msg('Measure ' + w.m + ', beat ' + w.b + ' has ' + n + ' sound(s) — narrows your options.');
+    clearMarks(); markZone(m, b, 'solo-right');
+    msg('Measure ' + m + ', beat ' + b + ': ' + n + ' sound' + (n === 1 ? '' : 's') + '.');
+    if (S.groove <= 0) grooveBroken();
+    save(); render();
+  }
+  function doHearBeat(m, b) {
+    var c = ctx(); if (!c) { msg('Tap a button to enable sound first.'); return; }
+    var grid = gridFromItems(targetItems());
+    var start = (beatBase(m - 1) + (b - 1)) * RES, beatDur = 60 / S.tempo, t0 = c.currentTime + 0.15;
+    metroTick(t0, true);                          // the beat's downbeat, for reference
+    var sounds = 0, k;
+    for (k = 0; k < RES; k++) if (grid[start + k]) { rhythmHit(t0 + (k / RES) * beatDur); sounds++; }
+    S.hintsThisRound++; S.groove = Math.max(0, S.groove - GROOVE_HINT_PLAY);
+    clearMarks(); markZone(m, b, 'solo-right');
+    msg('Measure ' + m + ', beat ' + b + ' — ' + sounds + ' sound' + (sounds === 1 ? '' : 's') + '.');
     if (S.groove <= 0) grooveBroken();
     save(); render();
   }
@@ -755,8 +780,9 @@
         '<button id="soloGuide" class="toggle">' + IC.guide + 'Beat guide</button>' +
         '<span class="solo-hints"><span class="hints-label">HINTS</span>' +
           '<button id="soloHintNarrow" class="hint">' + IC.filter + 'Narrow options</button>' +
+          '<button id="soloHearBeat" class="hint">' + IC.hear + 'Hear a beat</button>' +
+          '<button id="soloHintCount" class="hint">' + IC.count + 'Count sounds</button>' +
           '<button id="soloHintBeats" class="hint">' + IC.search + 'Find mistakes</button>' +
-          '<button id="soloHintCount" class="hint">' + IC.count + 'Count a beat</button>' +
           '<button id="soloReveal" class="hint">' + IC.eye + 'Show answer</button>' +
         '</span>' +
         '<label class="solo-toggle"><input type="checkbox" id="soloCorrect"> Fix-it mode</label>' +
@@ -775,8 +801,19 @@
 
     document.getElementById('soloPlay').onclick = playTarget;
     document.getElementById('soloHintBeats').onclick = hintMistakes;
-    document.getElementById('soloHintCount').onclick = hintCount;
+    document.getElementById('soloHintCount').onclick = function () { armPick('count'); };
+    document.getElementById('soloHearBeat').onclick = function () { armPick('play'); };
     document.getElementById('soloHintNarrow').onclick = hintNarrow;
+    // While a pick-hint is armed, a tap on a beat acts on THAT beat.
+    var ga = document.getElementById('gameArea') || document;
+    ga.addEventListener('click', function (e) {
+      if (!S.pick) return;
+      if (e.target.closest && e.target.closest('.remove-btn')) return;
+      var z = e.target.closest && e.target.closest('.beat-drop-zone');
+      if (!z) return;
+      var m = parseInt(z.dataset.measure, 10), b = parseInt(z.dataset.beat, 10);
+      if (S.pick === 'count') doCountBeat(m, b); else doHearBeat(m, b);
+    });
     document.getElementById('soloSubmit').onclick = submit;
     document.getElementById('soloNext').onclick = newRound;
     document.getElementById('soloReveal').onclick = function () {
