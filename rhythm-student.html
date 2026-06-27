@@ -296,7 +296,11 @@
 
         .beat-divisions {
             position: absolute;
-            width: 100%;
+            /* Anchor to both edges (not width:100%) so the inline margin-left/right
+               shrink the beat row to fit — otherwise width:100% + margin-left
+               pushes the last cell + double bar off the right edge. */
+            left: 0;
+            right: 0;
             height: 100%;
             display: flex;
         }
