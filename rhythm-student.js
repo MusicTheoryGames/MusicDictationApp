@@ -821,7 +821,8 @@ class RhythmStudent {
     updateDragPreview(x, y) {
         if (!this.dragPreview) return;
         this.dragPreview.style.left = (x - 20) + 'px';
-        this.dragPreview.style.top = (y - 40) + 'px';
+        // Lift the preview well above the fingertip so the finger doesn't cover it.
+        this.dragPreview.style.top = (y - 96) + 'px';
     }
 
     removeDragPreview() {
