@@ -178,7 +178,20 @@ function run() {
           });
 
           const beams = []; let runArr = [];
-          const flush = () => { if (runArr.length >= 2) beams.push(new VF.Beam(runArr)); runArr = []; };
+          // FLAT beams (all notes are b/4, so beams must be horizontal). VexFlow
+          // auto-slopes short beams; generateBeams with flat_beams forces them
+          // level and computes the offset. One big group => never split a run.
+          const flush = () => {
+            if (runArr.length >= 2) {
+              VF.Beam.generateBeams(runArr, {
+                flat_beams: true,
+                stem_direction: STEM_DOWN,
+                maintain_stem_directions: true,
+                groups: [new VF.Fraction(8, 1)]
+              }).forEach(bm => beams.push(bm));
+            }
+            runArr = [];
+          };
           fig.seq.forEach((s, i) => { if (beamable(s.duration) && !s.rest) runArr.push(notes[i]); else flush(); });
           flush();
 
