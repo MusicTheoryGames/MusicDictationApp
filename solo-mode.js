@@ -376,6 +376,16 @@
     document.querySelectorAll('.rhythm-tile').forEach(function (t) {
       t.style.display = (!ids || ids.indexOf(t.dataset.patternId) !== -1) ? '' : 'none';
     });
+    syncBankPad();
+  }
+  // The mobile bank is pinned + wraps, so its height grows with the visible tile
+  // count. Keep the staff's bottom padding equal to that height so the last row
+  // never hides behind it. No-op on desktop.
+  function syncBankPad() {
+    var mobile = false; try { mobile = window.matchMedia('(pointer: coarse) and (max-width: 1400px)').matches; } catch (e) {}
+    var ga = document.getElementById('gameArea'); var bank = document.querySelector('.rhythm-bank');
+    if (!ga || !bank) return;
+    ga.style.paddingBottom = mobile ? (bank.offsetHeight + 10) + 'px' : '';
   }
 
   /* ----------------------------------------------------------------- audio
@@ -871,6 +881,9 @@
     var htog = document.getElementById('soloHintsToggle');
     if (stog) stog.onclick = function () { var on = document.body.classList.toggle('settings-open'); document.body.classList.remove('hints-open'); stog.classList.toggle('on', on); if (htog) htog.classList.remove('on'); };
     if (htog) htog.onclick = function () { var on = document.body.classList.toggle('hints-open'); document.body.classList.remove('settings-open'); htog.classList.toggle('on', on); if (stog) stog.classList.remove('on'); };
+    // Re-sync the staff's bottom padding to the (wrapping) bank height on rotate/resize.
+    window.addEventListener('resize', syncBankPad);
+    window.addEventListener('orientationchange', function () { setTimeout(syncBankPad, 250); });
     document.getElementById('soloHintBeats').onclick = hintMistakes;
     document.getElementById('soloHintCount').onclick = function () { armPick('count'); };
     document.getElementById('soloHearBeat').onclick = function () { armPick('play'); };

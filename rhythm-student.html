@@ -769,7 +769,9 @@
                 width: 3px; background: var(--bar-ink, #333);
             }
             .beat-drop-zone.final-cell::after { top: 22%; bottom: 22%; }   /* center the final double bar too */
-            /* Pin the bank to the bottom as a compact horizontal strip.
+            /* Pin the bank to the bottom. It WRAPS into multiple rows and grows
+               with the number of tiles (so all choices are visible), capped so it
+               can't eat the whole screen — then it scrolls internally.
                !important overrides per-theme `position: relative` (suite-theme.css). */
             .rhythm-bank {
                 position: fixed !important;
@@ -779,21 +781,22 @@
                 background: rgba(18, 18, 24, 0.93);
                 backdrop-filter: blur(10px);
                 border-top: 1px solid rgba(255, 255, 255, 0.16);
+                max-height: 46vh;            /* grow with tiles, but never past ~half the screen */
+                overflow-y: auto;            /* scroll inside the bank if there are even more */
             }
             .rhythm-bank h3 { display: none; }
             .rhythm-tiles {
-                flex-wrap: nowrap;
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
+                flex-wrap: wrap;             /* multiple rows so every choice shows */
+                overflow-x: visible;
                 max-height: none;
-                /* center when few tiles fit; fall back to start (reachable) when
-                   they overflow and need scrolling */
-                justify-content: safe center;
+                justify-content: center;
                 gap: 8px;
                 padding-bottom: 2px;
             }
             .rhythm-tile { width: 104px; flex: 0 0 104px; min-height: 60px; }
-            .game-area { padding-top: 50px; padding-bottom: 88px; }   /* clear fixed slim bar + pinned bank */
+            /* padding-bottom is set in JS to the bank's live height (it varies with
+               the tile count) so the last staff row never hides behind it. */
+            .game-area { padding-top: 50px; padding-bottom: 96px; }   /* clear fixed slim bar + bank (JS refines) */
             /* Theme cosmetics that fight the controls on small screens */
             #themeSwitcher { display: none !important; }   /* was covering Speed/Bars */
             .dq-screws { display: none !important; }       /* corner bolts collided with tiles */
@@ -922,6 +925,6 @@
     </script>
     <script type="module" src="rhythm-student.js?v=20260627ac"></script>
     <script src="suite-theme.js"></script>
-    <script src="solo-mode.js?v=20260627q"></script>
+    <script src="solo-mode.js?v=20260627r"></script>
 </body>
 </html>
