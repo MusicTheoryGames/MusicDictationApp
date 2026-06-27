@@ -817,7 +817,25 @@
                sheet, so equal specificity would otherwise win on source order). */
             #soloHud .solo-stats { display: none !important; }   /* -> Settings dropdown */
             #soloHud #soloMsg { display: none !important; }
-            #soloHud .solo-actions { margin: 0 !important; gap: 6px; justify-content: flex-start; flex-wrap: nowrap; }
+            #soloHud .solo-actions { margin: 0 !important; gap: 6px; justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            /* Everyday controls (Speed, Groove) sit compactly in the bar; drop their
+               labels to save room (the dropdown + progress bar are self-evident). */
+            .solo-actions .bar-item { flex: 0 0 auto; gap: 4px; white-space: nowrap; }
+            .solo-actions .bar-item > span { display: none; }
+            .solo-actions .solo-stat.groove { flex: 0 0 auto !important; min-width: 0 !important; }
+            .solo-actions .solo-stat.groove .solo-bar { flex: 0 0 56px !important; width: 56px !important; max-width: 56px !important; }
+            .solo-actions .icon-only { padding: 7px 9px; }
+            /* Theme: palette icon pinned far-right, slides out a panel anchored right */
+            #soloThemeToggle { margin-left: auto; }
+            body.theme-open #themeSwitcher {
+                display: flex !important; flex-direction: column; gap: 6px;
+                position: fixed; top: 52px; right: 6px; left: auto; z-index: 70;
+                width: max-content;
+                background: rgba(20, 20, 28, 0.97);
+                border: 1px solid rgba(255, 255, 255, 0.18);
+                border-radius: 12px; padding: 12px;
+                box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+            }
             .solo-actions .solo-cfg,
             .solo-actions .solo-hints { display: none !important; }   /* metro/guide/fixit + hints out of the bar */
             /* Settings / Hints dropdown panel — sized to its CONTENT (not full width),
@@ -927,6 +945,6 @@
     </script>
     <script type="module" src="rhythm-student.js?v=20260627ac"></script>
     <script src="suite-theme.js"></script>
-    <script src="solo-mode.js?v=20260627r"></script>
+    <script src="solo-mode.js?v=20260627s"></script>
 </body>
 </html>

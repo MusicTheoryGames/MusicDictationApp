@@ -240,7 +240,8 @@
     next:  '<svg viewBox="0 0 20 20" class="ic ic-fill"><path d="M5 4l8 6-8 6z"/><path d="M14.5 4v12" class="ic-stroke"/></svg>',
     flame: '<svg viewBox="0 0 20 20" class="ic ic-fill ic-sm"><path d="M10 2c1.1 3 4 4.2 4 8a4 4 0 11-8 0c0-2.2 1.1-3.2 2-4.2.2 1.2 1 2 2 2.2.3-2.4-2-3.6-2-8z"/></svg>',
     gear:  '<svg viewBox="0 0 20 20" class="ic"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2.2M10 15.3v2.2M2.5 10h2.2M15.3 10h2.2M4.8 4.8l1.6 1.6M13.6 13.6l1.6 1.6M15.2 4.8l-1.6 1.6M6.4 13.6l-1.6 1.6"/></svg>',
-    bulb:  '<svg viewBox="0 0 20 20" class="ic"><path d="M7 13.5a5 5 0 1 1 6 0c-.7.5-1 1.2-1 2H8c0-.8-.3-1.5-1-2z"/><path d="M8 17.5h4"/></svg>'
+    bulb:  '<svg viewBox="0 0 20 20" class="ic"><path d="M7 13.5a5 5 0 1 1 6 0c-.7.5-1 1.2-1 2H8c0-.8-.3-1.5-1-2z"/><path d="M8 17.5h4"/></svg>',
+    palette: '<svg viewBox="0 0 20 20" class="ic"><path d="M10 2.6a7.4 7.4 0 1 0 0 14.8c1.3 0 1.7-1.6.8-2.5-.7-.7-.2-1.8.8-1.8H14a3.4 3.4 0 0 0 3.4-3.5C17.4 5.6 14.1 2.6 10 2.6z"/><circle cx="6.6" cy="9.2" r="1"/><circle cx="9" cy="6.2" r="1"/><circle cx="12.8" cy="7.4" r="1"/></svg>'
   };
 
   /* --------------------------------------------------------- persistence */
@@ -842,18 +843,20 @@
       '<div class="solo-stats">' +
         '<div class="solo-stat"><span>METER</span><select id="soloMeter">' + meterOpts + '</select></div>' +
         '<div class="solo-stat"><span>LEVEL</span><select id="soloLevel"></select></div>' +
-        '<div class="solo-stat"><span>SPEED</span><select id="soloSpeed"><option value="slow">Slow</option><option value="medium">Medium</option><option value="fast">Fast</option></select></div>' +
         '<div class="solo-stat"><span>BARS</span><select id="soloBars"><option value="2">2</option><option value="4">4</option><option value="8">8</option><option value="16">16</option></select></div>' +
-        '<div class="solo-stat groove"><span>GROOVE</span><div class="solo-bar"><i id="soloGrooveFill"></i></div><b id="soloGroovePct">100%</b></div>' +
         '<div class="solo-stat"><span>SCORE</span><b id="soloScore">0</b></div>' +
         '<div class="solo-stat"><span>STREAK</span><b id="soloStreak">0</b>' + IC.flame + '</div>' +
       '</div>' +
       '<div class="solo-actions">' +
         '<button id="soloPlay" class="primary play">' + IC.play + 'Play rhythm</button>' +
+        // Everyday controls live IN the bar next to Play (on desktop too):
+        '<div class="solo-stat bar-item"><span>SPEED</span><select id="soloSpeed"><option value="slow">Slow</option><option value="medium">Medium</option><option value="fast">Fast</option></select></div>' +
+        '<button id="soloMetro" class="toggle">' + IC.metro + 'Metronome</button>' +
+        '<button id="soloGuide" class="toggle">' + IC.guide + 'Beat guide</button>' +
+        '<div class="solo-stat groove bar-item"><span>GROOVE</span><div class="solo-bar"><i id="soloGrooveFill"></i></div><b id="soloGroovePct">100%</b></div>' +
         '<button id="soloSettingsToggle" class="toggle focus-only">' + IC.gear + 'Settings</button>' +
         '<button id="soloHintsToggle" class="toggle focus-only">' + IC.bulb + 'Hints</button>' +
-        '<button id="soloMetro" class="toggle solo-cfg">' + IC.metro + 'Metronome</button>' +
-        '<button id="soloGuide" class="toggle solo-cfg">' + IC.guide + 'Beat guide</button>' +
+        '<button id="soloThemeToggle" class="toggle focus-only icon-only" title="Theme" aria-label="Theme">' + IC.palette + '</button>' +
         '<span class="solo-hints"><span class="hints-label">HINTS</span>' +
           '<button id="soloHintNarrow" class="hint">' + IC.filter + 'Narrow options</button>' +
           '<button id="soloHearBeat" class="hint">' + IC.hear + 'Hear a beat</button>' +
@@ -876,11 +879,19 @@
     if (ga) ga.appendChild(actions);
 
     document.getElementById('soloPlay').onclick = playTarget;
-    // Focus-layout dropdowns: Settings + Hints toggle their panels (mutually exclusive).
+    // Focus-layout dropdowns: Settings + Hints + Theme toggle their panels (one at a time).
     var stog = document.getElementById('soloSettingsToggle');
     var htog = document.getElementById('soloHintsToggle');
-    if (stog) stog.onclick = function () { var on = document.body.classList.toggle('settings-open'); document.body.classList.remove('hints-open'); stog.classList.toggle('on', on); if (htog) htog.classList.remove('on'); };
-    if (htog) htog.onclick = function () { var on = document.body.classList.toggle('hints-open'); document.body.classList.remove('settings-open'); htog.classList.toggle('on', on); if (stog) stog.classList.remove('on'); };
+    var ttog = document.getElementById('soloThemeToggle');
+    function togglePanel(cls, btn) {
+      var on = !document.body.classList.contains(cls);
+      document.body.classList.remove('settings-open', 'hints-open', 'theme-open');
+      [stog, htog, ttog].forEach(function (x) { if (x) x.classList.remove('on'); });
+      if (on) { document.body.classList.add(cls); if (btn) btn.classList.add('on'); }
+    }
+    if (stog) stog.onclick = function () { togglePanel('settings-open', stog); };
+    if (htog) htog.onclick = function () { togglePanel('hints-open', htog); };
+    if (ttog) ttog.onclick = function () { togglePanel('theme-open', ttog); };
     // Re-sync the staff's bottom padding to the (wrapping) bank height on rotate/resize.
     window.addEventListener('resize', syncBankPad);
     window.addEventListener('orientationchange', function () { setTimeout(syncBankPad, 250); });
