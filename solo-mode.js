@@ -16,6 +16,7 @@
     level: 1,                                  // tier number within the family, or 'all'
     ts: '4/4', family: 'quarter',              // selected meter -> beat-unit family
     meter: 'simple', beatsPerMeasure: 4, speed: 'medium',
+    changing: false, changePool: null, curMeters: null,  // changing-meter mode
     hintsThisRound: 0, wrongThisRound: false, solved: false
   };
   var GROOVE_PER_WRONG = 12, GROOVE_HINT_MISTAKES = 8, GROOVE_HINT_COUNT = 5, GROOVE_GAIN_CLEAN = 15;
@@ -37,6 +38,17 @@
   var LEVELS = {};
   (function () { var acc = []; for (var i = 0; i < L_STEPS.length; i++) { acc = acc.concat(L_STEPS[i]); LEVELS[i + 1] = acc.slice(); } })();
   function bpm() { return S.beatsPerMeasure || 4; }
+  // Per-measure beat counts. In changing-meter mode each measure has its own beat
+  // count (from its time sig); otherwise every measure has bpm() beats. These
+  // helpers let the grid/checking/audio work for both without branching everywhere.
+  function beatsForTs(ts) { var p = String(ts || '4/4').split('/'); var t = +p[0] || 4; return (t === 6 || t === 9 || t === 12) ? t / 3 : t; }
+  function mBeats() {
+    if (S.changing && S.curMeters && S.curMeters.length) return S.curMeters.map(beatsForTs);
+    var a = [], b = bpm(); for (var i = 0; i < S.measures; i++) a.push(b); return a;
+  }
+  function beatBase(mi) { var mb = mBeats(), s = 0; for (var i = 0; i < mi; i++) s += mb[i]; return s; }
+  function totalBeats() { var mb = mBeats(), s = 0; for (var i = 0; i < mb.length; i++) s += mb[i]; return s; }
+  function measureOfAbs(absBeat) { var mb = mBeats(), acc = 0; for (var i = 0; i < mb.length; i++) { if (absBeat < acc + mb[i]) return { m: i + 1, b: absBeat - acc + 1 }; acc += mb[i]; } return { m: mb.length || 1, b: 1 }; }
 
   /* Compound (6/8) figures — one dotted-quarter BEAT each. The vexflow ratios
      are normalized to the beat by gridFromItems, so they just need correct
@@ -240,13 +252,14 @@
       if (d.measures === 2 || d.measures === 4 || d.measures === 8 || d.measures === 16) S.measures = d.measures;
       // Meter first (sets family/beats), then restore the level within that family.
       if (d.ts && METER_BY_TS[d.ts]) setMeter(d.ts);
+      if (d.changing) { S.changing = true; S.changeKind = d.changeKind || 'simple'; S.changePool = ['2/4', '3/4', '4/4']; S.family = 'quarter'; S.meter = 'simple'; }
       if (d.level === 'all') S.level = 'all';
       else if (typeof d.level === 'number' && d.level >= 1 && d.level <= curFamily().steps.length) S.level = d.level;
       S.tempo = SPEEDS[S.speed] || 100;
     } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem('beatquest-solo', JSON.stringify({ score: S.score, streak: S.streak, correctionMode: S.correctionMode, metronome: S.metronome, beatGuide: S.beatGuide, level: S.level, ts: S.ts, speed: S.speed, measures: S.measures })); } catch (e) {}
+    try { localStorage.setItem('beatquest-solo', JSON.stringify({ score: S.score, streak: S.streak, correctionMode: S.correctionMode, metronome: S.metronome, beatGuide: S.beatGuide, level: S.level, ts: S.ts, speed: S.speed, measures: S.measures, changing: S.changing, changeKind: S.changeKind })); } catch (e) {}
   }
 
   /* ----------------------------------------------------- target generation */
@@ -255,8 +268,8 @@
     var ids = levelIds(), base = fullSet();
     return ids ? base.filter(function (p) { return ids.indexOf(p.id) !== -1; }) : base;
   }
-  function genMeasure(pats) {
-    var res = [], beat = 1, guard = 0, B = bpm();
+  function genMeasure(pats, beats) {
+    var res = [], beat = 1, guard = 0, B = beats || bpm();
     while (beat <= B && guard++ < 20) {
       var remaining = B - (beat - 1);
       var choices = pats.filter(function (p) { return (p.beats || 1) <= remaining; });
@@ -269,7 +282,17 @@
   }
   function generateTarget() {
     var pats = patternsFor(), t = [];
-    for (var m = 0; m < S.measures; m++) t.push(genMeasure(pats));
+    if (S.changing) {
+      // Pick a fresh sequence of meters for this round, then fill each measure to
+      // its own beat count from the current family's vocabulary.
+      var pool = (S.changePool && S.changePool.length) ? S.changePool : ['2/4', '3/4', '4/4'];
+      S.curMeters = [];
+      for (var c = 0; c < S.measures; c++) S.curMeters.push(pool[Math.floor(Math.random() * pool.length)]);
+      for (var m = 0; m < S.measures; m++) t.push(genMeasure(pats, beatsForTs(S.curMeters[m])));
+    } else {
+      S.curMeters = null;
+      for (var m2 = 0; m2 < S.measures; m2++) t.push(genMeasure(pats));
+    }
     return t;
   }
   function expectedGrid(target) {
@@ -333,13 +356,14 @@
     if (pulse.timer) { clearTimeout(pulse.timer); pulse.timer = null; }
     if (pulse.lastHl) { pulse.lastHl.classList.remove('solo-beat-on'); pulse.lastHl = null; }
   }
+  function isCompoundTs(ts) { var t = +String(ts || '4/4').split('/')[0]; return t === 6 || t === 9 || t === 12; }
   function lightBeat(answerBeatIndex, when) {
     var c = ctx(); if (!c) return;
-    var m = Math.floor(answerBeatIndex / bpm()) + 1, b = (answerBeatIndex % bpm()) + 1;
+    var mb = measureOfAbs(answerBeatIndex);   // per-measure aware (changing meters)
     setTimeout(function () {
       if (!pulse.running) return;
       if (pulse.lastHl) pulse.lastHl.classList.remove('solo-beat-on');
-      var z = document.querySelector('.beat-drop-zone[data-measure="' + m + '"][data-beat="' + b + '"]');
+      var z = document.querySelector('.beat-drop-zone[data-measure="' + mb.m + '"][data-beat="' + mb.b + '"]');
       if (z) { z.classList.add('solo-beat-on'); pulse.lastHl = z; }
     }, Math.max(0, (when - c.currentTime) * 1000));
   }
@@ -347,7 +371,9 @@
     var c = ctx(); if (!c) return;
     stopPulse();
     pulse.running = true; pulse.beat = 0; pulse.nextTime = startTime;
-    var endBeat = bpm() + S.measures * bpm();   // count-in (4) + one pass of the example
+    var mb = mBeats();
+    var countInBeats = mb[0] || bpm();          // one measure of count-in (its own beat count)
+    var endBeat = countInBeats + totalBeats();  // count-in + one pass of the example
     (function sched() {
       if (!pulse.running) return;
       var cc = ctx(); if (!cc) return;
@@ -357,18 +383,22 @@
           setTimeout(stopPulse, Math.max(0, (pulse.nextTime - cc.currentTime) * 1000));
           return;
         }
-        var countIn = bt < bpm();
+        var countIn = bt < countInBeats;
+        var abs = bt - countInBeats;
+        var here = countIn ? null : measureOfAbs(abs);
+        var atMeasureStart = !countIn && here.b === 1;
         if (countIn || S.metronome) {
           // count-in: every beat loud; example metronome: accent measure starts
-          metroTick(pulse.nextTime, countIn || (bt % bpm()) === 0);
-          // compound: soft clicks on the 3 eighth-pulses so you feel the beat subdivide
-          if (S.meter === 'compound') {
+          metroTick(pulse.nextTime, countIn || atMeasureStart);
+          // compound clicks on the 3 eighth-pulses — per the CURRENT measure's meter
+          var ts = S.curMeters ? S.curMeters[(countIn ? 1 : here.m) - 1] : S.ts;
+          if (isCompoundTs(ts)) {
             var bd = 60 / S.tempo;
             subTick(pulse.nextTime + bd / 3);
             subTick(pulse.nextTime + 2 * bd / 3);
           }
         }
-        if (!countIn && S.beatGuide) lightBeat(bt - bpm(), pulse.nextTime);
+        if (!countIn && S.beatGuide) lightBeat(abs, pulse.nextTime);
         pulse.beat++; pulse.nextTime += 60 / S.tempo;
       }
       pulse.timer = setTimeout(sched, 25);
@@ -390,7 +420,7 @@
     stopPulse();
     var beatDur = 60 / S.tempo;
     var t0 = c.currentTime + 0.2;          // count-in start
-    var t = t0 + bpm() * beatDur;              // rhythm starts after the 4-beat count-in
+    var t = t0 + (mBeats()[0] || bpm()) * beatDur;   // rhythm starts after one measure of count-in
     S.target.forEach(function (meas) {
       meas.forEach(function (it) {
         var pat = findPattern(it.patternId);
@@ -418,13 +448,13 @@
   // 5/6/7-tuplets — so every figure's onsets land on integer grid indices.
   var RES = 840;
   function gridFromItems(items) {
-    var grid = [], i; for (i = 0; i < S.measures * bpm() * RES; i++) grid[i] = 0;
+    var grid = [], i; for (i = 0; i < totalBeats() * RES; i++) grid[i] = 0;
     items.forEach(function (it) {
       var pat = findPattern(it.patternId); if (!pat || !pat.vexflow) return;
       var raw = pat.vexflow.map(function (n) { return noteBeats(n) * RES; });
       var sum = raw.reduce(function (a, x) { return a + x; }, 0) || 1;
       var scale = ((it.beats || pat.beats || 1) * RES) / sum; // figure occupies exactly its beats
-      var pos = (it.mi * bpm() + (it.startBeat - 1)) * RES;
+      var pos = (beatBase(it.mi) + (it.startBeat - 1)) * RES;  // cumulative beats (per-measure aware)
       pat.vexflow.forEach(function (n, k) {
         var idx = Math.round(pos);
         if (n.duration.indexOf('r') === -1 && idx >= 0 && idx < grid.length) grid[idx] = 1;
@@ -437,10 +467,10 @@
     var a = []; S.target.forEach(function (meas, mi) { meas.forEach(function (it) { a.push({ mi: mi, startBeat: it.startBeat, patternId: it.patternId, beats: it.beats }); }); }); return a;
   }
   function answerItems() {
-    var a = [], mi, bi;
-    for (mi = 0; mi < S.measures; mi++) {
+    var a = [], mi, bi, mb = mBeats();
+    for (mi = 0; mi < mb.length; mi++) {
       if (!rs.userAnswer[mi]) continue;
-      for (bi = 0; bi < bpm(); bi++) {
+      for (bi = 0; bi < mb[mi]; bi++) {
         var v = rs.userAnswer[mi][bi];
         if (v && v.indexOf('_continuation') === -1) { var p = findPattern(v); a.push({ mi: mi, startBeat: bi + 1, patternId: v, beats: p ? p.beats : 1 }); }
       }
@@ -449,16 +479,16 @@
   }
   function checkAnswer() {
     var tg = gridFromItems(targetItems()), ag = gridFromItems(answerItems());
-    var wrong = [], allCorrect = true, mi, bi, k;
-    for (mi = 0; mi < S.measures; mi++) for (bi = 0; bi < bpm(); bi++) {
-      var start = (mi * bpm() + bi) * RES, diff = false;
+    var wrong = [], allCorrect = true, mi, bi, k, mb = mBeats();
+    for (mi = 0; mi < mb.length; mi++) for (bi = 0; bi < mb[mi]; bi++) {
+      var start = (beatBase(mi) + bi) * RES, diff = false;
       for (k = 0; k < RES; k++) if (tg[start + k] !== ag[start + k]) { diff = true; break; }
       if (diff) { allCorrect = false; wrong.push({ m: mi + 1, b: bi + 1 }); }
     }
     return { allCorrect: allCorrect, wrong: wrong };
   }
   function beatSoundCount(mi, bi) {
-    var tg = gridFromItems(targetItems()), n = 0, start = (mi * bpm() + bi) * RES, k;
+    var tg = gridFromItems(targetItems()), n = 0, start = (beatBase(mi) + bi) * RES, k;
     for (k = 0; k < RES; k++) if (tg[start + k]) n++;
     return n;
   }
@@ -474,8 +504,9 @@
       measureCount: S.measures,
       difficulty: curFamily().key,            // engine bank reads rhythmPatterns[key]
       tempo: S.tempo,
-      timeSignature: S.ts,
-      beatsPerMeasure: bpm()
+      timeSignature: S.changing ? (S.curMeters[0] || '4/4') : S.ts,
+      beatsPerMeasure: bpm(),
+      measureMeters: (S.changing && S.curMeters) ? S.curMeters : null   // per-measure time sigs
     });
     var fb = document.getElementById('feedback'); if (fb) { fb.style.display = 'none'; fb.textContent = ''; } // solo uses #soloMsg
     filterBank();
@@ -627,6 +658,9 @@
       meterOpts += '<option value="' + m.ts + '">' + m.ts + ' — ' + m.desc + '</option>';
     });
     meterOpts += '</optgroup>';
+    // Changing meters within one example (Hall Ch19+). Value 'change:simple' etc.
+    meterOpts += '<optgroup label="Changing"><option value="change:simple">Changing · simple (2/4·3/4·4/4)</option></optgroup>';
+    var CHANGE_POOLS = { simple: ['2/4', '3/4', '4/4'] };
     var hud = document.createElement('div'); hud.id = 'soloHud'; hud.className = 'solo-ctl';
     hud.innerHTML =
       '<div class="solo-stats">' +
@@ -678,9 +712,17 @@
     var lv = document.getElementById('soloLevel');
     fillLevelOptions();                          // populate LEVEL for the current family
     var mt = document.getElementById('soloMeter');
-    mt.value = S.ts;
+    mt.value = S.changing ? ('change:' + (S.changeKind || 'simple')) : S.ts;
     mt.onchange = function () {
-      setMeter(mt.value);                        // sets family/beats/meter; resets level on family change
+      var v = mt.value;
+      if (v.indexOf('change:') === 0) {          // changing-meter mode
+        S.changing = true; S.changeKind = v.slice(7);
+        S.changePool = CHANGE_POOLS[S.changeKind] || CHANGE_POOLS.simple;
+        S.family = 'quarter'; S.meter = 'simple';  // simple-quarter vocabulary for now
+        if (S.level !== 'all' && S.level > curFamily().steps.length) S.level = 'all';
+      } else {
+        S.changing = false; setMeter(v);          // sets family/beats/meter; resets level on family change
+      }
       fillLevelOptions();
       save(); newRound();
     };
