@@ -793,7 +793,7 @@
                 padding-bottom: 2px;
             }
             .rhythm-tile { width: 104px; flex: 0 0 104px; min-height: 60px; }
-            .game-area { padding-bottom: 88px; }       /* clear the pinned bank */
+            .game-area { padding-top: 50px; padding-bottom: 88px; }   /* clear fixed slim bar + pinned bank */
             /* Theme cosmetics that fight the controls on small screens */
             #themeSwitcher { display: none !important; }   /* was covering Speed/Bars */
             .dq-screws { display: none !important; }       /* corner bolts collided with tiles */
@@ -802,16 +802,25 @@
                Everything else collapses into dropdown panels so the staff + bank
                own the screen. */
             .focus-only { display: inline-flex !important; }   /* show the two toggles */
-            #soloHud { position: sticky; top: 0; z-index: 60; padding: 6px 8px; margin-bottom: 6px; }
-            #soloHud .solo-stats { display: none; }            /* -> Settings dropdown */
-            #soloHud #soloMsg { display: none; }
-            #soloHud .solo-actions { margin: 0; gap: 6px; justify-content: flex-start; flex-wrap: nowrap; }
+            /* FIXED (not sticky — sticky fails inside the flex column on iOS, so the
+               bar scrolled away). Always pinned to the very top. */
+            #soloHud {
+                position: fixed !important; top: 0; left: 0; right: 0; z-index: 60;
+                padding: 6px 8px; margin: 0;
+                background: rgba(18, 18, 24, 0.95); backdrop-filter: blur(10px);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+            }
+            /* !important beats the HUD's JS-injected base styles (added after this
+               sheet, so equal specificity would otherwise win on source order). */
+            #soloHud .solo-stats { display: none !important; }   /* -> Settings dropdown */
+            #soloHud #soloMsg { display: none !important; }
+            #soloHud .solo-actions { margin: 0 !important; gap: 6px; justify-content: flex-start; flex-wrap: nowrap; }
             .solo-actions .solo-cfg,
-            .solo-actions .solo-hints { display: none; }       /* metro/guide/fixit + hints out of the bar */
+            .solo-actions .solo-hints { display: none !important; }   /* metro/guide/fixit + hints out of the bar */
             /* Settings dropdown panel */
             body.settings-open #soloHud .solo-stats,
             body.hints-open .solo-actions .solo-hints {
-                display: flex; flex-direction: column; align-items: stretch; gap: 10px;
+                display: flex !important; flex-direction: column; align-items: stretch; gap: 10px;
                 position: fixed; top: 52px; left: 6px; right: 6px; z-index: 70;
                 background: rgba(20, 20, 28, 0.97);
                 border: 1px solid rgba(255, 255, 255, 0.18);
