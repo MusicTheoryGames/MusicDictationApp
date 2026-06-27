@@ -555,15 +555,13 @@ class RhythmStudent {
         // .answer-staff panel holds MULTIPLE .staff-container rows stacked
         // vertically (a page of music), NOT separate panels.
         const totalMeasures = this.measureCount;
-        // Mobile (touch): ONE wide line that scrolls horizontally (autoscroll
-        // follows playback). Desktop: wrap 4 bars per line.
+        // Mobile (touch): stack vertically like desktop but only 2 bars per row,
+        // so more measures are visible (vertical scroll) and entry is a readable
+        // page, not a horizontal chase. Desktop: 4 bars per line.
         const mobile = isMobileStaff();
-        const BARS_PER_LINE = mobile ? totalMeasures : 4;
+        const BARS_PER_LINE = mobile ? 2 : 4;
         const lineCount = Math.ceil(totalMeasures / BARS_PER_LINE);
-        // Per-beat cell width: ~100px on mobile (readable + tappable, ~2 bars of
-        // 4/4 in view), up to ~160px on desktop (panel widens, cap avoids
-        // colliding with the beat numbers).
-        const CELL = mobile ? 100 : 160;
+        const CELL = mobile ? 130 : 160;
         const cellsPerLineFull = Math.min(totalMeasures, BARS_PER_LINE) * bpm;
         const staffPx = cellsPerLineFull * CELL + 140;
 
@@ -613,9 +611,7 @@ class RhythmStudent {
 
         const staffDiv = document.createElement('div');
         staffDiv.className = 'answer-staff';
-        // Mobile: full wide content width (the .measure-container scrolls it).
-        // Desktop: widen on big screens but cap cell size.
-        staffDiv.style.width = mobile ? `${staffPx}px` : `min(100%, ${staffPx}px)`;
+        staffDiv.style.width = `min(100%, ${staffPx}px)`;   // fill width; rows stack vertically
         staffDiv.style.maxWidth = 'none';
         staffDiv.innerHTML = `
             <div class="answer-staff-label">Your Answer (${this.measureCount} measures)</div>

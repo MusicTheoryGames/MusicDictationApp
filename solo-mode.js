@@ -431,21 +431,22 @@
       if (z) { z.classList.add('solo-beat-on'); pulse.lastHl = z; }
     }, Math.max(0, (when - c.currentTime) * 1000));
   }
-  // Autoscroll: keep the playing beat ~2/3 from the left so just-played beats stay
-  // visible on the left (where the student is still entering). Mobile single-line only.
+  // Autoscroll (mobile): gently scroll the PAGE down so the playing row stays in
+  // the upper third — vertical stacking, not a horizontal chase. Only nudges when
+  // the current row drifts out of the comfortable band.
   function scrollToBeat(answerBeatIndex, when) {
     var c = ctx(); if (!c) return;
-    var mc = document.querySelector('.measure-container');
-    if (!mc || mc.scrollWidth <= mc.clientWidth + 4) return;   // only when it actually scrolls
+    var mobile = false; try { mobile = window.matchMedia('(pointer: coarse) and (max-width: 1400px)').matches; } catch (e) {}
+    if (!mobile) return;
     var mb = measureOfAbs(answerBeatIndex);
     setTimeout(function () {
       if (!pulse.running) return;
       var z = document.querySelector('.beat-drop-zone[data-measure="' + mb.m + '"][data-beat="' + mb.b + '"]');
       if (!z) return;
-      var zr = z.getBoundingClientRect(), mr = mc.getBoundingClientRect();
-      var zLeft = zr.left - mr.left + mc.scrollLeft;            // beat's left edge in content coords
-      var target = zLeft - mc.clientWidth * 0.66 + zr.width / 2;
-      mc.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+      var r = z.getBoundingClientRect(), vh = window.innerHeight;
+      if (r.top < 70 || r.bottom > vh * 0.62) {
+        window.scrollBy({ top: Math.round(r.top - vh * 0.3), behavior: 'smooth' });
+      }
     }, Math.max(0, (when - c.currentTime) * 1000));
   }
   function startPulse(startTime) {
@@ -502,8 +503,9 @@
     if (S.playing) { msg('Already playing — let it finish.'); return; }  // no overlapping playback
     stopPlayback();                         // clean slate (cancels any leftover sound)
     S.playing = true;
-    var mcReset = document.querySelector('.measure-container');   // start the view at the beginning
-    if (mcReset) mcReset.scrollLeft = 0;
+    // mobile: bring the staff's first row into view so the count-in starts at bar 1
+    var mobilePlay = false; try { mobilePlay = window.matchMedia('(pointer: coarse) and (max-width: 1400px)').matches; } catch (e) {}
+    if (mobilePlay) { var st = document.querySelector('.answer-staff'); if (st) st.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
     var beatDur = 60 / S.tempo;
     var t0 = c.currentTime + 0.2;          // count-in start
     var t = t0 + (mBeats()[0] || bpm()) * beatDur;   // rhythm starts after one measure of count-in

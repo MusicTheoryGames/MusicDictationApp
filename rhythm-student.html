@@ -738,15 +738,8 @@
            ============================================================ */
         @media (pointer: coarse) and (max-width: 1400px) {
             .header { display: none; }                 /* reclaim vertical space */
-            .measure-container {
-                justify-content: flex-start;           /* scroll from the left */
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-                max-width: 100%;
-                margin-bottom: 6px;
-            }
+            .measure-container { margin-bottom: 6px; } /* rows stack vertically; page scrolls */
             .answer-area { padding: 8px; }
-            .answer-staff { flex-shrink: 0; }          /* keep it wide so it scrolls, not squeezed */
             /* Pin the bank to the bottom as a compact horizontal strip.
                !important overrides per-theme `position: relative` (suite-theme.css). */
             .rhythm-bank {
@@ -863,8 +856,8 @@
             updateOrientation();
         })();
     </script>
-    <script type="module" src="rhythm-student.js?v=20260627ab"></script>
+    <script type="module" src="rhythm-student.js?v=20260627ac"></script>
     <script src="suite-theme.js"></script>
-    <script src="solo-mode.js?v=20260627m"></script>
+    <script src="solo-mode.js?v=20260627n"></script>
 </body>
 </html>
