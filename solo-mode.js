@@ -386,6 +386,13 @@
     if (actx && actx.state === 'suspended') actx.resume();
     return actx;
   }
+  // Unlock/resume the AudioContext inside a user gesture (mobile Safari starts it
+  // suspended; scheduling against a not-yet-running clock can fire a sound early).
+  function unlockAudio() {
+    var c = ctx(); if (!c) return;
+    if (c.state === 'suspended') c.resume();
+    try { var s = c.createBufferSource(); s.buffer = c.createBuffer(1, 1, 22050); s.connect(c.destination); s.start(0); } catch (e) {}
+  }
   var scheduledOscs = [];   // all currently-scheduled oscillators, so we can cancel playback
   function tone(freq, when, dur, type, gain) {
     var c = ctx(); if (!c) return;
@@ -505,7 +512,7 @@
     S.playing = true;
     // mobile: bring the staff's first row into view so the count-in starts at bar 1
     var mobilePlay = false; try { mobilePlay = window.matchMedia('(pointer: coarse) and (max-width: 1400px)').matches; } catch (e) {}
-    if (mobilePlay) { var st = document.querySelector('.answer-staff'); if (st) st.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+    if (mobilePlay) { var st = document.querySelector('.answer-staff'); if (st) st.scrollIntoView({ block: 'start' }); }
     var beatDur = 60 / S.tempo;
     var t0 = c.currentTime + 0.2;          // count-in start
     var t = t0 + (mBeats()[0] || bpm()) * beatDur;   // rhythm starts after one measure of count-in
@@ -925,6 +932,7 @@
   }
 
   function start() {
+    unlockAudio();   // resume audio in the entering gesture so the first count-in is clean
     rs = window.rhythmStudent;
     if (!rs) { setTimeout(start, 150); return; }
     if (rs.rhythmPatterns) {

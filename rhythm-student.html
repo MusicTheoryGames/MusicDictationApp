@@ -738,8 +738,22 @@
            ============================================================ */
         @media (pointer: coarse) and (max-width: 1400px) {
             .header { display: none; }                 /* reclaim vertical space */
-            .measure-container { margin-bottom: 6px; } /* rows stack vertically; page scrolls */
+            .measure-container { margin-bottom: 4px; } /* rows stack vertically; page scrolls */
             .answer-area { padding: 8px; }
+            /* Compact staff: the desktop row is 140–210px tall with a big gap
+               between the notes and the beat numbers. Shrink it hard on phones so
+               more rows fit and notes/bar lines feel proportionally larger. */
+            .staff-container { height: 92px; }
+            .staff-container + .staff-container { margin-top: 8px; }
+            /* Move the staff line + everything pinned to it (notes, time sig) DOWN
+               from 44% to 62%, together so they stay aligned: stems now use the
+               upper space and the beat numbers sit just under the line — killing
+               the wasted lower half of each row. */
+            .staff-line { top: 62%; }
+            .placed-note { top: 62%; transform: translateY(-66%) scale(1.22); transform-origin: left center; }
+            .answer-time-sig { top: 62%; font-size: 30px !important; }   /* was up to 62px */
+            .answer-ts-inline .ts-stack { top: 62%; }
+            .beat-drop-zone::before { font-size: 0.85rem; bottom: 4px; }  /* beat # near the line */
             /* Pin the bank to the bottom as a compact horizontal strip.
                !important overrides per-theme `position: relative` (suite-theme.css). */
             .rhythm-bank {
@@ -858,6 +872,6 @@
     </script>
     <script type="module" src="rhythm-student.js?v=20260627ac"></script>
     <script src="suite-theme.js"></script>
-    <script src="solo-mode.js?v=20260627n"></script>
+    <script src="solo-mode.js?v=20260627o"></script>
 </body>
 </html>
