@@ -831,7 +831,9 @@ class RhythmStudent {
                     img.src = `./rhythm-assets/compound/${pattern.id}.svg`;
                     img.className = 'placed-note placed-compound';
                     img.style.width = '100%';
-                    img.style.left = '0';
+                    // Shift left by the compound glyph's stave padding (~9.2%) so
+                    // the first notehead lands on the beat onset (over the number).
+                    img.style.left = '-9.2%';
                     img.alt = pattern.id;
                     notationArea.appendChild(img);
                 } else if (decomposition) {
