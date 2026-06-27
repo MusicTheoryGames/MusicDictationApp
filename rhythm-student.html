@@ -285,7 +285,10 @@
             position: absolute;
             left: 2px;
             top: 44%;
-            transform: translateY(-58%);
+            /* -50% centers the GAP between the two numbers on the staff line, so
+               the line sits in clear space for ANY digit (not at a box edge,
+               which clipped full-height glyphs like 8). */
+            transform: translateY(-50%);
             display: flex;
             flex-direction: column;
             align-items: center;
