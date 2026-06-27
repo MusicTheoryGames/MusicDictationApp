@@ -730,6 +730,10 @@
             }
         }
 
+        /* Focus-layout toggles exist only on touch screens (shown in the mobile
+           block below); desktop keeps everything inline. */
+        .focus-only { display: none; }
+
         /* ============================================================
            MOBILE (touch) — single horizontal scrolling staff
            + rhythm bank pinned to the bottom as a strip. Orientation is
@@ -793,6 +797,32 @@
             /* Theme cosmetics that fight the controls on small screens */
             #themeSwitcher { display: none !important; }   /* was covering Speed/Bars */
             .dq-screws { display: none !important; }       /* corner bolts collided with tiles */
+
+            /* ===== FOCUS LAYOUT: slim top bar (Play + Settings + Hints) =====
+               Everything else collapses into dropdown panels so the staff + bank
+               own the screen. */
+            .focus-only { display: inline-flex !important; }   /* show the two toggles */
+            #soloHud { position: sticky; top: 0; z-index: 60; padding: 6px 8px; margin-bottom: 6px; }
+            #soloHud .solo-stats { display: none; }            /* -> Settings dropdown */
+            #soloHud #soloMsg { display: none; }
+            #soloHud .solo-actions { margin: 0; gap: 6px; justify-content: flex-start; flex-wrap: nowrap; }
+            .solo-actions .solo-cfg,
+            .solo-actions .solo-hints { display: none; }       /* metro/guide/fixit + hints out of the bar */
+            /* Settings dropdown panel */
+            body.settings-open #soloHud .solo-stats,
+            body.hints-open .solo-actions .solo-hints {
+                display: flex; flex-direction: column; align-items: stretch; gap: 10px;
+                position: fixed; top: 52px; left: 6px; right: 6px; z-index: 70;
+                background: rgba(20, 20, 28, 0.97);
+                border: 1px solid rgba(255, 255, 255, 0.18);
+                border-radius: 12px; padding: 14px;
+                max-height: 72vh; overflow-y: auto;
+                box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+            }
+            body.settings-open #soloHud .solo-stats .solo-stat { width: 100%; justify-content: space-between; }
+            body.settings-open #soloHud .solo-stats select { flex: 1; margin-left: 8px; padding: 6px; }
+            body.hints-open .solo-actions .solo-hints .hints-label { opacity: 0.6; font-size: 0.78rem; letter-spacing: 0.08em; }
+            body.hints-open .solo-actions .solo-hints .hint { justify-content: flex-start; }
 
             /* Portrait: block the cramped game and ask the user to rotate */
             body.app-portrait .game-area.active { display: none; }
@@ -883,6 +913,6 @@
     </script>
     <script type="module" src="rhythm-student.js?v=20260627ac"></script>
     <script src="suite-theme.js"></script>
-    <script src="solo-mode.js?v=20260627p"></script>
+    <script src="solo-mode.js?v=20260627q"></script>
 </body>
 </html>

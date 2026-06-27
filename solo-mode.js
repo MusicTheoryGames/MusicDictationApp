@@ -238,7 +238,9 @@
     eye:   '<svg viewBox="0 0 20 20" class="ic"><path d="M1.5 10S5 4.5 10 4.5 18.5 10 18.5 10 15 15.5 10 15.5 1.5 10 1.5 10z"/><circle cx="10" cy="10" r="2.4"/></svg>',
     check: '<svg viewBox="0 0 20 20" class="ic"><path d="M4 10.5l4 4 8-9"/></svg>',
     next:  '<svg viewBox="0 0 20 20" class="ic ic-fill"><path d="M5 4l8 6-8 6z"/><path d="M14.5 4v12" class="ic-stroke"/></svg>',
-    flame: '<svg viewBox="0 0 20 20" class="ic ic-fill ic-sm"><path d="M10 2c1.1 3 4 4.2 4 8a4 4 0 11-8 0c0-2.2 1.1-3.2 2-4.2.2 1.2 1 2 2 2.2.3-2.4-2-3.6-2-8z"/></svg>'
+    flame: '<svg viewBox="0 0 20 20" class="ic ic-fill ic-sm"><path d="M10 2c1.1 3 4 4.2 4 8a4 4 0 11-8 0c0-2.2 1.1-3.2 2-4.2.2 1.2 1 2 2 2.2.3-2.4-2-3.6-2-8z"/></svg>',
+    gear:  '<svg viewBox="0 0 20 20" class="ic"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2.2M10 15.3v2.2M2.5 10h2.2M15.3 10h2.2M4.8 4.8l1.6 1.6M13.6 13.6l1.6 1.6M15.2 4.8l-1.6 1.6M6.4 13.6l-1.6 1.6"/></svg>',
+    bulb:  '<svg viewBox="0 0 20 20" class="ic"><path d="M7 13.5a5 5 0 1 1 6 0c-.7.5-1 1.2-1 2H8c0-.8-.3-1.5-1-2z"/><path d="M8 17.5h4"/></svg>'
   };
 
   /* --------------------------------------------------------- persistence */
@@ -838,8 +840,10 @@
       '</div>' +
       '<div class="solo-actions">' +
         '<button id="soloPlay" class="primary play">' + IC.play + 'Play rhythm</button>' +
-        '<button id="soloMetro" class="toggle">' + IC.metro + 'Metronome</button>' +
-        '<button id="soloGuide" class="toggle">' + IC.guide + 'Beat guide</button>' +
+        '<button id="soloSettingsToggle" class="toggle focus-only">' + IC.gear + 'Settings</button>' +
+        '<button id="soloHintsToggle" class="toggle focus-only">' + IC.bulb + 'Hints</button>' +
+        '<button id="soloMetro" class="toggle solo-cfg">' + IC.metro + 'Metronome</button>' +
+        '<button id="soloGuide" class="toggle solo-cfg">' + IC.guide + 'Beat guide</button>' +
         '<span class="solo-hints"><span class="hints-label">HINTS</span>' +
           '<button id="soloHintNarrow" class="hint">' + IC.filter + 'Narrow options</button>' +
           '<button id="soloHearBeat" class="hint">' + IC.hear + 'Hear a beat</button>' +
@@ -847,7 +851,7 @@
           '<button id="soloHintBeats" class="hint">' + IC.search + 'Find mistakes</button>' +
           '<button id="soloReveal" class="hint">' + IC.eye + 'Show answer</button>' +
         '</span>' +
-        '<label class="solo-toggle"><input type="checkbox" id="soloCorrect"> Fix-it mode</label>' +
+        '<label class="solo-toggle solo-cfg"><input type="checkbox" id="soloCorrect"> Fix-it mode</label>' +
       '</div>' +
       '<div id="soloMsg"></div>';
     var ga = document.getElementById('gameArea');
@@ -862,6 +866,11 @@
     if (ga) ga.appendChild(actions);
 
     document.getElementById('soloPlay').onclick = playTarget;
+    // Focus-layout dropdowns: Settings + Hints toggle their panels (mutually exclusive).
+    var stog = document.getElementById('soloSettingsToggle');
+    var htog = document.getElementById('soloHintsToggle');
+    if (stog) stog.onclick = function () { var on = document.body.classList.toggle('settings-open'); document.body.classList.remove('hints-open'); stog.classList.toggle('on', on); if (htog) htog.classList.remove('on'); };
+    if (htog) htog.onclick = function () { var on = document.body.classList.toggle('hints-open'); document.body.classList.remove('settings-open'); htog.classList.toggle('on', on); if (stog) stog.classList.remove('on'); };
     document.getElementById('soloHintBeats').onclick = hintMistakes;
     document.getElementById('soloHintCount').onclick = function () { armPick('count'); };
     document.getElementById('soloHearBeat').onclick = function () { armPick('play'); };
