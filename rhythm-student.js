@@ -26,6 +26,12 @@ const GLYPH_NOTEHEAD_OFFSET = 11;
 const METER_FIG_DIRS = { 'cd-': 'compound', 'hb-': 'halfbeat', 'dh-': 'dottedhalf', 'de-': 'dotted16', 'tpl-': 'tuplets' };
 function meterFigDir(id) { if (!id) return null; for (const p in METER_FIG_DIRS) { if (id.indexOf(p) === 0) return METER_FIG_DIRS[p]; } return null; }
 
+// Touch devices (phone/tablet) get a single horizontal scrolling staff instead
+// of the desktop multi-line wrap, so playback can autoscroll left->right.
+function isMobileStaff() {
+    try { return window.matchMedia('(pointer: coarse) and (max-width: 1400px)').matches; } catch (e) { return false; }
+}
+
 // Rhythm Student System
 class RhythmStudent {
     constructor() {
@@ -548,15 +554,18 @@ class RhythmStudent {
         // Wrap measures onto multiple staff lines, 4 bars per line. One
         // .answer-staff panel holds MULTIPLE .staff-container rows stacked
         // vertically (a page of music), NOT separate panels.
-        const BARS_PER_LINE = 4;
         const totalMeasures = this.measureCount;
+        // Mobile (touch): ONE wide line that scrolls horizontally (autoscroll
+        // follows playback). Desktop: wrap 4 bars per line.
+        const mobile = isMobileStaff();
+        const BARS_PER_LINE = mobile ? totalMeasures : 4;
         const lineCount = Math.ceil(totalMeasures / BARS_PER_LINE);
-        // Cells in a full line. Used to size the staff so each beat-cell is up to
-        // ~160px: the panel widens on big screens (bigger notes) instead of being
-        // capped at 1500, and the per-cell cap keeps notes from ever colliding
-        // with the beat numbers.
+        // Per-beat cell width: ~100px on mobile (readable + tappable, ~2 bars of
+        // 4/4 in view), up to ~160px on desktop (panel widens, cap avoids
+        // colliding with the beat numbers).
+        const CELL = mobile ? 100 : 160;
         const cellsPerLineFull = Math.min(totalMeasures, BARS_PER_LINE) * bpm;
-        const staffPx = cellsPerLineFull * 160 + 140;
+        const staffPx = cellsPerLineFull * CELL + 140;
 
         let rowsHtml = '';
         for (let line = 0; line < lineCount; line++) {
@@ -604,7 +613,9 @@ class RhythmStudent {
 
         const staffDiv = document.createElement('div');
         staffDiv.className = 'answer-staff';
-        staffDiv.style.width = `min(100%, ${staffPx}px)`;   // widen on big screens, cap cell size
+        // Mobile: full wide content width (the .measure-container scrolls it).
+        // Desktop: widen on big screens but cap cell size.
+        staffDiv.style.width = mobile ? `${staffPx}px` : `min(100%, ${staffPx}px)`;
         staffDiv.style.maxWidth = 'none';
         staffDiv.innerHTML = `
             <div class="answer-staff-label">Your Answer (${this.measureCount} measures)</div>

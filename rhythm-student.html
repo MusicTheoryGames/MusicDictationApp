@@ -729,6 +729,66 @@
                 transform: translateX(-50%) scale(1.0) !important;
             }
         }
+
+        /* ============================================================
+           MOBILE (touch) — single horizontal scrolling staff
+           + rhythm bank pinned to the bottom as a strip. Orientation is
+           driven by a body class (set in JS from innerW vs innerH) because
+           the CSS `orientation` media feature is unreliable in emulators.
+           ============================================================ */
+        @media (pointer: coarse) and (max-width: 1400px) {
+            .header { display: none; }                 /* reclaim vertical space */
+            .measure-container {
+                justify-content: flex-start;           /* scroll from the left */
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                max-width: 100%;
+                margin-bottom: 6px;
+            }
+            .answer-area { padding: 8px; }
+            .answer-staff { flex-shrink: 0; }          /* keep it wide so it scrolls, not squeezed */
+            /* Pin the bank to the bottom as a compact horizontal strip.
+               !important overrides per-theme `position: relative` (suite-theme.css). */
+            .rhythm-bank {
+                position: fixed !important;
+                left: 0 !important; right: 0 !important; bottom: 0 !important;
+                z-index: 50;
+                margin: 0; border-radius: 0; padding: 7px 10px;
+                background: rgba(18, 18, 24, 0.93);
+                backdrop-filter: blur(10px);
+                border-top: 1px solid rgba(255, 255, 255, 0.16);
+            }
+            .rhythm-bank h3 { display: none; }
+            .rhythm-tiles {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                max-height: none;
+                justify-content: flex-start;
+                gap: 8px;
+                padding-bottom: 2px;
+            }
+            .rhythm-tile { width: 104px; flex: 0 0 104px; min-height: 60px; }
+            .game-area { padding-bottom: 88px; }       /* clear the pinned bank */
+
+            /* Portrait: block the cramped game and ask the user to rotate */
+            body.app-portrait .game-area.active { display: none; }
+            body.app-portrait .game-area.active ~ #rotateGate {
+                display: flex;
+                position: fixed; inset: 0; z-index: 9999;
+                background: linear-gradient(140deg, #2d3436 0%, #16191a 100%);
+                color: #fff;
+                align-items: center; justify-content: center;
+                text-align: center; padding: 28px;
+            }
+        }
+
+        /* ===== Rotate gate styling (visibility handled above) ===== */
+        #rotateGate { display: none; }
+        #rotateGate .rotate-inner { max-width: 340px; }
+        #rotateGate svg { width: 78px; height: 78px; stroke: #fff; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 20px; }
+        #rotateGate .rotate-title { font-size: 1.45rem; font-weight: 700; margin-bottom: 12px; }
+        #rotateGate .rotate-sub { opacity: 0.72; font-size: 0.95rem; line-height: 1.45; }
     </style>
     <!-- Suite theme skins (cosmetic only — does not affect the notation engine) -->
     <link rel="stylesheet" href="suite-theme.css">
@@ -778,7 +838,27 @@
         </div>
     </div>
 
-    <script type="module" src="rhythm-student.js?v=20260627z"></script>
+    <!-- Shown only on touch devices held in portrait while a game is active -->
+    <div id="rotateGate">
+        <div class="rotate-inner">
+            <svg viewBox="0 0 64 64"><rect x="9" y="21" width="46" height="26" rx="4"/><path d="M22 16a14 14 0 0 1 23 2"/><path d="M45 10v8h-8"/></svg>
+            <div class="rotate-title">Turn your device sideways</div>
+            <div class="rotate-sub">Rhythm dictation needs landscape. If it doesn't rotate, switch off your device's rotation lock.</div>
+        </div>
+    </div>
+
+    <!-- Orientation flag for the mobile layout / rotate gate -->
+    <script>
+        (function () {
+            function updateOrientation() {
+                document.body.classList.toggle('app-portrait', window.innerHeight > window.innerWidth);
+            }
+            window.addEventListener('resize', updateOrientation);
+            window.addEventListener('orientationchange', updateOrientation);
+            updateOrientation();
+        })();
+    </script>
+    <script type="module" src="rhythm-student.js?v=20260627aa"></script>
     <script src="suite-theme.js"></script>
     <script src="solo-mode.js?v=20260627k"></script>
 </body>
