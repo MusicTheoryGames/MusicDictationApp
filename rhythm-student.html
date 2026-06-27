@@ -382,12 +382,21 @@
             font-weight: 300;
             z-index: 0;
         }
-        /* Each measure's first beat sits right after a bar line. Inset it a little
-           so the first note (and its number) aren't jammed against the line. The
-           SAME inset on every measure keeps all cells equal width, so bar lines
-           still stack vertically across lines and the double bar is unaffected. */
+        /* Each measure's first beat sits right after a bar line. The gap is PADDING
+           (inside the cell), not margin — so the cell's box (and the beat-guide
+           highlight) spans bar-line to bar-line and lines up with the bar lines,
+           while the note + number are inset for breathing room. Same inset on
+           every measure keeps cells equal width / bar lines stacked. */
         .beat-drop-zone[data-beat="1"] {
-            margin-left: 14px;
+            padding-left: 14px;
+        }
+        /* Inset the notation + number by the padding (absolute children are
+           positioned from the padding box, so they need the explicit offset). */
+        .beat-drop-zone[data-beat="1"] .beat-notation {
+            left: 14px; right: 0; width: auto;
+        }
+        .beat-drop-zone[data-beat="1"]::before {
+            left: 14px;
         }
 
         .beat-drop-zone.drag-over {
