@@ -661,19 +661,25 @@ class RhythmStudent {
             let cells = '';
             lineMeasures.forEach((mi) => {
                 const ts = mm[mi]; const parts = ts.split('/'); const bts = beatsOf(ts);
+                // The measure number anchors to the measure's FIRST element (the
+                // time-sig slot if the meter changes here, else the first beat
+                // cell) so it always sits the same distance from the bar line.
+                const mnum = `<span class="measure-num">${mi + 1}</span>`;
+                let tsShown = false;
                 if (ts !== prevTs) {                 // show the time sig on first measure / any change
                     // At a SIMPLE<->COMPOUND change, show the beat-equivalence (the
-                    // beat stays equal): [prev beat note] = [new beat note].
+                    // beat stays equal) at the bar line: [prev beat] = [new beat].
                     const showEquiv = globalPrev !== null && isComp(ts) !== isComp(globalPrev);
                     const equiv = showEquiv ? `<span class="ts-equiv"><img src="${beatImg(globalPrev)}"><b>=</b><img src="${beatImg(ts)}"></span>` : '';
-                    cells += `<div class="answer-ts-inline">${equiv}<div class="ts-stack"><span>${parts[0]}</span><span>${parts[1]}</span></div></div>`;
+                    cells += `<div class="answer-ts-inline">${mnum}${equiv}<div class="ts-stack"><span>${parts[0]}</span><span>${parts[1]}</span></div></div>`;
+                    tsShown = true;
                 }
                 prevTs = ts; globalPrev = ts;
                 for (let b = 1; b <= bts; b++) {
                     const isEnd = b === bts;
                     const isFinal = (mi === mm.length - 1) && isEnd;
-                    const mnum = b === 1 ? `<span class="measure-num">${mi + 1}</span>` : '';
-                    cells += `<div class="beat-drop-zone${isEnd ? ' measure-end' : ''}${isFinal ? ' final-cell' : ''}" data-beat="${b}" data-measure="${mi + 1}">${mnum}<div class="beat-notation"></div></div>`;
+                    const cellMnum = (b === 1 && !tsShown) ? mnum : '';
+                    cells += `<div class="beat-drop-zone${isEnd ? ' measure-end' : ''}${isFinal ? ' final-cell' : ''}" data-beat="${b}" data-measure="${mi + 1}">${cellMnum}<div class="beat-notation"></div></div>`;
                 }
             });
             rowsHtml += `
