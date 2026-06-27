@@ -14,10 +14,11 @@
     groove: 100, score: 0, streak: 0,
     correctionMode: true, metronome: false, beatGuide: false,
     mode: 'levels', level: 1,
-    meter: 'simple', beatsPerMeasure: 4, compoundLevel: 1,
+    meter: 'simple', beatsPerMeasure: 4, compoundLevel: 1, speed: 'medium',
     hintsThisRound: 0, wrongThisRound: false, solved: false
   };
   var GROOVE_PER_WRONG = 12, GROOVE_HINT_MISTAKES = 8, GROOVE_HINT_COUNT = 5, GROOVE_GAIN_CLEAN = 15;
+  var SPEEDS = { slow: 72, medium: 100, fast: 132 };   // beat BPM (dotted-quarter in compound)
 
   /* Level ladder — figures unlocked in the order Hall's "Studying Rhythm"
      introduces them (simple-meter arc). Cumulative. "Classic" = all figures
@@ -103,11 +104,13 @@
       if (typeof d.level === 'number' && d.level >= 1 && d.level <= 7) S.level = d.level;
       if (d.meter === 'simple' || d.meter === 'compound') S.meter = d.meter;
       if (typeof d.compoundLevel === 'number' && d.compoundLevel >= 1 && d.compoundLevel <= 3) S.compoundLevel = d.compoundLevel;
+      if (SPEEDS[d.speed]) S.speed = d.speed;
       S.beatsPerMeasure = (S.meter === 'compound') ? 2 : 4;
+      S.tempo = SPEEDS[S.speed] || 100;
     } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem('beatquest-solo', JSON.stringify({ score: S.score, streak: S.streak, correctionMode: S.correctionMode, metronome: S.metronome, beatGuide: S.beatGuide, mode: S.mode, level: S.level, meter: S.meter, compoundLevel: S.compoundLevel })); } catch (e) {}
+    try { localStorage.setItem('beatquest-solo', JSON.stringify({ score: S.score, streak: S.streak, correctionMode: S.correctionMode, metronome: S.metronome, beatGuide: S.beatGuide, mode: S.mode, level: S.level, meter: S.meter, compoundLevel: S.compoundLevel, speed: S.speed })); } catch (e) {}
   }
 
   /* ----------------------------------------------------- target generation */
@@ -472,6 +475,7 @@
     hud.innerHTML =
       '<div class="solo-stats">' +
         '<div class="solo-stat"><span>LEVEL</span><select id="soloLevel">' + lvOpts + '</select></div>' +
+        '<div class="solo-stat"><span>SPEED</span><select id="soloSpeed"><option value="slow">Slow</option><option value="medium">Medium</option><option value="fast">Fast</option></select></div>' +
         '<div class="solo-stat groove"><span>GROOVE</span><div class="solo-bar"><i id="soloGrooveFill"></i></div><b id="soloGroovePct">100%</b></div>' +
         '<div class="solo-stat"><span>SCORE</span><b id="soloScore">0</b></div>' +
         '<div class="solo-stat"><span>STREAK</span><b id="soloStreak">0</b>' + IC.flame + '</div>' +
@@ -526,6 +530,9 @@
       }
       save(); newRound();
     };
+    var sp = document.getElementById('soloSpeed');
+    sp.value = S.speed;
+    sp.onchange = function () { S.speed = sp.value; S.tempo = SPEEDS[S.speed] || 100; save(); playTarget(); };
     var cb = document.getElementById('soloCorrect');
     cb.checked = S.correctionMode;
     cb.onchange = function () { S.correctionMode = cb.checked; save(); };
