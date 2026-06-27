@@ -559,6 +559,7 @@
     });
     var fb = document.getElementById('feedback'); if (fb) { fb.style.display = 'none'; fb.textContent = ''; } // solo uses #soloMsg
     filterBank();
+    S.narrowed = false; S.narrowCharged = false; setNarrowBtn();   // reset the narrow toggle
     clearMarks();
     document.getElementById('soloNext').style.display = 'none';
     document.getElementById('soloSubmit').style.display = '';
@@ -632,19 +633,27 @@
     if (S.groove <= 0) grooveBroken();
     save(); render();
   }
-  // Hide every bank tile whose figure isn't actually used in this example, so the
-  // student only chooses among the figures that appear. Reset each new round.
+  // Reflect the narrow state on its button (label + pressed look).
+  function setNarrowBtn() {
+    var btn = document.getElementById('soloHintNarrow'); if (!btn) return;
+    btn.classList.toggle('on', !!S.narrowed);
+    btn.innerHTML = IC.filter + (S.narrowed ? 'Show all' : 'Narrow options');
+  }
+  // TOGGLE: hide every bank tile whose figure isn't in this example (so the
+  // student only chooses among the figures used), or restore the full level bank.
+  // Resets each new round. The groove cost is charged only the first time.
   function hintNarrow() {
     if (S.solved) return;
+    if (S.narrowed) {                 // un-narrow -> restore the level-filtered bank (free)
+      filterBank(); S.narrowed = false; setNarrowBtn();
+      msg('Showing all figures again.'); render(); return;
+    }
     var used = {};
     S.target.forEach(function (meas) { meas.forEach(function (it) { used[it.patternId] = 1; }); });
-    var hidden = 0;
-    document.querySelectorAll('.rhythm-tile').forEach(function (t) {
-      if (t.style.display !== 'none' && !used[t.dataset.patternId]) { t.style.display = 'none'; hidden++; }
-    });
-    if (!hidden) { msg('The bank is already narrowed to the figures used.'); return; }
-    S.hintsThisRound++; S.groove = Math.max(0, S.groove - GROOVE_HINT_NARROW);
-    msg('Removed figures not in this example — ' + Object.keys(used).length + ' option(s) left.');
+    document.querySelectorAll('.rhythm-tile').forEach(function (t) { if (!used[t.dataset.patternId]) t.style.display = 'none'; });
+    S.narrowed = true; setNarrowBtn();
+    if (!S.narrowCharged) { S.hintsThisRound++; S.groove = Math.max(0, S.groove - GROOVE_HINT_NARROW); S.narrowCharged = true; }
+    msg('Showing only the ' + Object.keys(used).length + ' figure(s) in this example.');
     if (S.groove <= 0) grooveBroken();
     save(); render();
   }
@@ -695,6 +704,7 @@
       '#soloHud select{font-family:inherit;font-size:.82rem;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px 8px}' +
       '#soloHud select option{color:#111}' +
       '.solo-ctl button.toggle.on{background:#19e07a;color:#06210f;box-shadow:0 0 0 2px rgba(25,224,122,.4)}' +
+      '.solo-ctl button.hint.on{background:rgba(255,255,255,.22);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.4)}' +
       '#soloHud .solo-toggle{display:flex;align-items:center;gap:6px;font-size:.8rem;opacity:.85;margin-left:auto;cursor:pointer}' +
       '#soloHud #soloMsg{margin-top:10px;font-size:.95rem;min-height:1.3em;font-weight:600}' +
       '.beat-drop-zone.solo-wrong{outline:2px solid #ff5a4d;outline-offset:-2px;background:rgba(255,90,77,.13)!important}' +
