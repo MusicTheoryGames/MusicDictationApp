@@ -868,9 +868,9 @@
     };
     var sp = document.getElementById('soloSpeed');
     sp.value = S.speed;
-    // Speed keeps the current rhythm but stops playback — press Play to hear it
-    // at the new tempo (it's the "listen closer" aid, not a difficulty change).
-    sp.onchange = function () { S.speed = sp.value; S.tempo = SPEEDS[S.speed] || 100; save(); stopPlayback(); msg('Speed set to ' + S.speed + ' — press ▶ Play to hear it.'); };
+    // Speed is the ONLY setting that doesn't stop or regenerate: it just updates
+    // the tempo (applied on the next Play) and keeps the same example/playback.
+    sp.onchange = function () { S.speed = sp.value; S.tempo = SPEEDS[S.speed] || 100; save(); };
     var br = document.getElementById('soloBars');
     br.value = String(S.measures);
     br.onchange = function () { S.measures = parseInt(br.value, 10); save(); newRound(); };
