@@ -19,6 +19,11 @@ export const compoundAssets = {
     "beats": 1,
     "beatUnit": "dotted-quarter"
   },
+  "cd-duplet": {
+    "file": "cd-duplet.svg",
+    "beats": 1,
+    "beatUnit": "dotted-quarter"
+  },
   "cd-dotted-quarter-rest": {
     "file": "cd-dotted-quarter-rest.svg",
     "beats": 1,

@@ -16,6 +16,8 @@ const FIGURES = [
   { id: 'cd-three-eighths',       seq: [n('8'), n('8'), n('8')] },
   { id: 'cd-quarter-eighth',      seq: [n('q'), n('8')] },
   { id: 'cd-eighth-quarter',      seq: [n('8'), n('q')] },
+  // duplet — TWO eighths borrowed into the dotted-quarter beat (bracketed "2")
+  { id: 'cd-duplet',              seq: [n('8'), n('8')], tuplet: { num_notes: 2, notes_occupied: 3 } },
   // Tier 2 — rests (Ch 5/10)
   { id: 'cd-dotted-quarter-rest', seq: [n('q', { dot: 1, rest: 1 })] },
   { id: 'cd-8rest-8-8',           seq: [n('8', { rest: 1 }), n('8'), n('8')] },
@@ -76,8 +78,14 @@ function run() {
       fig.seq.forEach((s, i) => { if (beamable(s.duration) && !s.rest) runArr.push(notes[i]); else flush(); });
       flush();
 
+      let tuplet = null;
+      if (fig.tuplet) {
+        tuplet = new VF.Tuplet(notes, { num_notes: fig.tuplet.num_notes, notes_occupied: fig.tuplet.notes_occupied, bracketed: true, location: 1, y_offset: 12 });
+      }
+
       VF.Formatter.FormatAndDraw(ctx, stave, notes);
       beams.forEach(b => b.setContext(ctx).draw());
+      if (tuplet) tuplet.setContext(ctx).draw();
 
       const inner = svg.innerHTML.replace(/<svg[^>]*>/, '').replace(/<\/svg>$/, '');
       const clean = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="120" viewBox="0 0 ${width} 120">
