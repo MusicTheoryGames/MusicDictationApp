@@ -19,7 +19,7 @@
     changing: false, changePool: null, curMeters: null,  // changing-meter mode
     hintsThisRound: 0, wrongThisRound: false, solved: false
   };
-  var GROOVE_PER_WRONG = 12, GROOVE_HINT_MISTAKES = 8, GROOVE_HINT_COUNT = 5, GROOVE_GAIN_CLEAN = 15;
+  var GROOVE_PER_WRONG = 12, GROOVE_HINT_MISTAKES = 8, GROOVE_HINT_COUNT = 5, GROOVE_HINT_NARROW = 10, GROOVE_GAIN_CLEAN = 15;
   var SPEEDS = { slow: 72, medium: 100, fast: 132 };   // beat BPM (dotted-quarter in compound)
 
   /* Level ladder — figures unlocked in the order Hall's "Studying Rhythm"
@@ -233,6 +233,7 @@
     guide: '<svg viewBox="0 0 20 20" class="ic"><path d="M2 11h3l2-5 3 9 2-6 1.4 2H18"/></svg>',
     search:'<svg viewBox="0 0 20 20" class="ic"><circle cx="9" cy="9" r="5"/><path d="M13 13l4.5 4.5"/></svg>',
     count: '<svg viewBox="0 0 20 20" class="ic"><path d="M5 15V8M10 15V5M15 15v-4"/></svg>',
+    filter: '<svg viewBox="0 0 20 20" class="ic"><path d="M2.5 4h15l-6 7.2v4.6l-3 1.6v-6.2z"/></svg>',
     eye:   '<svg viewBox="0 0 20 20" class="ic"><path d="M1.5 10S5 4.5 10 4.5 18.5 10 18.5 10 15 15.5 10 15.5 1.5 10 1.5 10z"/><circle cx="10" cy="10" r="2.4"/></svg>',
     check: '<svg viewBox="0 0 20 20" class="ic"><path d="M4 10.5l4 4 8-9"/></svg>',
     next:  '<svg viewBox="0 0 20 20" class="ic ic-fill"><path d="M5 4l8 6-8 6z"/><path d="M14.5 4v12" class="ic-stroke"/></svg>',
@@ -631,6 +632,22 @@
     if (S.groove <= 0) grooveBroken();
     save(); render();
   }
+  // Hide every bank tile whose figure isn't actually used in this example, so the
+  // student only chooses among the figures that appear. Reset each new round.
+  function hintNarrow() {
+    if (S.solved) return;
+    var used = {};
+    S.target.forEach(function (meas) { meas.forEach(function (it) { used[it.patternId] = 1; }); });
+    var hidden = 0;
+    document.querySelectorAll('.rhythm-tile').forEach(function (t) {
+      if (t.style.display !== 'none' && !used[t.dataset.patternId]) { t.style.display = 'none'; hidden++; }
+    });
+    if (!hidden) { msg('The bank is already narrowed to the figures used.'); return; }
+    S.hintsThisRound++; S.groove = Math.max(0, S.groove - GROOVE_HINT_NARROW);
+    msg('Removed figures not in this example — ' + Object.keys(used).length + ' option(s) left.');
+    if (S.groove <= 0) grooveBroken();
+    save(); render();
+  }
 
   /* -------------------------------------------------------------------- UI */
   function msg(t) { var el = document.getElementById('soloMsg'); if (el) el.textContent = t; }
@@ -727,6 +744,7 @@
         '<button id="soloMetro" class="toggle">' + IC.metro + 'Metronome</button>' +
         '<button id="soloGuide" class="toggle">' + IC.guide + 'Beat guide</button>' +
         '<span class="solo-hints"><span class="hints-label">HINTS</span>' +
+          '<button id="soloHintNarrow" class="hint">' + IC.filter + 'Narrow options</button>' +
           '<button id="soloHintBeats" class="hint">' + IC.search + 'Find mistakes</button>' +
           '<button id="soloHintCount" class="hint">' + IC.count + 'Count a beat</button>' +
           '<button id="soloReveal" class="hint">' + IC.eye + 'Show answer</button>' +
@@ -748,6 +766,7 @@
     document.getElementById('soloPlay').onclick = playTarget;
     document.getElementById('soloHintBeats').onclick = hintMistakes;
     document.getElementById('soloHintCount').onclick = hintCount;
+    document.getElementById('soloHintNarrow').onclick = hintNarrow;
     document.getElementById('soloSubmit').onclick = submit;
     document.getElementById('soloNext').onclick = newRound;
     document.getElementById('soloReveal').onclick = function () {
