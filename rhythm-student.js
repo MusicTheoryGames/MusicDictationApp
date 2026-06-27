@@ -13,10 +13,10 @@ const NOTE_DECOMPOSITION = {
     'half': [{ glyph: 'h', offset: 0 }],
 };
 
-// A glyph's notehead centre sits ~14% in from the glyph's left edge (VexFlow
-// stave padding). Subtract that so a note placed at beat offset N lands its
-// NOTEHEAD on beat N's onset, not 14% past it.
-const GLYPH_NOTEHEAD_OFFSET = 14;
+// The glyph's first visible ink (notehead/stem) sits ~11% in from the image's
+// left edge (VexFlow stave padding). Subtract that so the note's LEFT EDGE lands
+// exactly on the beat onset / bar line / drag-highlight edge, with no overhang.
+const GLYPH_NOTEHEAD_OFFSET = 11;
 
 // Rhythm Student System
 class RhythmStudent {

@@ -426,10 +426,11 @@
                for every pattern at any screen size. Anchored left so inner notes
                align to their beats. */
             top: 44%;
-            /* Sit ABOVE the staff line: the note's bottom (beam / stem end) rests
-               on the line and the noteheads go above it, clear of the beat
-               numbers below. */
-            transform: translateY(-100%);
+            /* Nudge up just enough that the staff line clears the noteheads
+               (the line cut through them when centered, worst when notes are
+               small at 8+ bars). Stem still crosses the line; % scales with note
+               size so the clearance holds at every zoom. */
+            transform: translateY(-66%);
             height: auto;
             pointer-events: none;
             user-select: none;
@@ -707,7 +708,7 @@
         </div>
     </div>
 
-    <script type="module" src="rhythm-student.js?v=20260626n"></script>
+    <script type="module" src="rhythm-student.js?v=20260626p"></script>
     <script src="suite-theme.js"></script>
     <script src="solo-mode.js"></script>
 </body>
