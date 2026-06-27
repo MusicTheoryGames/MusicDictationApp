@@ -658,11 +658,6 @@ class RhythmStudent {
         let rowsHtml = '';
         let globalPrev = null;                       // previous measure's meter (across lines) for the equivalence marking
         lines.forEach((lineMeasures) => {
-            // Size each line in proportion to its beat count so a beat is the SAME
-            // width on every line (true beat-constant) — a 6-beat line is half as
-            // wide as a 12-beat line, left-aligned, rather than stretched to match.
-            const lineBeats = lineMeasures.reduce((s, i) => s + beatsOf(mm[i]), 0);
-            const widthPct = Math.round((lineBeats / maxBeats) * 1000) / 10;
             let prevTs = null;                       // restate the time sig at each line start
             let cells = '';
             lineMeasures.forEach((mi) => {
@@ -689,7 +684,7 @@ class RhythmStudent {
                 }
             });
             rowsHtml += `
-                <div class="staff-container" style="width: ${widthPct}%;">
+                <div class="staff-container">
                     <div class="staff-lines"><div class="staff-line"></div></div>
                     <div class="beat-divisions" style="margin-left: 14px; margin-right: 0;">${cells}</div>
                 </div>`;
@@ -697,7 +692,9 @@ class RhythmStudent {
 
         const staffDiv = document.createElement('div');
         staffDiv.className = 'answer-staff';
-        staffDiv.style.width = `min(100%, ${staffPx}px)`;
+        // Fill the available width (capped on ultra-wide screens); every line
+        // stretches to this same width.
+        staffDiv.style.width = 'min(100%, 1600px)';
         staffDiv.style.maxWidth = 'none';
         staffDiv.innerHTML = `
             <div class="answer-staff-label">Your Answer (${mm.length} measures · changing meter)</div>
