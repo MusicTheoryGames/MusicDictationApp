@@ -426,7 +426,10 @@
                for every pattern at any screen size. Anchored left so inner notes
                align to their beats. */
             top: 44%;
-            transform: translateY(-50%);
+            /* Sit ABOVE the staff line: the note's bottom (beam / stem end) rests
+               on the line and the noteheads go above it, clear of the beat
+               numbers below. */
+            transform: translateY(-100%);
             height: auto;
             pointer-events: none;
             user-select: none;
