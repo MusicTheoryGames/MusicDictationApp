@@ -743,17 +743,28 @@
             /* Compact staff: the desktop row is 140–210px tall with a big gap
                between the notes and the beat numbers. Shrink it hard on phones so
                more rows fit and notes/bar lines feel proportionally larger. */
-            .staff-container { height: 92px; }
+            /* Responsive: phones ~94px, but TALLER on iPad where wider cells make
+               the note glyphs bigger (a fixed height collided with the numbers). */
+            .staff-container { height: clamp(94px, 10vw, 128px); }
             .staff-container + .staff-container { margin-top: 8px; }
-            /* Move the staff line + everything pinned to it (notes, time sig) DOWN
-               from 44% to 62%, together so they stay aligned: stems now use the
-               upper space and the beat numbers sit just under the line — killing
-               the wasted lower half of each row. */
-            .staff-line { top: 62%; }
-            .placed-note { top: 62%; transform: translateY(-66%) scale(1.22); transform-origin: left center; }
-            .answer-time-sig { top: 62%; font-size: 30px !important; }   /* was up to 62px */
-            .answer-ts-inline .ts-stack { top: 62%; }
+            /* Staff line + notes + time sig together at 50%: the note glyph extends
+               well below the line (notehead sits low in the glyph), so the notes
+               have to come up enough that the glyph bottom clears the beat numbers,
+               which stay put at the bottom. */
+            .staff-line { top: 50%; }
+            .placed-note { top: 50%; transform: translateY(-66%) scale(1.22); transform-origin: left center; }
+            .answer-time-sig { top: 50%; font-size: 30px !important; }   /* was up to 62px */
+            .answer-ts-inline .ts-stack { top: 50%; }
             .beat-drop-zone::before { font-size: 0.85rem; bottom: 4px; }  /* beat # near the line */
+            /* Bar lines: a segment CENTERED on the staff line (equal above/below),
+               not the full-height border which ran far above the line. */
+            .beat-drop-zone.measure-end:not(.final-cell) { border-right: none; }
+            .beat-drop-zone.measure-end:not(.final-cell)::after {
+                content: ''; position: absolute; right: 0;
+                top: 22%; bottom: 22%;          /* 22%..78% -> centered on 50% */
+                width: 3px; background: var(--bar-ink, #333);
+            }
+            .beat-drop-zone.final-cell::after { top: 22%; bottom: 22%; }   /* center the final double bar too */
             /* Pin the bank to the bottom as a compact horizontal strip.
                !important overrides per-theme `position: relative` (suite-theme.css). */
             .rhythm-bank {
