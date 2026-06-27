@@ -529,28 +529,61 @@ class RhythmStudent {
         const [tsTop, tsBottom] = (this.timeSignature || '4/4').split('/');
         const bpm = this.beatsPerMeasure || this.beatsForMeter(this.timeSignature || '4/4');
 
+        // Wrap measures onto multiple staff lines, 4 bars per line. One
+        // .answer-staff panel holds MULTIPLE .staff-container rows stacked
+        // vertically (a page of music), NOT separate panels.
+        const BARS_PER_LINE = 4;
+        const totalMeasures = this.measureCount;
+        const lineCount = Math.ceil(totalMeasures / BARS_PER_LINE);
+
+        let rowsHtml = '';
+        for (let line = 0; line < lineCount; line++) {
+            const firstMeasure = line * BARS_PER_LINE + 1;            // 1-based global
+            const lastMeasure = Math.min(firstMeasure + BARS_PER_LINE - 1, totalMeasures);
+            const measuresInRow = lastMeasure - firstMeasure + 1;
+            const isFirstRow = line === 0;
+
+            // Time signature ONLY on the first row. Rows 2+ skip the time-sig
+            // gap, so they use a smaller left margin.
+            const timeSigHtml = isFirstRow
+                ? `<div class="answer-time-sig"><span>${tsTop}</span><span>${tsBottom}</span></div>`
+                : '';
+            const leftMargin = isFirstRow ? 70 : 20;
+
+            let cellsHtml = '';
+            for (let j = 0; j < measuresInRow * bpm; j++) {
+                const beat = (j % bpm) + 1;
+                const measure = firstMeasure + Math.floor(j / bpm);   // GLOBAL data-measure
+                const absoluteBeat = (firstMeasure - 1) * bpm + j + 1; // GLOBAL data-absolute-beat
+                const isMeasureEnd = beat === bpm;
+                // The final double bar belongs only to the very last cell of the
+                // last row; every other measure boundary keeps a normal bar line.
+                const isFinalCell = (measure === totalMeasures) && (beat === bpm);
+                cellsHtml += `
+                    <div class="beat-drop-zone${isMeasureEnd ? ' measure-end' : ''}${isFinalCell ? ' final-cell' : ''}" data-beat="${beat}" data-measure="${measure}" data-absolute-beat="${absoluteBeat}">
+                        <div class="beat-notation"></div>
+                    </div>
+                `;
+            }
+
+            rowsHtml += `
+                <div class="staff-container">
+                    <div class="staff-lines">
+                        <div class="staff-line"></div>
+                    </div>
+                    ${timeSigHtml}
+                    <div class="beat-divisions" style="margin-left: ${leftMargin}px; margin-right: 0;">
+                        ${cellsHtml}
+                    </div>
+                </div>
+            `;
+        }
+
         const staffDiv = document.createElement('div');
         staffDiv.className = 'answer-staff';
         staffDiv.innerHTML = `
             <div class="answer-staff-label">Your Answer (${this.measureCount} measures)</div>
-            <div class="staff-container">
-                <div class="staff-lines">
-                    <div class="staff-line"></div>
-                </div>
-                <div class="answer-time-sig"><span>${tsTop}</span><span>${tsBottom}</span></div>
-                <div class="beat-divisions" style="margin-left: 70px; margin-right: 0;">
-                    ${Array.from({length: this.measureCount * bpm}, (_, i) => {
-                        const beat = (i % bpm) + 1;
-                        const measure = Math.floor(i / bpm) + 1;
-                        const isMeasureEnd = beat === bpm;
-                        return `
-                            <div class="beat-drop-zone${isMeasureEnd ? ' measure-end' : ''}" data-beat="${beat}" data-measure="${measure}" data-absolute-beat="${i + 1}">
-                                <div class="beat-notation"></div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            </div>
+            ${rowsHtml}
         `;
 
         measureContainer.appendChild(staffDiv);

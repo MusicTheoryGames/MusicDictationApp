@@ -105,12 +105,13 @@
       if (d.meter === 'simple' || d.meter === 'compound') S.meter = d.meter;
       if (typeof d.compoundLevel === 'number' && d.compoundLevel >= 1 && d.compoundLevel <= 3) S.compoundLevel = d.compoundLevel;
       if (SPEEDS[d.speed]) S.speed = d.speed;
+      if (d.measures === 2 || d.measures === 4 || d.measures === 8 || d.measures === 16) S.measures = d.measures;
       S.beatsPerMeasure = (S.meter === 'compound') ? 2 : 4;
       S.tempo = SPEEDS[S.speed] || 100;
     } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem('beatquest-solo', JSON.stringify({ score: S.score, streak: S.streak, correctionMode: S.correctionMode, metronome: S.metronome, beatGuide: S.beatGuide, mode: S.mode, level: S.level, meter: S.meter, compoundLevel: S.compoundLevel, speed: S.speed })); } catch (e) {}
+    try { localStorage.setItem('beatquest-solo', JSON.stringify({ score: S.score, streak: S.streak, correctionMode: S.correctionMode, metronome: S.metronome, beatGuide: S.beatGuide, mode: S.mode, level: S.level, meter: S.meter, compoundLevel: S.compoundLevel, speed: S.speed, measures: S.measures })); } catch (e) {}
   }
 
   /* ----------------------------------------------------- target generation */
@@ -476,6 +477,7 @@
       '<div class="solo-stats">' +
         '<div class="solo-stat"><span>LEVEL</span><select id="soloLevel">' + lvOpts + '</select></div>' +
         '<div class="solo-stat"><span>SPEED</span><select id="soloSpeed"><option value="slow">Slow</option><option value="medium">Medium</option><option value="fast">Fast</option></select></div>' +
+        '<div class="solo-stat"><span>BARS</span><select id="soloBars"><option value="2">2</option><option value="4">4</option><option value="8">8</option><option value="16">16</option></select></div>' +
         '<div class="solo-stat groove"><span>GROOVE</span><div class="solo-bar"><i id="soloGrooveFill"></i></div><b id="soloGroovePct">100%</b></div>' +
         '<div class="solo-stat"><span>SCORE</span><b id="soloScore">0</b></div>' +
         '<div class="solo-stat"><span>STREAK</span><b id="soloStreak">0</b>' + IC.flame + '</div>' +
@@ -533,6 +535,9 @@
     var sp = document.getElementById('soloSpeed');
     sp.value = S.speed;
     sp.onchange = function () { S.speed = sp.value; S.tempo = SPEEDS[S.speed] || 100; save(); playTarget(); };
+    var br = document.getElementById('soloBars');
+    br.value = String(S.measures);
+    br.onchange = function () { S.measures = parseInt(br.value, 10); save(); newRound(); };
     var cb = document.getElementById('soloCorrect');
     cb.checked = S.correctionMode;
     cb.onchange = function () { S.correctionMode = cb.checked; save(); };

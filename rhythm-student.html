@@ -229,9 +229,9 @@
                vertical staff/time-sig tuning is untouched. */
             width: 100%;
             max-width: 1500px;
-            /* Height scales with width so note size, staff line and beat numbers
-               stay proportional — notes can never grow into the numbers. */
-            height: clamp(140px, 14vw, 210px);
+            /* Multi-line: the panel sizes to its stacked rows. Each .staff-container
+               row carries the responsive height (moved from here) so a single row
+               keeps its exact look while extra rows just add height. */
         }
 
         .answer-staff-label {
@@ -249,8 +249,16 @@
 
         .staff-container {
             position: relative;
-            height: 100%;     /* fills the (scaling) answer-staff */
+            /* Each staff LINE carries the responsive height (was on .answer-staff),
+               so one row keeps its original look and extra rows stack below it. */
+            height: clamp(140px, 14vw, 210px);
             margin-top: 0;
+        }
+
+        /* Vertical gap between stacked staff lines (rows 2+). The first row has no
+           gap so a single-row staff is pixel-identical to before. */
+        .staff-container + .staff-container {
+            margin-top: 30px;
         }
 
         .staff-lines {
@@ -329,17 +337,19 @@
             transition: all 0.3s ease;
         }
 
-        /* Bar line between measures — last cell of each measure EXCEPT the final.
+        /* Bar line between measures — last cell of each measure EXCEPT the final
+           double bar. Uses .final-cell (set only on the very last cell of the last
+           row) so each row's own trailing measure still gets a normal bar line.
            Colour comes from --bar-ink (each theme sets it to its staff ink). */
-        .beat-drop-zone.measure-end:not(:last-child) {
+        .beat-drop-zone.measure-end:not(.final-cell) {
             border-right: 3px solid var(--bar-ink, #333); /* Bar line between measures */
             margin-right: 15px; /* Add space after bar line */
         }
 
-        /* Final double bar — drawn at the right edge of the LAST cell. Because
-           the beat row now ends exactly where the staff line ends (W), the
-           double bar always terminates flush with the staff line. */
-        .beat-drop-zone:last-child::after {
+        /* Final double bar — drawn at the right edge of the very last cell of the
+           last row. Because the beat row now ends exactly where the staff line
+           ends (W), the double bar always terminates flush with the staff line. */
+        .beat-drop-zone.final-cell::after {
             content: '';
             position: absolute;
             right: 0; /* == staff line's right end */
@@ -499,12 +509,9 @@
                 width: 95vw;
                 max-width: 700px;
                 padding: 12px 25px 12px 12px;
-                /* height comes from the responsive clamp (base rule) */
             }
 
-            .staff-container {
-                height: 100%;
-            }
+            /* .staff-container keeps its base responsive clamp height here. */
 
             .beat-drop-zone {
                 min-height: 70px;
@@ -557,12 +564,11 @@
                 width: 98vw;
                 max-width: none;
                 padding: 10px 20px 10px 10px;
-                height: 90px;
                 margin: 0 auto;
             }
 
             .staff-container {
-                height: 100%;
+                height: 90px;     /* per-row height (moved off .answer-staff) */
             }
 
             .beat-drop-zone {
@@ -605,11 +611,10 @@
             .answer-staff {
                 width: 99vw;
                 padding: 8px 15px 8px 8px;
-                height: 80px;
             }
 
             .staff-container {
-                height: 100%;
+                height: 80px;     /* per-row height (moved off .answer-staff) */
             }
 
             .beat-drop-zone {
@@ -686,7 +691,7 @@
         </div>
     </div>
 
-    <script type="module" src="rhythm-student.js?v=20260626k"></script>
+    <script type="module" src="rhythm-student.js?v=20260626m"></script>
     <script src="suite-theme.js"></script>
     <script src="solo-mode.js"></script>
 </body>
