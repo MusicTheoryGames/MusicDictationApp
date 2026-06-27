@@ -382,6 +382,12 @@
             font-weight: 300;
             z-index: 0;
         }
+        /* Beat 1 sits right after a bar line (its onset == the bar line). Nudge
+           its number to the right so the line doesn't bisect it. Other beats have
+           no line at their onset, so they stay centered. */
+        .beat-drop-zone[data-beat="1"]::before {
+            left: 11px;
+        }
 
         .beat-drop-zone.drag-over {
             background: rgba(255, 107, 107, 0.1);
