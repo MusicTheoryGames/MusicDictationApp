@@ -116,8 +116,8 @@ body.theme-brutalist #connectionStatus{background:#e3231b;color:#fff;padding:1px
 body.theme-brutalist .rhythm-bank,body.theme-brutalist .answer-area{background:#fff !important;border:2px solid #111 !important;border-radius:0 !important;backdrop-filter:none !important}
 body.theme-brutalist .rhythm-bank h3,body.theme-brutalist .answer-area h3{font-family:'Anton';text-transform:uppercase;letter-spacing:.02em;color:#111}
 body.theme-brutalist .rhythm-tile{background:#fff !important;border:2px solid #111 !important;border-radius:0 !important;box-shadow:none !important}
-body.theme-brutalist .rhythm-tile:hover{background:#111 !important}
-body.theme-brutalist .rhythm-tile:hover img{filter:invert(1)}
+/* hover = red outline + hard offset, NOT a black fill (which hid the glyph) */
+body.theme-brutalist .rhythm-tile:hover{background:#fff !important;border-color:#e3231b !important;box-shadow:5px 5px 0 #e3231b !important}
 body.theme-brutalist .rhythm-tile img{filter:none;mix-blend-mode:multiply}
 body.theme-brutalist .answer-staff{background:#fff !important;border:3px solid #111 !important;border-radius:0 !important;box-shadow:none !important}
 body.theme-brutalist .staff-line{background:#111 !important;height:3px !important}
@@ -228,3 +228,36 @@ body.theme-brutalist .solo-ctl button:hover{background:#111;color:#fff}
 body.theme-brutalist .solo-ctl button.go{background:#e3231b;color:#fff;border-color:#111}
 body.theme-brutalist .solo-ctl button.toggle.on{background:#111;color:#fff}
 body.theme-brutalist #soloHud select{font-family:'Space Mono',monospace;font-weight:700;background:#fff;color:#111;border:2px solid #111;border-radius:0}
+
+/* ============================================================================
+   PER-THEME accents (no universal colors): Play button, groove bar, bar ink.
+   ========================================================================== */
+/* --bar-ink => middle bar line + final double bar match each theme's staff ink.
+   --groove-ok => the groove bar's "healthy" fill (100%). */
+body.theme-mpc .answer-staff{--bar-ink:#26301c}
+body.theme-manuscript .answer-staff{--bar-ink:#2a2118}
+body.theme-arcade .answer-staff{--bar-ink:#16f0ff}
+body.theme-brutalist .answer-staff{--bar-ink:#111}
+
+body.theme-mpc #soloHud{--groove-ok:#39ff8b}
+body.theme-manuscript #soloHud{--groove-ok:#5c7a4a}
+body.theme-arcade #soloHud{--groove-ok:#16f0ff}
+body.theme-brutalist #soloHud{--groove-ok:#111}
+
+/* Play = primary start action, raised, in each theme's own accent (green=MPC,
+   cyan=Arcade, botanical green=Ink, solid black=Print vs the red Submit). */
+body.theme-mpc #soloHud button.play{color:#04240f;background:linear-gradient(180deg,#2ee082,#15a857);border:1px solid #0b7a40;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 3px 0 #0c6e3c,0 6px 14px rgba(0,0,0,.4)}
+body.theme-mpc #soloHud button.play:hover{background:linear-gradient(180deg,#37ef8d,#19bb63)}
+
+body.theme-arcade #soloHud button.play{color:#04121f;background:linear-gradient(180deg,#3df0ff,#0bb6c9);border:2px solid #16f0ff;
+  box-shadow:0 0 16px rgba(22,240,255,.7),0 4px 0 #0a6e78}
+body.theme-arcade #soloHud button.play:hover{background:linear-gradient(180deg,#5cf6ff,#10c6da)}
+
+body.theme-manuscript #soloHud button.play{color:#f3ead4;background:#5c7a4a;border:1.5px solid #3a5230;
+  box-shadow:0 2px 0 #2f4527,0 4px 9px rgba(60,50,30,.3)}
+body.theme-manuscript #soloHud button.play:hover{background:#688a54}
+
+body.theme-brutalist #soloHud button.play{color:#fff;background:#111;border:2px solid #111;border-radius:0;
+  box-shadow:5px 5px 0 rgba(17,17,17,.22)}
+body.theme-brutalist #soloHud button.play:hover{background:#000}

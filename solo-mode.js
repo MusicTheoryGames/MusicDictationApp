@@ -269,6 +269,7 @@
     S.target = generateTarget();
     S.hintsThisRound = 0; S.wrongThisRound = false; S.solved = false;
     if (rs.updateGameSettings) rs.updateGameSettings({ measureCount: S.measures, difficulty: S.difficulty, tempo: S.tempo });
+    var fb = document.getElementById('feedback'); if (fb) { fb.style.display = 'none'; fb.textContent = ''; } // solo uses #soloMsg
     filterBank();
     clearMarks();
     document.getElementById('soloNext').style.display = 'none';
@@ -348,7 +349,7 @@
   function msg(t) { var el = document.getElementById('soloMsg'); if (el) el.textContent = t; }
   function render() {
     var f = document.getElementById('soloGrooveFill');
-    if (f) { f.style.width = S.groove + '%'; f.style.background = S.groove > 50 ? '#19e07a' : S.groove > 25 ? '#ffd24a' : '#ff5a4d'; }
+    if (f) { f.style.width = S.groove + '%'; f.style.background = S.groove > 50 ? 'var(--groove-ok,#19e07a)' : S.groove > 25 ? 'var(--groove-warn,#ffd24a)' : 'var(--groove-low,#ff5a4d)'; }
     var p = document.getElementById('soloGroovePct'); if (p) p.textContent = S.groove + '%';
     var sc = document.getElementById('soloScore'); if (sc) sc.textContent = S.score;
     var st = document.getElementById('soloStreak'); if (st) st.textContent = S.streak;
@@ -373,14 +374,10 @@
       '.solo-ctl button.go{background:#2196f3}' +
       // primary actions (Play, Submit) sit above the rest in size/weight
       '.solo-ctl button.primary{padding:12px 24px;font-size:.98rem;border-radius:12px}' +
-      // Play is THE start action: biggest, distinct green, and visibly RAISED
-      // (gradient + border + hard bottom edge + drop shadow) so it reads as the
-      // primary button at rest — no hover needed, which matters on touch.
-      '#soloHud button.play{padding:15px 34px;font-size:1.12rem;color:#04240f;' +
-        'background:linear-gradient(180deg,#2ee082,#15a857);border:1px solid #0b7a40;' +
-        'box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 3px 0 #0c6e3c,0 6px 14px rgba(0,0,0,.38)}' +
-      '#soloHud button.play:hover{background:linear-gradient(180deg,#37ef8d,#19bb63);transform:translateY(-1px)}' +
-      '#soloHud button.play:active{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 1px 0 #0c6e3c,0 2px 6px rgba(0,0,0,.3)}' +
+      // Play is THE start action: biggest. COLOR is supplied per-theme (no
+      // universal color) — base only sets size + the press-down feedback.
+      '#soloHud button.play{padding:15px 34px;font-size:1.12rem}' +
+      '#soloHud button.play:active{transform:translateY(2px)}' +
       '#soloHud button.play .ic{width:1.15em;height:1.15em;stroke-width:2.1}' +
       // bottom Submit bar gets a top divider since it's now under the bank
       '#soloActions{border-top:1px solid rgba(255,255,255,.12);padding-top:14px}' +
