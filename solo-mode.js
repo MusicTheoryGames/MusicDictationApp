@@ -386,6 +386,7 @@
     if (actx && actx.state === 'suspended') actx.resume();
     return actx;
   }
+  var scheduledOscs = [];   // all currently-scheduled oscillators, so we can cancel playback
   function tone(freq, when, dur, type, gain) {
     var c = ctx(); if (!c) return;
     var o = c.createOscillator(), g = c.createGain();
@@ -395,6 +396,19 @@
     g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
     o.connect(g); g.connect(c.destination);
     o.start(when); o.stop(when + dur + 0.03);
+    scheduledOscs.push(o);
+    o.onended = function () { var i = scheduledOscs.indexOf(o); if (i !== -1) scheduledOscs.splice(i, 1); };
+  }
+  // Cancel any in-flight or upcoming sound (kills overlapping playbacks).
+  function stopAllAudio() {
+    scheduledOscs.forEach(function (o) { try { o.stop(); } catch (e) {} try { o.disconnect(); } catch (e) {} });
+    scheduledOscs = [];
+  }
+  // Full stop: the count-in/metronome scheduler AND all scheduled sound.
+  function stopPlayback() {
+    stopPulse(); stopAllAudio();
+    S.playing = false;
+    if (S._playTimer) { clearTimeout(S._playTimer); S._playTimer = null; }
   }
   function metroTick(when, accent) { tone(accent ? 2300 : 1550, when, 0.035, 'sine', accent ? 0.32 : 0.2); }
   function subTick(when) { tone(1500, when, 0.022, 'sine', 0.08); }  // soft compound subdivision
@@ -467,7 +481,9 @@
   function playTarget() {
     if (!S.target) return;
     var c = ctx(); if (!c) { msg('Tap a button to enable sound.'); return; }
-    stopPulse();
+    if (S.playing) { msg('Already playing — let it finish.'); return; }  // no overlapping playback
+    stopPlayback();                         // clean slate (cancels any leftover sound)
+    S.playing = true;
     var beatDur = 60 / S.tempo;
     var t0 = c.currentTime + 0.2;          // count-in start
     var t = t0 + (mBeats()[0] || bpm()) * beatDur;   // rhythm starts after one measure of count-in
@@ -485,6 +501,8 @@
       });
     });
     startPulse(t0);   // count-in always ticks; metronome/guide continue per toggles
+    // playback ends at `t`; allow Play again after that
+    S._playTimer = setTimeout(function () { S.playing = false; }, Math.max(0, (t - c.currentTime + 0.3) * 1000));
     msg('Count-in… then the rhythm' + (S.metronome ? ' · metronome on' : '') + (S.beatGuide ? ' · beat guide on' : '') + '. Build your answer.');
   }
 
@@ -547,7 +565,7 @@
 
   /* ----------------------------------------------------------------- rounds */
   function newRound() {
-    stopPulse();
+    stopPlayback();                 // stop any playing rhythm before building a new one
     S.target = generateTarget();
     S.hintsThisRound = 0; S.wrongThisRound = false; S.solved = false;
     if (rs.updateGameSettings) rs.updateGameSettings({
@@ -566,7 +584,8 @@
     document.getElementById('soloNext').style.display = 'none';
     document.getElementById('soloSubmit').style.display = '';
     render();
-    setTimeout(playTarget, 350);
+    // No auto-play — the rhythm only sounds when the student presses Play.
+    msg('Press ▶ Play rhythm to hear it.');
   }
 
   function submit() {
@@ -849,7 +868,9 @@
     };
     var sp = document.getElementById('soloSpeed');
     sp.value = S.speed;
-    sp.onchange = function () { S.speed = sp.value; S.tempo = SPEEDS[S.speed] || 100; save(); playTarget(); };
+    // Speed keeps the current rhythm but stops playback — press Play to hear it
+    // at the new tempo (it's the "listen closer" aid, not a difficulty change).
+    sp.onchange = function () { S.speed = sp.value; S.tempo = SPEEDS[S.speed] || 100; save(); stopPlayback(); msg('Speed set to ' + S.speed + ' — press ▶ Play to hear it.'); };
     var br = document.getElementById('soloBars');
     br.value = String(S.measures);
     br.onchange = function () { S.measures = parseInt(br.value, 10); save(); newRound(); };
