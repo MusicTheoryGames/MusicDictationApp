@@ -438,9 +438,10 @@
       if (z) { z.classList.add('solo-beat-on'); pulse.lastHl = z; }
     }, Math.max(0, (when - c.currentTime) * 1000));
   }
-  // Autoscroll (mobile): gently scroll the PAGE down so the playing row stays in
-  // the upper third — vertical stacking, not a horizontal chase. Only nudges when
-  // the current row drifts out of the comfortable band.
+  // Autoscroll (mobile): only when the page actually OVERFLOWS (iPhone with many
+  // bars; iPad fits so it stays put) and only DOWNWARD (never up, which would pull
+  // the hidden controls back in — the flicker). Instant, so it doesn't jank the
+  // highlight timers.
   function scrollToBeat(answerBeatIndex, when) {
     var c = ctx(); if (!c) return;
     var mobile = false; try { mobile = window.matchMedia('(pointer: coarse) and (max-width: 1400px)').matches; } catch (e) {}
@@ -448,11 +449,12 @@
     var mb = measureOfAbs(answerBeatIndex);
     setTimeout(function () {
       if (!pulse.running) return;
+      if (document.documentElement.scrollHeight <= window.innerHeight + 8) return;  // everything fits
       var z = document.querySelector('.beat-drop-zone[data-measure="' + mb.m + '"][data-beat="' + mb.b + '"]');
       if (!z) return;
       var r = z.getBoundingClientRect(), vh = window.innerHeight;
-      if (r.top < 70 || r.bottom > vh * 0.62) {
-        window.scrollBy({ top: Math.round(r.top - vh * 0.3), behavior: 'smooth' });
+      if (r.bottom > vh * 0.8) {                      // current row near the bottom -> follow DOWN
+        window.scrollBy({ top: Math.round(r.bottom - vh * 0.55) });   // positive only; instant
       }
     }, Math.max(0, (when - c.currentTime) * 1000));
   }
@@ -510,9 +512,9 @@
     if (S.playing) { msg('Already playing — let it finish.'); return; }  // no overlapping playback
     stopPlayback();                         // clean slate (cancels any leftover sound)
     S.playing = true;
-    // mobile: bring the staff's first row into view so the count-in starts at bar 1
-    var mobilePlay = false; try { mobilePlay = window.matchMedia('(pointer: coarse) and (max-width: 1400px)').matches; } catch (e) {}
-    if (mobilePlay) { var st = document.querySelector('.answer-staff'); if (st) st.scrollIntoView({ block: 'start' }); }
+    // (No play-start scroll — it yanked the view back to the staff top and pulled
+    // the hidden controls into frame. The view stays where the student left it; the
+    // downward-only autoscroll follows the beat if the page overflows.)
     var beatDur = 60 / S.tempo;
     var t0 = c.currentTime + 0.2;          // count-in start
     var t = t0 + (mBeats()[0] || bpm()) * beatDur;   // rhythm starts after one measure of count-in
