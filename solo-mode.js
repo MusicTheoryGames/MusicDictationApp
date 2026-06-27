@@ -181,6 +181,7 @@
     o.start(when); o.stop(when + dur + 0.03);
   }
   function metroTick(when, accent) { tone(accent ? 2300 : 1550, when, 0.035, 'sine', accent ? 0.32 : 0.2); }
+  function subTick(when) { tone(1500, when, 0.022, 'sine', 0.08); }  // soft compound subdivision
   function rhythmHit(when) { tone(320, when, 0.12, 'triangle', 0.5); }
 
   var pulse = { running: false, timer: null, nextTime: 0, beat: 0, lastHl: null };
@@ -214,7 +215,16 @@
           return;
         }
         var countIn = bt < bpm();
-        if (countIn || S.metronome) metroTick(pulse.nextTime, (bt % bpm()) === 0);
+        if (countIn || S.metronome) {
+          // count-in: every beat loud; example metronome: accent measure starts
+          metroTick(pulse.nextTime, countIn || (bt % bpm()) === 0);
+          // compound: soft clicks on the 3 eighth-pulses so you feel the beat subdivide
+          if (S.meter === 'compound') {
+            var bd = 60 / S.tempo;
+            subTick(pulse.nextTime + bd / 3);
+            subTick(pulse.nextTime + 2 * bd / 3);
+          }
+        }
         if (!countIn && S.beatGuide) lightBeat(bt - bpm(), pulse.nextTime);
         pulse.beat++; pulse.nextTime += 60 / S.tempo;
       }
