@@ -289,9 +289,14 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 0.16em;          /* clear space between the two numbers */
-            line-height: 0.66;
+            /* Each number in its own tight box, with a generous gap so the staff
+               line passes through clear space between ANY two digits (a full
+               glyph like 8 was overflowing a tight line-box into the line). */
+            line-height: 0.8;
+            gap: 0.26em;
             font-family: Georgia, 'Times New Roman', serif;
+            font-variant-numeric: lining-nums tabular-nums;
+            font-feature-settings: "lnum" 1, "tnum" 1;
             font-weight: 700;
             /* ~2x larger, scaling with the staff. Vertically centered on the
                staff line (top:44% + translateY(-50%)) so the line stays exactly
