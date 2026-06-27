@@ -422,6 +422,9 @@ class RhythmStudent {
         this.tempo = settings.tempo;
         if (settings.timeSignature) this.timeSignature = settings.timeSignature;
         this.beatsPerMeasure = settings.beatsPerMeasure || this.beatsForMeter(this.timeSignature || '4/4');
+        // Changing-meter mode: a per-measure list of time signatures. Null/absent
+        // means a single fixed meter (the normal path).
+        this.measureMeters = (settings.measureMeters && settings.measureMeters.length) ? settings.measureMeters.slice() : null;
 
         this.populateRhythmBank();
         this.updateMeasureDisplay();
@@ -531,6 +534,10 @@ class RhythmStudent {
         const container = document.getElementById('measureContainer');
         container.innerHTML = '';
 
+        // Changing-meter mode renders its own way (per-measure beat counts +
+        // inline time-sig at each change, the way Hall notates it).
+        if (this.measureMeters) { this.updateMeasureDisplayMixed(); return; }
+
         // Create single continuous staff container
         const measureContainer = document.createElement('div');
         measureContainer.className = 'measure-container';
@@ -621,6 +628,69 @@ class RhythmStudent {
         }
         console.error('updateMeasureDisplay failed:', err);
     }
+    }
+
+    // CHANGING-METER renderer. measureMeters = ['4/4','3/4',...]; each measure
+    // gets its own beat count, and the time signature is drawn inline ONLY when it
+    // changes from the previous measure (Hall's convention), restated at each line.
+    updateMeasureDisplayMixed() {
+      try {
+        const container = document.getElementById('measureContainer');
+        const mc = document.createElement('div'); mc.className = 'measure-container';
+        const mm = this.measureMeters;
+        const beatsOf = (ts) => this.beatsForMeter(ts);
+
+        // Wrap measures into lines by a beat budget (~16 beats ≈ 4 bars of 4/4).
+        const BEATS_PER_LINE = 16;
+        const lines = []; let cur = [], curBeats = 0;
+        mm.forEach((ts, i) => {
+            const bt = beatsOf(ts);
+            if (curBeats > 0 && curBeats + bt > BEATS_PER_LINE) { lines.push(cur); cur = []; curBeats = 0; }
+            cur.push(i); curBeats += bt;
+        });
+        if (cur.length) lines.push(cur);
+        const maxBeats = Math.max.apply(null, lines.map((ln) => ln.reduce((s, i) => s + beatsOf(mm[i]), 0)));
+        const staffPx = maxBeats * 150 + 180;
+
+        let rowsHtml = '';
+        lines.forEach((lineMeasures) => {
+            let prevTs = null;                       // restate the time sig at each line start
+            let cells = '';
+            lineMeasures.forEach((mi) => {
+                const ts = mm[mi]; const parts = ts.split('/'); const bts = beatsOf(ts);
+                if (ts !== prevTs) {                 // show the time sig on first measure / any change
+                    cells += `<div class="answer-ts-inline"><span>${parts[0]}</span><span>${parts[1]}</span></div>`;
+                }
+                prevTs = ts;
+                for (let b = 1; b <= bts; b++) {
+                    const isEnd = b === bts;
+                    const isFinal = (mi === mm.length - 1) && isEnd;
+                    cells += `<div class="beat-drop-zone${isEnd ? ' measure-end' : ''}${isFinal ? ' final-cell' : ''}" data-beat="${b}" data-measure="${mi + 1}"><div class="beat-notation"></div></div>`;
+                }
+            });
+            rowsHtml += `
+                <div class="staff-container">
+                    <div class="staff-lines"><div class="staff-line"></div></div>
+                    <div class="beat-divisions" style="margin-left: 14px; margin-right: 0;">${cells}</div>
+                </div>`;
+        });
+
+        const staffDiv = document.createElement('div');
+        staffDiv.className = 'answer-staff';
+        staffDiv.style.width = `min(100%, ${staffPx}px)`;
+        staffDiv.style.maxWidth = 'none';
+        staffDiv.innerHTML = `
+            <div class="answer-staff-label">Your Answer (${mm.length} measures · changing meter)</div>
+            ${rowsHtml}`;
+        mc.appendChild(staffDiv); container.appendChild(mc);
+
+        this.setupDropZones();
+        this.userAnswer = mm.map((ts) => Array(beatsOf(ts)).fill(null));
+      } catch (err) {
+        const container = document.getElementById('measureContainer');
+        if (container) container.innerHTML = `<div style="background:#fff;color:#c0392b;padding:16px;border-radius:8px;font-size:0.85rem;"><strong>Could not build the changing-meter staff.</strong><br>${err && err.message ? err.message : err}</div>`;
+        console.error('updateMeasureDisplayMixed failed:', err);
+      }
     }
 
 
