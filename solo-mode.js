@@ -853,9 +853,9 @@
         '<div class="solo-stat bar-item"><span>SPEED</span><select id="soloSpeed"><option value="slow">Slow</option><option value="medium">Medium</option><option value="fast">Fast</option></select></div>' +
         '<button id="soloMetro" class="toggle">' + IC.metro + 'Metronome</button>' +
         '<button id="soloGuide" class="toggle">' + IC.guide + 'Beat guide</button>' +
-        '<div class="solo-stat groove bar-item"><span>GROOVE</span><div class="solo-bar"><i id="soloGrooveFill"></i></div><b id="soloGroovePct">100%</b></div>' +
-        '<button id="soloSettingsToggle" class="toggle focus-only">' + IC.gear + 'Settings</button>' +
         '<button id="soloHintsToggle" class="toggle focus-only">' + IC.bulb + 'Hints</button>' +
+        '<button id="soloSettingsToggle" class="toggle focus-only">' + IC.gear + 'Settings</button>' +
+        '<div class="solo-stat groove bar-item"><span>GROOVE</span><div class="solo-bar"><i id="soloGrooveFill"></i></div><b id="soloGroovePct">100%</b></div>' +
         '<button id="soloThemeToggle" class="toggle focus-only icon-only" title="Theme" aria-label="Theme">' + IC.palette + '</button>' +
         '<span class="solo-hints"><span class="hints-label">HINTS</span>' +
           '<button id="soloHintNarrow" class="hint">' + IC.filter + 'Narrow options</button>' +

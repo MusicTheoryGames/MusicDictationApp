@@ -764,8 +764,9 @@ class RhythmStudent {
                 const touch = e.touches[0];
                 this.updateDragPreview(touch.clientX, touch.clientY);
 
-                const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-                const dropZone = elementBelow?.closest('.beat-drop-zone');
+                // Highlight the cell under the PREVIEW (which floats above the finger),
+                // not under the fingertip.
+                const dropZone = this.dropZoneUnderPreview(touch);
                 this.clearDragHighlights();
                 if (dropZone) this.highlightDragTarget(dropZone, true);
                 e.preventDefault();
@@ -774,8 +775,7 @@ class RhythmStudent {
             tile.addEventListener('touchend', (e) => {
                 if (!isTouchDragging) return;
                 const touch = e.changedTouches[0];
-                const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-                const dropZone = elementBelow?.closest('.beat-drop-zone');
+                const dropZone = this.dropZoneUnderPreview(touch);
 
                 if (dropZone) {
                     const measure = parseInt(dropZone.dataset.measure);
@@ -830,6 +830,19 @@ class RhythmStudent {
             this.dragPreview.remove();
             this.dragPreview = null;
         }
+    }
+
+    // Cell under the PREVIEW (which floats above the finger), so the highlight/drop
+    // follow what the user sees. Falls back to the touch point if no preview.
+    dropZoneUnderPreview(touch) {
+        let px = touch.clientX, py = touch.clientY;
+        if (this.dragPreview) {
+            const r = this.dragPreview.getBoundingClientRect();
+            px = r.left + r.width / 2;
+            py = r.top + r.height * 0.62;   // ~ where the notehead lands in the preview
+        }
+        const el = document.elementFromPoint(px, py);
+        return el ? el.closest('.beat-drop-zone') : null;
     }
 
     setupDropZones() {
