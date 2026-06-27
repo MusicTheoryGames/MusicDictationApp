@@ -182,11 +182,8 @@
         }
 
         .rhythm-tile:hover {
-            /* Subtle lift only — no scale (it was zooming the notation past the
-               tile edges). */
-            transform: translateY(-2px);
-            background: rgba(255, 255, 255, 0.16);
-            border: 1px solid rgba(255, 255, 255, 0.32);
+            /* No movement/zoom — each theme supplies a colored outline on hover. */
+            border-color: rgba(255, 255, 255, 0.4);
         }
 
         .rhythm-tile.dragging {
