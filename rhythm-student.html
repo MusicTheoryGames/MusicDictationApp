@@ -324,25 +324,30 @@
             flex: 0 0 auto;
             align-self: stretch;
             position: relative;
-            min-width: 1.3em;
-            margin: 0 0.22em 0 0.06em;
+            min-width: 1.5em;
+            margin: 0 0.3em 0 0.08em;
             font-family: Georgia, 'Times New Roman', serif;
             font-variant-numeric: lining-nums tabular-nums;
             font-feature-settings: "lnum" 1, "tnum" 1;
             font-weight: 700;
-            font-size: clamp(28px, 3.8vw, 48px);
+            font-size: clamp(30px, 4vw, 52px);
             color: var(--bar-ink, #333);
             z-index: 5;
         }
-        .answer-ts-inline span {
+        /* Stack the two numbers and center the GAP on the staff line (top:44% +
+           translateY(-50%)) — identical to the leading .answer-time-sig so they
+           line up exactly. */
+        .answer-ts-inline .ts-stack {
             position: absolute;
             left: 50%;
-            transform: translateX(-50%);
-            line-height: 0.78;
-            white-space: nowrap;
+            top: 44%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 0.8;
+            gap: 0.24em;
         }
-        .answer-ts-inline span:first-child { bottom: 55%; }
-        .answer-ts-inline span:last-child { top: 45%; }
 
         /* Measure number — small, top-left of each measure, so changing-meter
            examples stay countable even when a meter spans several bars. */
@@ -362,16 +367,16 @@
         .ts-equiv {
             position: absolute;
             left: 50%;
-            top: 2px;
+            top: 3px;
             transform: translateX(-50%);
             display: flex;
             align-items: center;
-            gap: 3px;
+            gap: 4px;
             white-space: nowrap;
-            z-index: 7;
+            z-index: 8;
         }
-        .ts-equiv img { height: 20px; width: auto; display: block; }
-        .ts-equiv b { font: 700 14px Georgia, serif; color: var(--bar-ink, #333); }
+        .ts-equiv img { height: 32px; width: auto; display: block; }
+        .ts-equiv b { font: 700 20px Georgia, serif; color: var(--bar-ink, #333); }
 
         .beat-divisions {
             position: absolute;
@@ -774,7 +779,7 @@
         </div>
     </div>
 
-    <script type="module" src="rhythm-student.js?v=20260627t"></script>
+    <script type="module" src="rhythm-student.js?v=20260627v"></script>
     <script src="suite-theme.js"></script>
     <script src="solo-mode.js?v=20260627d"></script>
 </body>

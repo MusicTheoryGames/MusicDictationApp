@@ -653,7 +653,7 @@ class RhythmStudent {
         const staffPx = maxBeats * 150 + 180;
 
         const isComp = (ts) => { const t = +String(ts).split('/')[0]; return t === 6 || t === 9 || t === 12; };
-        const beatImg = (ts) => `./rhythm-assets/bank/${isComp(ts) ? 'cd-dotted-quarter' : 'quarter'}.png`;
+        const beatImg = (ts) => `./rhythm-assets/mark/${isComp(ts) ? 'cd-dotted-quarter' : 'quarter'}.png`;
         let rowsHtml = '';
         let globalPrev = null;                       // previous measure's meter (across lines) for the equivalence marking
         lines.forEach((lineMeasures) => {
@@ -666,7 +666,7 @@ class RhythmStudent {
                     // beat stays equal): [prev beat note] = [new beat note].
                     const showEquiv = globalPrev !== null && isComp(ts) !== isComp(globalPrev);
                     const equiv = showEquiv ? `<span class="ts-equiv"><img src="${beatImg(globalPrev)}"><b>=</b><img src="${beatImg(ts)}"></span>` : '';
-                    cells += `<div class="answer-ts-inline">${equiv}<span>${parts[0]}</span><span>${parts[1]}</span></div>`;
+                    cells += `<div class="answer-ts-inline">${equiv}<div class="ts-stack"><span>${parts[0]}</span><span>${parts[1]}</span></div></div>`;
                 }
                 prevTs = ts; globalPrev = ts;
                 for (let b = 1; b <= bts; b++) {
