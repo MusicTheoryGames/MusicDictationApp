@@ -316,6 +316,10 @@
       var pool = (S.changePool && S.changePool.length) ? S.changePool : ['2/4', '3/4', '4/4'];
       S.curMeters = []; var prev = null;
       for (var c = 0; c < S.measures; c++) {
+        // Hold the same meter ~40% of the time (so it changes less often than
+        // every measure, closer to how Hall paces it). Measure numbers keep the
+        // count clear when a meter spans 2-3 bars.
+        if (prev && Math.random() < 0.4) { S.curMeters.push(prev); continue; }
         var opts = pool.filter(function (x) { return x !== prev; });
         if (!opts.length) opts = pool;
         prev = opts[Math.floor(Math.random() * opts.length)];

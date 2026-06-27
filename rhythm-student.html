@@ -344,6 +344,35 @@
         .answer-ts-inline span:first-child { bottom: 55%; }
         .answer-ts-inline span:last-child { top: 45%; }
 
+        /* Measure number — small, top-left of each measure, so changing-meter
+           examples stay countable even when a meter spans several bars. */
+        .measure-num {
+            position: absolute;
+            top: 2px;
+            left: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--bar-ink, #333);
+            opacity: 0.5;
+            z-index: 6;
+            pointer-events: none;
+        }
+        /* Beat-equivalence marking ( ♩ = ♩. ) above a simple<->compound change,
+           showing the beat stays equal. Sits at the top of the staff line. */
+        .ts-equiv {
+            position: absolute;
+            left: 50%;
+            top: 2px;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            white-space: nowrap;
+            z-index: 7;
+        }
+        .ts-equiv img { height: 20px; width: auto; display: block; }
+        .ts-equiv b { font: 700 14px Georgia, serif; color: var(--bar-ink, #333); }
+
         .beat-divisions {
             position: absolute;
             /* Anchor to both edges (not width:100%) so the inline margin-left/right
@@ -745,8 +774,8 @@
         </div>
     </div>
 
-    <script type="module" src="rhythm-student.js?v=20260627s"></script>
+    <script type="module" src="rhythm-student.js?v=20260627t"></script>
     <script src="suite-theme.js"></script>
-    <script src="solo-mode.js?v=20260627c"></script>
+    <script src="solo-mode.js?v=20260627d"></script>
 </body>
 </html>
