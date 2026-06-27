@@ -13,8 +13,9 @@
     target: null, measures: 2, difficulty: 'medium', tempo: 100,
     groove: 100, score: 0, streak: 0,
     correctionMode: true, metronome: false, beatGuide: false,
-    mode: 'levels', level: 1,
-    meter: 'simple', beatsPerMeasure: 4, compoundLevel: 1, speed: 'medium',
+    level: 1,                                  // tier number within the family, or 'all'
+    ts: '4/4', family: 'quarter',              // selected meter -> beat-unit family
+    meter: 'simple', beatsPerMeasure: 4, speed: 'medium',
     hintsThisRound: 0, wrongThisRound: false, solved: false
   };
   var GROOVE_PER_WRONG = 12, GROOVE_HINT_MISTAKES = 8, GROOVE_HINT_COUNT = 5, GROOVE_GAIN_CLEAN = 15;
@@ -72,9 +73,144 @@
   var COMPOUND_LEVELS = {};
   (function () { var acc = []; for (var i = 0; i < CMP_STEPS.length; i++) { acc = acc.concat(CMP_STEPS[i]); COMPOUND_LEVELS[i + 1] = acc.slice(); } })();
 
+  /* ---- New beat-unit families (art generated; see CURRICULUM_PLAN.md) ----
+     Each fig is one BEAT cell; onset math normalizes by total duration so only
+     the duration RATIOS matter. */
+  // Simple HALF-NOTE beat (2/2 · 3/2) — Hall Ch14
+  var HALF_FIGS = [
+    { id: 'hb-half', name: 'Half', beats: 1, vexflow: [{ keys: K, duration: 'h' }] },
+    { id: 'hb-two-quarters', name: 'Two quarters', beats: 1, vexflow: [{ keys: K, duration: 'q' }, { keys: K, duration: 'q' }] },
+    { id: 'hb-quarter-two8', name: 'Quarter + 2 eighths', beats: 1, vexflow: [{ keys: K, duration: 'q' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }] },
+    { id: 'hb-two8-quarter', name: '2 eighths + quarter', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: 'q' }] },
+    { id: 'hb-four-eighths', name: 'Four eighths', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }] },
+    { id: 'hb-half-rest', name: 'Half rest', beats: 1, vexflow: [{ keys: K, duration: 'hr' }] },
+    { id: 'hb-quarter-qrest', name: 'Quarter + q-rest', beats: 1, vexflow: [{ keys: K, duration: 'q' }, { keys: K, duration: 'qr' }] },
+    { id: 'hb-qrest-quarter', name: 'q-rest + quarter', beats: 1, vexflow: [{ keys: K, duration: 'qr' }, { keys: K, duration: 'q' }] },
+    { id: 'hb-8rest-8-quarter', name: '8r 8 quarter', beats: 1, vexflow: [{ keys: K, duration: '8r' }, { keys: K, duration: '8' }, { keys: K, duration: 'q' }] },
+    { id: 'hb-quarter-8rest-8', name: 'Quarter 8r 8', beats: 1, vexflow: [{ keys: K, duration: 'q' }, { keys: K, duration: '8r' }, { keys: K, duration: '8' }] },
+    { id: 'hb-eight-16ths', name: 'Eight 16ths', beats: 1, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }] },
+    { id: 'hb-two16-q', name: '2-16 + quarter', beats: 1, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: 'q' }] },
+    { id: 'hb-q-two16', name: 'Quarter + 2-16', beats: 1, vexflow: [{ keys: K, duration: 'q' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }] },
+    { id: 'hb-two8-four16', name: '2-8 + 4-16', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }] },
+    { id: 'hb-four16-two8', name: '4-16 + 2-8', beats: 1, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }] },
+    { id: 'hb-8-two16-8', name: '8 2-16 8', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '8' }] },
+    { id: 'hb-two16-8-8', name: '2-16 8 8', beats: 1, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }] },
+    { id: 'hb-8-8-two16', name: '8 8 2-16', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }] }
+  ];
+  var HALF_STEPS = [
+    ['hb-half', 'hb-two-quarters', 'hb-quarter-two8', 'hb-two8-quarter', 'hb-four-eighths'],
+    ['hb-half-rest', 'hb-quarter-qrest', 'hb-qrest-quarter', 'hb-8rest-8-quarter', 'hb-quarter-8rest-8'],
+    ['hb-eight-16ths', 'hb-two16-q', 'hb-q-two16', 'hb-two8-four16', 'hb-four16-two8', 'hb-8-two16-8', 'hb-two16-8-8', 'hb-8-8-two16']
+  ];
+  var HALF_LABELS = { 1: 'Quarters & eighths', 2: '+ rests', 3: '+ sixteenths' };
+  // Compound DOTTED-HALF beat (6/4 · 9/4 · 12/4) — Hall Ch15
+  var DOTTEDHALF_FIGS = [
+    { id: 'dh-dotted-half', name: 'Dotted half', beats: 1, vexflow: [{ keys: K, duration: 'h', dots: 1 }] },
+    { id: 'dh-three-quarters', name: 'Three quarters', beats: 1, vexflow: [{ keys: K, duration: 'q' }, { keys: K, duration: 'q' }, { keys: K, duration: 'q' }] },
+    { id: 'dh-half-quarter', name: 'Half + quarter', beats: 1, vexflow: [{ keys: K, duration: 'h' }, { keys: K, duration: 'q' }] },
+    { id: 'dh-quarter-half', name: 'Quarter + half', beats: 1, vexflow: [{ keys: K, duration: 'q' }, { keys: K, duration: 'h' }] },
+    { id: 'dh-duplet', name: 'Duplet', beats: 1, tuplet: { num_notes: 2, notes_occupied: 3 }, vexflow: [{ keys: K, duration: 'q' }, { keys: K, duration: 'q' }] },
+    { id: 'dh-dotted-half-rest', name: 'Dotted-half rest', beats: 1, vexflow: [{ keys: K, duration: 'hr', dots: 1 }] },
+    { id: 'dh-qrest-q-q', name: 'qr q q', beats: 1, vexflow: [{ keys: K, duration: 'qr' }, { keys: K, duration: 'q' }, { keys: K, duration: 'q' }] },
+    { id: 'dh-q-qrest-q', name: 'q qr q', beats: 1, vexflow: [{ keys: K, duration: 'q' }, { keys: K, duration: 'qr' }, { keys: K, duration: 'q' }] },
+    { id: 'dh-q-q-qrest', name: 'q q qr', beats: 1, vexflow: [{ keys: K, duration: 'q' }, { keys: K, duration: 'q' }, { keys: K, duration: 'qr' }] },
+    { id: 'dh-half-qrest', name: 'Half + q-rest', beats: 1, vexflow: [{ keys: K, duration: 'h' }, { keys: K, duration: 'qr' }] },
+    { id: 'dh-qrest-half', name: 'q-rest + half', beats: 1, vexflow: [{ keys: K, duration: 'qr' }, { keys: K, duration: 'h' }] },
+    { id: 'dh-six-eighths', name: 'Six eighths', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }] },
+    { id: 'dh-two8-q-q', name: '2-8 q q', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: 'q' }, { keys: K, duration: 'q' }] },
+    { id: 'dh-q-two8-q', name: 'q 2-8 q', beats: 1, vexflow: [{ keys: K, duration: 'q' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: 'q' }] },
+    { id: 'dh-q-q-two8', name: 'q q 2-8', beats: 1, vexflow: [{ keys: K, duration: 'q' }, { keys: K, duration: 'q' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }] },
+    { id: 'dh-four8-q', name: '4-8 q', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: 'q' }] },
+    { id: 'dh-q-four8', name: 'q 4-8', beats: 1, vexflow: [{ keys: K, duration: 'q' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }] },
+    { id: 'dh-half-two8', name: 'Half + 2-8', beats: 1, vexflow: [{ keys: K, duration: 'h' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }] },
+    { id: 'dh-two8-half', name: '2-8 + half', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: 'h' }] }
+  ];
+  var DOTTEDHALF_STEPS = [
+    ['dh-dotted-half', 'dh-three-quarters', 'dh-half-quarter', 'dh-quarter-half', 'dh-duplet', 'dh-six-eighths'],
+    ['dh-dotted-half-rest', 'dh-qrest-q-q', 'dh-q-qrest-q', 'dh-q-q-qrest', 'dh-half-qrest', 'dh-qrest-half'],
+    ['dh-two8-q-q', 'dh-q-two8-q', 'dh-q-q-two8', 'dh-four8-q', 'dh-q-four8', 'dh-half-two8', 'dh-two8-half']
+  ];
+  var DOTTEDHALF_LABELS = { 1: 'Quarters', 2: '+ rests', 3: '+ eighths' };
+  // Compound DOTTED-EIGHTH beat (6/16) — Hall Ch17
+  var DOTTED16_FIGS = [
+    { id: 'de-dotted-eighth', name: 'Dotted eighth', beats: 1, vexflow: [{ keys: K, duration: '8', dots: 1 }] },
+    { id: 'de-three-16ths', name: 'Three 16ths', beats: 1, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }] },
+    { id: 'de-eighth-16th', name: 'Eighth + 16th', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '16' }] },
+    { id: 'de-16th-eighth', name: '16th + eighth', beats: 1, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '8' }] },
+    { id: 'de-duplet', name: 'Duplet', beats: 1, tuplet: { num_notes: 2, notes_occupied: 3 }, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '16' }] },
+    { id: 'de-dotted-eighth-rest', name: 'Dotted-8th rest', beats: 1, vexflow: [{ keys: K, duration: '8r', dots: 1 }] },
+    { id: 'de-16rest-16-16', name: '16r 16 16', beats: 1, vexflow: [{ keys: K, duration: '16r' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }] },
+    { id: 'de-16-16rest-16', name: '16 16r 16', beats: 1, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '16r' }, { keys: K, duration: '16' }] },
+    { id: 'de-16-16-16rest', name: '16 16 16r', beats: 1, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16r' }] },
+    { id: 'de-eighth-16rest', name: 'Eighth + 16r', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '16r' }] },
+    { id: 'de-16rest-eighth', name: '16r + eighth', beats: 1, vexflow: [{ keys: K, duration: '16r' }, { keys: K, duration: '8' }] },
+    { id: 'de-six-32nds', name: 'Six 32nds', beats: 1, vexflow: [{ keys: K, duration: '32' }, { keys: K, duration: '32' }, { keys: K, duration: '32' }, { keys: K, duration: '32' }, { keys: K, duration: '32' }, { keys: K, duration: '32' }] },
+    { id: 'de-two32-16-16', name: '2-32 16 16', beats: 1, vexflow: [{ keys: K, duration: '32' }, { keys: K, duration: '32' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }] },
+    { id: 'de-16-two32-16', name: '16 2-32 16', beats: 1, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '32' }, { keys: K, duration: '32' }, { keys: K, duration: '16' }] },
+    { id: 'de-16-16-two32', name: '16 16 2-32', beats: 1, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '32' }, { keys: K, duration: '32' }] },
+    { id: 'de-four32-16', name: '4-32 16', beats: 1, vexflow: [{ keys: K, duration: '32' }, { keys: K, duration: '32' }, { keys: K, duration: '32' }, { keys: K, duration: '32' }, { keys: K, duration: '16' }] },
+    { id: 'de-16-four32', name: '16 4-32', beats: 1, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '32' }, { keys: K, duration: '32' }, { keys: K, duration: '32' }, { keys: K, duration: '32' }] },
+    { id: 'de-eighth-two32', name: 'Eighth + 2-32', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '32' }, { keys: K, duration: '32' }] },
+    { id: 'de-two32-eighth', name: '2-32 + eighth', beats: 1, vexflow: [{ keys: K, duration: '32' }, { keys: K, duration: '32' }, { keys: K, duration: '8' }] }
+  ];
+  var DOTTED16_STEPS = [
+    ['de-dotted-eighth', 'de-three-16ths', 'de-eighth-16th', 'de-16th-eighth', 'de-duplet'],
+    ['de-dotted-eighth-rest', 'de-16rest-16-16', 'de-16-16rest-16', 'de-16-16-16rest', 'de-eighth-16rest', 'de-16rest-eighth'],
+    ['de-six-32nds', 'de-two32-16-16', 'de-16-two32-16', 'de-16-16-two32', 'de-four32-16', 'de-16-four32', 'de-eighth-two32', 'de-two32-eighth']
+  ];
+  var DOTTED16_LABELS = { 1: 'Sixteenths', 2: '+ rests', 3: '+ 32nds' };
+  // Simple quarter-beat TUPLETS (5/6/7 in a beat) — Hall Ch26. Equal notes fill
+  // the beat; the bracket is baked into the art. Live in the simple 'medium' set.
+  var TUPLET_FIGS = [
+    { id: 'tpl-quintuplet', name: 'Quintuplet', beats: 1, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }] },
+    { id: 'tpl-sextuplet', name: 'Sextuplet', beats: 1, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }] },
+    { id: 'tpl-septuplet', name: 'Septuplet', beats: 1, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }] }
+  ];
+  // Tuplets become the simple family's top tier (Hall Ch26).
+  L_STEPS.push(['tpl-quintuplet', 'tpl-sextuplet', 'tpl-septuplet']);
+  LEVEL_LABELS[8] = '+ tuplets (5/6/7)';
+  LEVELS[8] = LEVELS[7].concat(['tpl-quintuplet', 'tpl-sextuplet', 'tpl-septuplet']);
+
+  /* Beat-unit FAMILIES: figure array to register, cumulative tiers, tier labels,
+     the rhythmPatterns key the engine looks them up under, and the "all" label. */
+  var FAMILIES = {
+    'quarter':        { key: 'medium',     figs: null,             steps: L_STEPS,          labels: LEVEL_LABELS,     classic: 'Classic (all figures)' },
+    'half':           { key: 'halfbeat',   figs: HALF_FIGS,        steps: HALF_STEPS,       labels: HALF_LABELS,      classic: 'All figures' },
+    'dotted-quarter': { key: 'compound',   figs: COMPOUND_FIGS,    steps: CMP_STEPS,        labels: CMP_LABELS,       classic: 'All figures' },
+    'dotted-half':    { key: 'dottedhalf', figs: DOTTEDHALF_FIGS,  steps: DOTTEDHALF_STEPS, labels: DOTTEDHALF_LABELS, classic: 'All figures' },
+    'dotted-eighth':  { key: 'dotted16',   figs: DOTTED16_FIGS,    steps: DOTTED16_STEPS,   labels: DOTTED16_LABELS,  classic: 'All figures' }
+  };
+  // CMP_LABELS were "6/8 · …"; make them meter-neutral now they serve 6/8·9/8·12/8.
+  CMP_LABELS[1] = 'Eighths'; CMP_LABELS[2] = '+ rests'; CMP_LABELS[3] = '+ sixteenths';
+  /* Selectable METERS — time signature -> family + beat count + simple/compound.
+     Rule: 6/9/12 on top = compound (beat = dotted note, count = top/3). */
+  var METERS = [
+    { ts: '2/4', meter: 'simple', beats: 2, family: 'quarter', desc: '2 quarter beats' },
+    { ts: '3/4', meter: 'simple', beats: 3, family: 'quarter', desc: '3 quarter beats' },
+    { ts: '4/4', meter: 'simple', beats: 4, family: 'quarter', desc: '4 quarter beats' },
+    { ts: '2/2', meter: 'simple', beats: 2, family: 'half', desc: '2 half-note beats' },
+    { ts: '3/2', meter: 'simple', beats: 3, family: 'half', desc: '3 half-note beats' },
+    { ts: '6/8', meter: 'compound', beats: 2, family: 'dotted-quarter', desc: '2 dotted-quarter beats' },
+    { ts: '9/8', meter: 'compound', beats: 3, family: 'dotted-quarter', desc: '3 dotted-quarter beats' },
+    { ts: '12/8', meter: 'compound', beats: 4, family: 'dotted-quarter', desc: '4 dotted-quarter beats' },
+    { ts: '6/4', meter: 'compound', beats: 2, family: 'dotted-half', desc: '2 dotted-half beats' },
+    { ts: '6/16', meter: 'compound', beats: 2, family: 'dotted-eighth', desc: '2 dotted-eighth beats' }
+  ];
+  var METER_BY_TS = {}; METERS.forEach(function (m) { METER_BY_TS[m.ts] = m; });
+  function curFamily() { return FAMILIES[S.family] || FAMILIES.quarter; }
+  function setMeter(ts) {
+    var m = METER_BY_TS[ts]; if (!m) return;
+    var familyChanged = (S.family !== m.family);
+    S.ts = ts; S.meter = m.meter; S.beatsPerMeasure = m.beats; S.family = m.family;
+    if (familyChanged) S.level = 'all';                       // new beat unit -> full vocabulary
+    else if (S.level !== 'all' && S.level > curFamily().steps.length) S.level = 'all';
+  }
+
   function levelIds() {
-    if (S.meter === 'compound') return COMPOUND_LEVELS[S.compoundLevel] || COMPOUND_LEVELS[3];
-    return S.mode === 'classic' ? null : (LEVELS[S.level] || LEVELS[7]);
+    if (S.level === 'all') return null;                       // every figure in the family
+    var steps = curFamily().steps, acc = [], i;
+    for (i = 0; i < S.level && i < steps.length; i++) acc = acc.concat(steps[i]);
+    return acc;
   }
 
   /* Inline SVG icons — stroke/fill use currentColor so they inherit each
@@ -100,22 +236,21 @@
       if (typeof d.correctionMode === 'boolean') S.correctionMode = d.correctionMode;
       if (typeof d.metronome === 'boolean') S.metronome = d.metronome;
       if (typeof d.beatGuide === 'boolean') S.beatGuide = d.beatGuide;
-      if (d.mode === 'levels' || d.mode === 'classic') S.mode = d.mode;
-      if (typeof d.level === 'number' && d.level >= 1 && d.level <= 7) S.level = d.level;
-      if (d.meter === 'simple' || d.meter === 'compound') S.meter = d.meter;
-      if (typeof d.compoundLevel === 'number' && d.compoundLevel >= 1 && d.compoundLevel <= 3) S.compoundLevel = d.compoundLevel;
       if (SPEEDS[d.speed]) S.speed = d.speed;
       if (d.measures === 2 || d.measures === 4 || d.measures === 8 || d.measures === 16) S.measures = d.measures;
-      S.beatsPerMeasure = (S.meter === 'compound') ? 2 : 4;
+      // Meter first (sets family/beats), then restore the level within that family.
+      if (d.ts && METER_BY_TS[d.ts]) setMeter(d.ts);
+      if (d.level === 'all') S.level = 'all';
+      else if (typeof d.level === 'number' && d.level >= 1 && d.level <= curFamily().steps.length) S.level = d.level;
       S.tempo = SPEEDS[S.speed] || 100;
     } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem('beatquest-solo', JSON.stringify({ score: S.score, streak: S.streak, correctionMode: S.correctionMode, metronome: S.metronome, beatGuide: S.beatGuide, mode: S.mode, level: S.level, meter: S.meter, compoundLevel: S.compoundLevel, speed: S.speed, measures: S.measures })); } catch (e) {}
+    try { localStorage.setItem('beatquest-solo', JSON.stringify({ score: S.score, streak: S.streak, correctionMode: S.correctionMode, metronome: S.metronome, beatGuide: S.beatGuide, level: S.level, ts: S.ts, speed: S.speed, measures: S.measures })); } catch (e) {}
   }
 
   /* ----------------------------------------------------- target generation */
-  function fullSet() { return (rs.rhythmPatterns && rs.rhythmPatterns[S.meter === 'compound' ? 'compound' : 'medium']) || []; }
+  function fullSet() { return (rs.rhythmPatterns && rs.rhythmPatterns[curFamily().key]) || []; }
   function patternsFor() {
     var ids = levelIds(), base = fullSet();
     return ids ? base.filter(function (p) { return ids.indexOf(p.id) !== -1; }) : base;
@@ -149,10 +284,14 @@
     });
     return exp;
   }
+  var ALL_SET_KEYS = ['medium', 'compound', 'halfbeat', 'dottedhalf', 'dotted16'];
   function findPattern(id) {
-    // search both simple + compound sets so any placed/target id resolves
-    var b = ((rs.rhythmPatterns && rs.rhythmPatterns.medium) || []).concat((rs.rhythmPatterns && rs.rhythmPatterns.compound) || []);
-    for (var i = 0; i < b.length; i++) if (b[i].id === id) return b[i];
+    // search every meter family so any placed/target id resolves (tuplets live in medium)
+    var rp = rs.rhythmPatterns || {}, i, j;
+    for (i = 0; i < ALL_SET_KEYS.length; i++) {
+      var set = rp[ALL_SET_KEYS[i]] || [];
+      for (j = 0; j < set.length; j++) if (set[j].id === id) return set[j];
+    }
     return null;
   }
   // Hide bank tiles that aren't in the current level's vocabulary (the bank is
@@ -274,7 +413,10 @@
      half note and a quarter+rest sound identical, a bar can be tiled several
      ways, and rests can be left empty — any answer with the same attacks on the
      grid is correct. */
-  var RES = 12; // grid units per beat (divisible by 16ths=3 and triplets=4)
+  // grid units per beat. 840 = LCM(2,3,4,5,6,7,8): covers 16ths/triplets, the
+  // half-beat's 8 sixteenths (/8), the dotted-eighth beat's 32nds (/6), and
+  // 5/6/7-tuplets — so every figure's onsets land on integer grid indices.
+  var RES = 840;
   function gridFromItems(items) {
     var grid = [], i; for (i = 0; i < S.measures * bpm() * RES; i++) grid[i] = 0;
     items.forEach(function (it) {
@@ -330,9 +472,9 @@
     S.hintsThisRound = 0; S.wrongThisRound = false; S.solved = false;
     if (rs.updateGameSettings) rs.updateGameSettings({
       measureCount: S.measures,
-      difficulty: (S.meter === 'compound') ? 'compound' : S.difficulty,
+      difficulty: curFamily().key,            // engine bank reads rhythmPatterns[key]
       tempo: S.tempo,
-      timeSignature: (S.meter === 'compound') ? '6/8' : '4/4',
+      timeSignature: S.ts,
       beatsPerMeasure: bpm()
     });
     var fb = document.getElementById('feedback'); if (fb) { fb.style.display = 'none'; fb.textContent = ''; } // solo uses #soloMsg
@@ -465,17 +607,31 @@
     document.head.appendChild(st);
   }
 
+  // Populate the LEVEL dropdown with the CURRENT family's tiers + "all figures".
+  function fillLevelOptions() {
+    var fam = curFamily(), sel = document.getElementById('soloLevel'); if (!sel) return;
+    var html = '', t;
+    for (t = 1; t <= fam.steps.length; t++) html += '<option value="' + t + '">Lvl ' + t + ' · ' + (fam.labels[t] || ('Tier ' + t)) + '</option>';
+    html += '<option value="all">' + (fam.classic || 'All figures') + '</option>';
+    sel.innerHTML = html;
+    sel.value = (S.level === 'all') ? 'all' : String(S.level);
+  }
+
   function buildHud() {
     if (document.getElementById('soloHud')) return;
     injectStyle();
-    var lvOpts = '';
-    for (var L = 1; L <= 7; L++) lvOpts += '<option value="' + L + '">Lvl ' + L + ' · ' + LEVEL_LABELS[L] + '</option>';
-    lvOpts += '<option value="classic">Classic (all figures)</option>';
-    for (var C = 1; C <= 3; C++) lvOpts += '<option value="c' + C + '">' + CMP_LABELS[C] + '</option>';
+    // METER selector — grouped simple/compound; each option's value is the time sig.
+    var meterOpts = '<optgroup label="Simple">', g = 'simple';
+    METERS.forEach(function (m) {
+      if (m.meter !== g) { meterOpts += '</optgroup><optgroup label="Compound">'; g = m.meter; }
+      meterOpts += '<option value="' + m.ts + '">' + m.ts + ' — ' + m.desc + '</option>';
+    });
+    meterOpts += '</optgroup>';
     var hud = document.createElement('div'); hud.id = 'soloHud'; hud.className = 'solo-ctl';
     hud.innerHTML =
       '<div class="solo-stats">' +
-        '<div class="solo-stat"><span>LEVEL</span><select id="soloLevel">' + lvOpts + '</select></div>' +
+        '<div class="solo-stat"><span>METER</span><select id="soloMeter">' + meterOpts + '</select></div>' +
+        '<div class="solo-stat"><span>LEVEL</span><select id="soloLevel"></select></div>' +
         '<div class="solo-stat"><span>SPEED</span><select id="soloSpeed"><option value="slow">Slow</option><option value="medium">Medium</option><option value="fast">Fast</option></select></div>' +
         '<div class="solo-stat"><span>BARS</span><select id="soloBars"><option value="2">2</option><option value="4">4</option><option value="8">8</option><option value="16">16</option></select></div>' +
         '<div class="solo-stat groove"><span>GROOVE</span><div class="solo-bar"><i id="soloGrooveFill"></i></div><b id="soloGroovePct">100%</b></div>' +
@@ -520,16 +676,17 @@
       save(); render();
     };
     var lv = document.getElementById('soloLevel');
-    lv.value = (S.meter === 'compound') ? ('c' + S.compoundLevel) : ((S.mode === 'classic') ? 'classic' : String(S.level));
+    fillLevelOptions();                          // populate LEVEL for the current family
+    var mt = document.getElementById('soloMeter');
+    mt.value = S.ts;
+    mt.onchange = function () {
+      setMeter(mt.value);                        // sets family/beats/meter; resets level on family change
+      fillLevelOptions();
+      save(); newRound();
+    };
     lv.onchange = function () {
       var v = lv.value;
-      if (v.charAt(0) === 'c' && v.length === 2) {            // compound: c1/c2/c3
-        S.meter = 'compound'; S.compoundLevel = parseInt(v.slice(1), 10); S.beatsPerMeasure = 2;
-      } else {
-        S.meter = 'simple'; S.beatsPerMeasure = 4;
-        if (v === 'classic') { S.mode = 'classic'; }
-        else { S.mode = 'levels'; S.level = parseInt(v, 10); }
-      }
+      S.level = (v === 'all') ? 'all' : parseInt(v, 10);
       save(); newRound();
     };
     var sp = document.getElementById('soloSpeed');
@@ -557,7 +714,17 @@
   function start() {
     rs = window.rhythmStudent;
     if (!rs) { setTimeout(start, 150); return; }
-    if (rs.rhythmPatterns && !rs.rhythmPatterns.compound) rs.rhythmPatterns.compound = COMPOUND_FIGS;
+    if (rs.rhythmPatterns) {
+      // Register every meter family's figures under the key the engine bank reads.
+      if (!rs.rhythmPatterns.compound) rs.rhythmPatterns.compound = COMPOUND_FIGS;
+      rs.rhythmPatterns.halfbeat = HALF_FIGS;
+      rs.rhythmPatterns.dottedhalf = DOTTEDHALF_FIGS;
+      rs.rhythmPatterns.dotted16 = DOTTED16_FIGS;
+      // Tuplets are simple quarter-beat figures -> add to the 'medium' set (once).
+      if (rs.rhythmPatterns.medium) TUPLET_FIGS.forEach(function (f) {
+        if (!rs.rhythmPatterns.medium.some(function (p) { return p.id === f.id; })) rs.rhythmPatterns.medium.push(f);
+      });
+    }
     load();
     document.getElementById('loginForm').classList.add('hidden');
     document.getElementById('gameArea').classList.add('active');
