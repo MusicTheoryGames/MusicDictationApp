@@ -281,7 +281,11 @@
   function patternsForTs(ts) {
     var fk = familyForTs(ts), base = (rs.rhythmPatterns && rs.rhythmPatterns[FAMILIES[fk].key]) || [];
     var ids = (S.changeKind === 'simple') ? idsForFamilyLevel(fk) : null;  // mixing -> full vocab
-    return ids ? base.filter(function (p) { return ids.indexOf(p.id) !== -1; }) : base;
+    var list = ids ? base.filter(function (p) { return ids.indexOf(p.id) !== -1; }) : base;
+    // Changing meters are hard enough — the challenge IS reading the meter change.
+    // Drop the 5/6/7-tuplets for normal play (they belong in a future super-
+    // advanced option).
+    return list.filter(function (p) { return String(p.id).indexOf('tpl-') !== 0; });
   }
   // Active families across the current change pool (which vocabularies the bank needs).
   function changeFamilies() {
