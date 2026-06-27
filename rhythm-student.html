@@ -342,8 +342,15 @@
            row) so each row's own trailing measure still gets a normal bar line.
            Colour comes from --bar-ink (each theme sets it to its staff ink). */
         .beat-drop-zone.measure-end:not(.final-cell) {
-            border-right: 3px solid var(--bar-ink, #333); /* Bar line between measures */
-            margin-right: 15px; /* Add space after bar line */
+            /* Bar line between measures. No margin (border is inside the cell via
+               box-sizing) so EVERY cell is the exact same width and bar lines
+               stack vertically across stacked lines. */
+            border-right: 3px solid var(--bar-ink, #333);
+        }
+        /* Final cell carries a matching (invisible) border so its row's cells are
+           the exact same width as every other row -> bar lines align perfectly. */
+        .beat-drop-zone.final-cell {
+            border-right: 3px solid transparent;
         }
 
         /* Final double bar — drawn at the right edge of the very last cell of the
@@ -691,7 +698,7 @@
         </div>
     </div>
 
-    <script type="module" src="rhythm-student.js?v=20260626m"></script>
+    <script type="module" src="rhythm-student.js?v=20260626n"></script>
     <script src="suite-theme.js"></script>
     <script src="solo-mode.js"></script>
 </body>

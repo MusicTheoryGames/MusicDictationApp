@@ -535,6 +535,12 @@ class RhythmStudent {
         const BARS_PER_LINE = 4;
         const totalMeasures = this.measureCount;
         const lineCount = Math.ceil(totalMeasures / BARS_PER_LINE);
+        // Cells in a full line. Used to size the staff so each beat-cell is up to
+        // ~160px: the panel widens on big screens (bigger notes) instead of being
+        // capped at 1500, and the per-cell cap keeps notes from ever colliding
+        // with the beat numbers.
+        const cellsPerLineFull = Math.min(totalMeasures, BARS_PER_LINE) * bpm;
+        const staffPx = cellsPerLineFull * 160 + 140;
 
         let rowsHtml = '';
         for (let line = 0; line < lineCount; line++) {
@@ -543,12 +549,13 @@ class RhythmStudent {
             const measuresInRow = lastMeasure - firstMeasure + 1;
             const isFirstRow = line === 0;
 
-            // Time signature ONLY on the first row. Rows 2+ skip the time-sig
-            // gap, so they use a smaller left margin.
+            // Time signature ONLY on the first row. EVERY row uses the same left
+            // margin so cells (and therefore bar lines) stack vertically across
+            // lines; rows 2+ leave that space empty.
             const timeSigHtml = isFirstRow
                 ? `<div class="answer-time-sig"><span>${tsTop}</span><span>${tsBottom}</span></div>`
                 : '';
-            const leftMargin = isFirstRow ? 70 : 20;
+            const leftMargin = 70;
 
             let cellsHtml = '';
             for (let j = 0; j < measuresInRow * bpm; j++) {
@@ -581,6 +588,8 @@ class RhythmStudent {
 
         const staffDiv = document.createElement('div');
         staffDiv.className = 'answer-staff';
+        staffDiv.style.width = `min(100%, ${staffPx}px)`;   // widen on big screens, cap cell size
+        staffDiv.style.maxWidth = 'none';
         staffDiv.innerHTML = `
             <div class="answer-staff-label">Your Answer (${this.measureCount} measures)</div>
             ${rowsHtml}
