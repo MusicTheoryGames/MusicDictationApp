@@ -640,12 +640,13 @@ class RhythmStudent {
         const mm = this.measureMeters;
         const beatsOf = (ts) => this.beatsForMeter(ts);
 
-        // Wrap measures into lines by a beat budget (~16 beats ≈ 4 bars of 4/4).
-        const BEATS_PER_LINE = 16;
+        // Wrap measures into lines: cap at 3 measures/line (mixed meters get
+        // cramped with more) and a beat budget as a backstop.
+        const BEATS_PER_LINE = 16, MAX_PER_LINE = 3;
         const lines = []; let cur = [], curBeats = 0;
         mm.forEach((ts, i) => {
             const bt = beatsOf(ts);
-            if (curBeats > 0 && curBeats + bt > BEATS_PER_LINE) { lines.push(cur); cur = []; curBeats = 0; }
+            if (cur.length > 0 && (cur.length >= MAX_PER_LINE || curBeats + bt > BEATS_PER_LINE)) { lines.push(cur); cur = []; curBeats = 0; }
             cur.push(i); curBeats += bt;
         });
         if (cur.length) lines.push(cur);
@@ -657,6 +658,11 @@ class RhythmStudent {
         let rowsHtml = '';
         let globalPrev = null;                       // previous measure's meter (across lines) for the equivalence marking
         lines.forEach((lineMeasures) => {
+            // Size each line in proportion to its beat count so a beat is the SAME
+            // width on every line (true beat-constant) — a 6-beat line is half as
+            // wide as a 12-beat line, left-aligned, rather than stretched to match.
+            const lineBeats = lineMeasures.reduce((s, i) => s + beatsOf(mm[i]), 0);
+            const widthPct = Math.round((lineBeats / maxBeats) * 1000) / 10;
             let prevTs = null;                       // restate the time sig at each line start
             let cells = '';
             lineMeasures.forEach((mi) => {
@@ -683,7 +689,7 @@ class RhythmStudent {
                 }
             });
             rowsHtml += `
-                <div class="staff-container">
+                <div class="staff-container" style="width: ${widthPct}%;">
                     <div class="staff-lines"><div class="staff-line"></div></div>
                     <div class="beat-divisions" style="margin-left: 14px; margin-right: 0;">${cells}</div>
                 </div>`;
