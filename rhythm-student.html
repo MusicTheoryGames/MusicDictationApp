@@ -820,19 +820,21 @@
             #soloHud .solo-actions { margin: 0 !important; gap: 6px; justify-content: flex-start; flex-wrap: nowrap; }
             .solo-actions .solo-cfg,
             .solo-actions .solo-hints { display: none !important; }   /* metro/guide/fixit + hints out of the bar */
-            /* Settings dropdown panel */
+            /* Settings / Hints dropdown panel — sized to its CONTENT (not full width),
+               anchored at the left under the toggles; capped so it can't overflow. */
             body.settings-open #soloHud .solo-stats,
             body.hints-open .solo-actions .solo-hints {
                 display: flex !important; flex-direction: column; align-items: stretch; gap: 10px;
-                position: fixed; top: 52px; left: 6px; right: 6px; z-index: 70;
+                position: fixed; top: 52px; left: 6px; right: auto; z-index: 70;
+                width: max-content; max-width: calc(100vw - 12px);
                 background: rgba(20, 20, 28, 0.97);
                 border: 1px solid rgba(255, 255, 255, 0.18);
                 border-radius: 12px; padding: 14px;
                 max-height: 72vh; overflow-y: auto;
                 box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
             }
-            body.settings-open #soloHud .solo-stats .solo-stat { width: 100%; justify-content: space-between; }
-            body.settings-open #soloHud .solo-stats select { flex: 1; margin-left: 8px; padding: 6px; }
+            body.settings-open #soloHud .solo-stats .solo-stat { width: 100%; justify-content: space-between; gap: 14px; }
+            body.settings-open #soloHud .solo-stats select { margin-left: 8px; padding: 6px; }
             body.hints-open .solo-actions .solo-hints .hints-label { opacity: 0.6; font-size: 0.78rem; letter-spacing: 0.08em; }
             body.hints-open .solo-actions .solo-hints .hint { justify-content: flex-start; }
 
