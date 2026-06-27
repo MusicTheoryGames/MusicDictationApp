@@ -18,6 +18,14 @@ const NOTE_DECOMPOSITION = {
 // exactly on the beat onset / bar line / drag-highlight edge, with no overhang.
 const GLYPH_NOTEHEAD_OFFSET = 11;
 
+// Pre-rendered ONE-BEAT figure sets: each id has a centered bank PNG
+// (rhythm-assets/bank/<id>.png) and a placement SVG that spans its beat-cell
+// (rhythm-assets/<dir>/<id>.svg). They all place identically (whole figure
+// across the cell, shifted left so the first notehead sits on the onset). Keyed
+// by id prefix -> placement-SVG directory.
+const METER_FIG_DIRS = { 'cd-': 'compound', 'hb-': 'halfbeat', 'dh-': 'dottedhalf', 'de-': 'dotted16', 'tpl-': 'tuplets' };
+function meterFigDir(id) { if (!id) return null; for (const p in METER_FIG_DIRS) { if (id.indexOf(p) === 0) return METER_FIG_DIRS[p]; } return null; }
+
 // Rhythm Student System
 class RhythmStudent {
     constructor() {
@@ -465,8 +473,9 @@ class RhythmStudent {
             // Clear container
             container.innerHTML = '';
 
-            // Compound figures (cd-*) have their own centered bank PNGs.
-            if (pattern.id && pattern.id.indexOf('cd-') === 0) {
+            // One-beat figure sets (compound cd-, half-beat hb-, dotted-half dh-,
+            // dotted-eighth de-, tuplets tpl-) all have their own centered bank PNGs.
+            if (meterFigDir(pattern.id)) {
                 const cimg = document.createElement('img');
                 cimg.src = `./rhythm-assets/bank/${pattern.id}.png`;
                 cimg.style.width = '100%';
@@ -824,15 +833,17 @@ class RhythmStudent {
 
                 notationArea.innerHTML = `<button class="remove-btn" onclick="rhythmStudent.removeTile(${measure}, ${startBeat})">×</button>`;
 
-                if (pattern.id && pattern.id.indexOf('cd-') === 0) {
-                    // Compound figure: one dotted-quarter beat. Place the whole
-                    // pre-rendered figure spanning the cell (compound/ SVGs).
+                const figDir = meterFigDir(pattern.id);
+                if (figDir) {
+                    // One-beat figure (compound / half-beat / dotted-half /
+                    // dotted-eighth / tuplet): place the whole pre-rendered figure
+                    // spanning the cell from its own asset dir.
                     const img = document.createElement('img');
-                    img.src = `./rhythm-assets/compound/${pattern.id}.svg`;
+                    img.src = `./rhythm-assets/${figDir}/${pattern.id}.svg`;
                     img.className = 'placed-note placed-compound';
                     img.style.width = '100%';
-                    // Shift left by the compound glyph's stave padding (~9.2%) so
-                    // the first notehead lands on the beat onset (over the number).
+                    // Shift left by the glyph's stave padding (~9.2%) so the first
+                    // notehead lands on the beat onset (over the number).
                     img.style.left = '-9.2%';
                     img.alt = pattern.id;
                     notationArea.appendChild(img);
