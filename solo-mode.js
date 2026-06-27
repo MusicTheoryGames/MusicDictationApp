@@ -14,6 +14,7 @@
     groove: 100, score: 0, streak: 0,
     correctionMode: true, metronome: false, beatGuide: false,
     mode: 'levels', level: 1,
+    meter: 'simple', beatsPerMeasure: 4, compoundLevel: 1,
     hintsThisRound: 0, wrongThisRound: false, solved: false
   };
   var GROOVE_PER_WRONG = 12, GROOVE_HINT_MISTAKES = 8, GROOVE_HINT_COUNT = 5, GROOVE_GAIN_CLEAN = 15;
@@ -33,7 +34,47 @@
   var LEVEL_LABELS = { 1: 'Quarters & eighths', 2: '+ rests & half notes', 3: '+ dotted quarter', 4: '+ sixteenths', 5: '+ dotted eighths', 6: '+ rests & syncopation', 7: '+ triplets' };
   var LEVELS = {};
   (function () { var acc = []; for (var i = 0; i < L_STEPS.length; i++) { acc = acc.concat(L_STEPS[i]); LEVELS[i + 1] = acc.slice(); } })();
-  function levelIds() { return S.mode === 'classic' ? null : (LEVELS[S.level] || LEVELS[7]); }
+  function bpm() { return S.beatsPerMeasure || 4; }
+
+  /* Compound (6/8) figures — one dotted-quarter BEAT each. The vexflow ratios
+     are normalized to the beat by gridFromItems, so they just need correct
+     RATIOS (durations), not absolute values. Bank art = rhythm-assets/bank/cd-*.png;
+     placement art = rhythm-assets/compound/cd-*.svg. */
+  var K = ['b/4'];
+  var COMPOUND_FIGS = [
+    { id: 'cd-dotted-quarter', name: 'Dotted quarter', beats: 1, vexflow: [{ keys: K, duration: 'q', dots: 1 }] },
+    { id: 'cd-three-eighths', name: 'Three eighths', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }] },
+    { id: 'cd-quarter-eighth', name: 'Quarter + eighth', beats: 1, vexflow: [{ keys: K, duration: 'q' }, { keys: K, duration: '8' }] },
+    { id: 'cd-eighth-quarter', name: 'Eighth + quarter', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: 'q' }] },
+    { id: 'cd-duplet', name: 'Duplet', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '8' }] },
+    { id: 'cd-dotted-quarter-rest', name: 'Dotted-quarter rest', beats: 1, vexflow: [{ keys: K, duration: 'qr', dots: 1 }] },
+    { id: 'cd-8rest-8-8', name: '8r 8 8', beats: 1, vexflow: [{ keys: K, duration: '8r' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }] },
+    { id: 'cd-8-8rest-8', name: '8 8r 8', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '8r' }, { keys: K, duration: '8' }] },
+    { id: 'cd-8-8-8rest', name: '8 8 8r', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: '8r' }] },
+    { id: 'cd-quarter-8rest', name: 'Quarter 8r', beats: 1, vexflow: [{ keys: K, duration: 'q' }, { keys: K, duration: '8r' }] },
+    { id: 'cd-8rest-quarter', name: '8r quarter', beats: 1, vexflow: [{ keys: K, duration: '8r' }, { keys: K, duration: 'q' }] },
+    { id: 'cd-six-sixteenths', name: 'Six sixteenths', beats: 1, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }] },
+    { id: 'cd-two16-8-8', name: '2-16 8 8', beats: 1, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '8' }, { keys: K, duration: '8' }] },
+    { id: 'cd-8-two16-8', name: '8 2-16 8', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '8' }] },
+    { id: 'cd-8-8-two16', name: '8 8 2-16', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '8' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }] },
+    { id: 'cd-four16-8', name: '4-16 8', beats: 1, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '8' }] },
+    { id: 'cd-8-four16', name: '8 4-16', beats: 1, vexflow: [{ keys: K, duration: '8' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }] },
+    { id: 'cd-quarter-two16', name: 'Quarter 2-16', beats: 1, vexflow: [{ keys: K, duration: 'q' }, { keys: K, duration: '16' }, { keys: K, duration: '16' }] },
+    { id: 'cd-two16-quarter', name: '2-16 quarter', beats: 1, vexflow: [{ keys: K, duration: '16' }, { keys: K, duration: '16' }, { keys: K, duration: 'q' }] }
+  ];
+  var CMP_STEPS = [
+    ['cd-dotted-quarter', 'cd-three-eighths', 'cd-quarter-eighth', 'cd-eighth-quarter', 'cd-duplet'],
+    ['cd-dotted-quarter-rest', 'cd-8rest-8-8', 'cd-8-8rest-8', 'cd-8-8-8rest', 'cd-quarter-8rest', 'cd-8rest-quarter'],
+    ['cd-six-sixteenths', 'cd-two16-8-8', 'cd-8-two16-8', 'cd-8-8-two16', 'cd-four16-8', 'cd-8-four16', 'cd-quarter-two16', 'cd-two16-quarter']
+  ];
+  var CMP_LABELS = { 1: '6/8 · eighths', 2: '6/8 · + rests', 3: '6/8 · + sixteenths' };
+  var COMPOUND_LEVELS = {};
+  (function () { var acc = []; for (var i = 0; i < CMP_STEPS.length; i++) { acc = acc.concat(CMP_STEPS[i]); COMPOUND_LEVELS[i + 1] = acc.slice(); } })();
+
+  function levelIds() {
+    if (S.meter === 'compound') return COMPOUND_LEVELS[S.compoundLevel] || COMPOUND_LEVELS[3];
+    return S.mode === 'classic' ? null : (LEVELS[S.level] || LEVELS[7]);
+  }
 
   /* Inline SVG icons — stroke/fill use currentColor so they inherit each
      theme's text color automatically (no emojis, ever). */
@@ -60,24 +101,28 @@
       if (typeof d.beatGuide === 'boolean') S.beatGuide = d.beatGuide;
       if (d.mode === 'levels' || d.mode === 'classic') S.mode = d.mode;
       if (typeof d.level === 'number' && d.level >= 1 && d.level <= 7) S.level = d.level;
+      if (d.meter === 'simple' || d.meter === 'compound') S.meter = d.meter;
+      if (typeof d.compoundLevel === 'number' && d.compoundLevel >= 1 && d.compoundLevel <= 3) S.compoundLevel = d.compoundLevel;
+      S.beatsPerMeasure = (S.meter === 'compound') ? 2 : 4;
     } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem('beatquest-solo', JSON.stringify({ score: S.score, streak: S.streak, correctionMode: S.correctionMode, metronome: S.metronome, beatGuide: S.beatGuide, mode: S.mode, level: S.level })); } catch (e) {}
+    try { localStorage.setItem('beatquest-solo', JSON.stringify({ score: S.score, streak: S.streak, correctionMode: S.correctionMode, metronome: S.metronome, beatGuide: S.beatGuide, mode: S.mode, level: S.level, meter: S.meter, compoundLevel: S.compoundLevel })); } catch (e) {}
   }
 
   /* ----------------------------------------------------- target generation */
-  function fullMedium() { return (rs.rhythmPatterns && rs.rhythmPatterns.medium) || []; }
+  function fullSet() { return (rs.rhythmPatterns && rs.rhythmPatterns[S.meter === 'compound' ? 'compound' : 'medium']) || []; }
   function patternsFor() {
-    var ids = levelIds(), base = fullMedium();
+    var ids = levelIds(), base = fullSet();
     return ids ? base.filter(function (p) { return ids.indexOf(p.id) !== -1; }) : base;
   }
   function genMeasure(pats) {
-    var res = [], beat = 1, guard = 0;
-    while (beat <= 4 && guard++ < 20) {
-      var remaining = 4 - (beat - 1);
+    var res = [], beat = 1, guard = 0, B = bpm();
+    while (beat <= B && guard++ < 20) {
+      var remaining = B - (beat - 1);
       var choices = pats.filter(function (p) { return (p.beats || 1) <= remaining; });
       var pick = choices[Math.floor(Math.random() * choices.length)];
+      if (!pick) break;
       res.push({ patternId: pick.id, startBeat: beat, beats: pick.beats || 1 });
       beat += pick.beats || 1;
     }
@@ -101,7 +146,8 @@
     return exp;
   }
   function findPattern(id) {
-    var b = fullMedium();   // search the full set so any placed/target id resolves
+    // search both simple + compound sets so any placed/target id resolves
+    var b = ((rs.rhythmPatterns && rs.rhythmPatterns.medium) || []).concat((rs.rhythmPatterns && rs.rhythmPatterns.compound) || []);
     for (var i = 0; i < b.length; i++) if (b[i].id === id) return b[i];
     return null;
   }
@@ -145,7 +191,7 @@
   }
   function lightBeat(answerBeatIndex, when) {
     var c = ctx(); if (!c) return;
-    var m = Math.floor(answerBeatIndex / 4) + 1, b = (answerBeatIndex % 4) + 1;
+    var m = Math.floor(answerBeatIndex / bpm()) + 1, b = (answerBeatIndex % bpm()) + 1;
     setTimeout(function () {
       if (!pulse.running) return;
       if (pulse.lastHl) pulse.lastHl.classList.remove('solo-beat-on');
@@ -157,7 +203,7 @@
     var c = ctx(); if (!c) return;
     stopPulse();
     pulse.running = true; pulse.beat = 0; pulse.nextTime = startTime;
-    var endBeat = 4 + S.measures * 4;   // count-in (4) + one pass of the example
+    var endBeat = bpm() + S.measures * bpm();   // count-in (4) + one pass of the example
     (function sched() {
       if (!pulse.running) return;
       var cc = ctx(); if (!cc) return;
@@ -167,9 +213,9 @@
           setTimeout(stopPulse, Math.max(0, (pulse.nextTime - cc.currentTime) * 1000));
           return;
         }
-        var countIn = bt < 4;
-        if (countIn || S.metronome) metroTick(pulse.nextTime, (bt % 4) === 0);
-        if (!countIn && S.beatGuide) lightBeat(bt - 4, pulse.nextTime);
+        var countIn = bt < bpm();
+        if (countIn || S.metronome) metroTick(pulse.nextTime, (bt % bpm()) === 0);
+        if (!countIn && S.beatGuide) lightBeat(bt - bpm(), pulse.nextTime);
         pulse.beat++; pulse.nextTime += 60 / S.tempo;
       }
       pulse.timer = setTimeout(sched, 25);
@@ -191,7 +237,7 @@
     stopPulse();
     var beatDur = 60 / S.tempo;
     var t0 = c.currentTime + 0.2;          // count-in start
-    var t = t0 + 4 * beatDur;              // rhythm starts after the 4-beat count-in
+    var t = t0 + bpm() * beatDur;              // rhythm starts after the 4-beat count-in
     S.target.forEach(function (meas) {
       meas.forEach(function (it) {
         var pat = findPattern(it.patternId);
@@ -216,13 +262,13 @@
      grid is correct. */
   var RES = 12; // grid units per beat (divisible by 16ths=3 and triplets=4)
   function gridFromItems(items) {
-    var grid = [], i; for (i = 0; i < S.measures * 4 * RES; i++) grid[i] = 0;
+    var grid = [], i; for (i = 0; i < S.measures * bpm() * RES; i++) grid[i] = 0;
     items.forEach(function (it) {
       var pat = findPattern(it.patternId); if (!pat || !pat.vexflow) return;
       var raw = pat.vexflow.map(function (n) { return noteBeats(n) * RES; });
       var sum = raw.reduce(function (a, x) { return a + x; }, 0) || 1;
       var scale = ((it.beats || pat.beats || 1) * RES) / sum; // figure occupies exactly its beats
-      var pos = (it.mi * 4 + (it.startBeat - 1)) * RES;
+      var pos = (it.mi * bpm() + (it.startBeat - 1)) * RES;
       pat.vexflow.forEach(function (n, k) {
         var idx = Math.round(pos);
         if (n.duration.indexOf('r') === -1 && idx >= 0 && idx < grid.length) grid[idx] = 1;
@@ -238,7 +284,7 @@
     var a = [], mi, bi;
     for (mi = 0; mi < S.measures; mi++) {
       if (!rs.userAnswer[mi]) continue;
-      for (bi = 0; bi < 4; bi++) {
+      for (bi = 0; bi < bpm(); bi++) {
         var v = rs.userAnswer[mi][bi];
         if (v && v.indexOf('_continuation') === -1) { var p = findPattern(v); a.push({ mi: mi, startBeat: bi + 1, patternId: v, beats: p ? p.beats : 1 }); }
       }
@@ -248,15 +294,15 @@
   function checkAnswer() {
     var tg = gridFromItems(targetItems()), ag = gridFromItems(answerItems());
     var wrong = [], allCorrect = true, mi, bi, k;
-    for (mi = 0; mi < S.measures; mi++) for (bi = 0; bi < 4; bi++) {
-      var start = (mi * 4 + bi) * RES, diff = false;
+    for (mi = 0; mi < S.measures; mi++) for (bi = 0; bi < bpm(); bi++) {
+      var start = (mi * bpm() + bi) * RES, diff = false;
       for (k = 0; k < RES; k++) if (tg[start + k] !== ag[start + k]) { diff = true; break; }
       if (diff) { allCorrect = false; wrong.push({ m: mi + 1, b: bi + 1 }); }
     }
     return { allCorrect: allCorrect, wrong: wrong };
   }
   function beatSoundCount(mi, bi) {
-    var tg = gridFromItems(targetItems()), n = 0, start = (mi * 4 + bi) * RES, k;
+    var tg = gridFromItems(targetItems()), n = 0, start = (mi * bpm() + bi) * RES, k;
     for (k = 0; k < RES; k++) if (tg[start + k]) n++;
     return n;
   }
@@ -268,7 +314,13 @@
     stopPulse();
     S.target = generateTarget();
     S.hintsThisRound = 0; S.wrongThisRound = false; S.solved = false;
-    if (rs.updateGameSettings) rs.updateGameSettings({ measureCount: S.measures, difficulty: S.difficulty, tempo: S.tempo });
+    if (rs.updateGameSettings) rs.updateGameSettings({
+      measureCount: S.measures,
+      difficulty: (S.meter === 'compound') ? 'compound' : S.difficulty,
+      tempo: S.tempo,
+      timeSignature: (S.meter === 'compound') ? '6/8' : '4/4',
+      beatsPerMeasure: bpm()
+    });
     var fb = document.getElementById('feedback'); if (fb) { fb.style.display = 'none'; fb.textContent = ''; } // solo uses #soloMsg
     filterBank();
     clearMarks();
@@ -405,6 +457,7 @@
     var lvOpts = '';
     for (var L = 1; L <= 7; L++) lvOpts += '<option value="' + L + '">Lvl ' + L + ' · ' + LEVEL_LABELS[L] + '</option>';
     lvOpts += '<option value="classic">Classic (all figures)</option>';
+    for (var C = 1; C <= 3; C++) lvOpts += '<option value="c' + C + '">' + CMP_LABELS[C] + '</option>';
     var hud = document.createElement('div'); hud.id = 'soloHud'; hud.className = 'solo-ctl';
     hud.innerHTML =
       '<div class="solo-stats">' +
@@ -451,10 +504,16 @@
       save(); render();
     };
     var lv = document.getElementById('soloLevel');
-    lv.value = (S.mode === 'classic') ? 'classic' : String(S.level);
+    lv.value = (S.meter === 'compound') ? ('c' + S.compoundLevel) : ((S.mode === 'classic') ? 'classic' : String(S.level));
     lv.onchange = function () {
-      if (lv.value === 'classic') { S.mode = 'classic'; }
-      else { S.mode = 'levels'; S.level = parseInt(lv.value, 10); }
+      var v = lv.value;
+      if (v.charAt(0) === 'c' && v.length === 2) {            // compound: c1/c2/c3
+        S.meter = 'compound'; S.compoundLevel = parseInt(v.slice(1), 10); S.beatsPerMeasure = 2;
+      } else {
+        S.meter = 'simple'; S.beatsPerMeasure = 4;
+        if (v === 'classic') { S.mode = 'classic'; }
+        else { S.mode = 'levels'; S.level = parseInt(v, 10); }
+      }
       save(); newRound();
     };
     var cb = document.getElementById('soloCorrect');
@@ -476,6 +535,7 @@
   function start() {
     rs = window.rhythmStudent;
     if (!rs) { setTimeout(start, 150); return; }
+    if (rs.rhythmPatterns && !rs.rhythmPatterns.compound) rs.rhythmPatterns.compound = COMPOUND_FIGS;
     load();
     document.getElementById('loginForm').classList.add('hidden');
     document.getElementById('gameArea').classList.add('active');

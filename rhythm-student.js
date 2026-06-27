@@ -311,6 +311,8 @@ class RhythmStudent {
         this.connected = false;
         this.currentDifficulty = 'medium';
         this.measureCount = 2;
+        this.timeSignature = '4/4';
+        this.beatsPerMeasure = 4;
         this.tempo = 100;
         this.userAnswer = [];
         this.revealedBeats = [];
@@ -400,10 +402,18 @@ class RhythmStudent {
         }
     }
 
+    beatsForMeter(ts) {
+        const [t, b] = String(ts || '4/4').split('/').map(Number);
+        if (b === 8 && t % 3 === 0) return t / 3;   // compound: 6/8->2, 9/8->3, 12/8->4
+        return t || 4;                               // simple: 4/4->4, 3/4->3, 2/4->2
+    }
+
     updateGameSettings(settings) {
         this.measureCount = settings.measureCount;
         this.currentDifficulty = settings.difficulty;
         this.tempo = settings.tempo;
+        if (settings.timeSignature) this.timeSignature = settings.timeSignature;
+        this.beatsPerMeasure = settings.beatsPerMeasure || this.beatsForMeter(this.timeSignature || '4/4');
 
         this.populateRhythmBank();
         this.updateMeasureDisplay();
@@ -455,6 +465,18 @@ class RhythmStudent {
             // Clear container
             container.innerHTML = '';
 
+            // Compound figures (cd-*) have their own centered bank PNGs.
+            if (pattern.id && pattern.id.indexOf('cd-') === 0) {
+                const cimg = document.createElement('img');
+                cimg.src = `./rhythm-assets/bank/${pattern.id}.png`;
+                cimg.style.width = '100%';
+                cimg.style.height = '100%';
+                cimg.style.objectFit = 'contain';
+                cimg.alt = pattern.name || pattern.id;
+                container.appendChild(cimg);
+                return;
+            }
+
             // Check if we have an asset for this pattern
             const asset = this.rhythmAssets[pattern.id];
             if (!asset) {
@@ -505,6 +527,7 @@ class RhythmStudent {
         measureContainer.className = 'measure-container';
 
         const [tsTop, tsBottom] = (this.timeSignature || '4/4').split('/');
+        const bpm = this.beatsPerMeasure || this.beatsForMeter(this.timeSignature || '4/4');
 
         const staffDiv = document.createElement('div');
         staffDiv.className = 'answer-staff';
@@ -516,11 +539,12 @@ class RhythmStudent {
                 </div>
                 <div class="answer-time-sig"><span>${tsTop}</span><span>${tsBottom}</span></div>
                 <div class="beat-divisions" style="margin-left: 70px; margin-right: 0;">
-                    ${Array.from({length: this.measureCount * 4}, (_, i) => {
-                        const beat = (i % 4) + 1;
-                        const measure = Math.floor(i / 4) + 1;
+                    ${Array.from({length: this.measureCount * bpm}, (_, i) => {
+                        const beat = (i % bpm) + 1;
+                        const measure = Math.floor(i / bpm) + 1;
+                        const isMeasureEnd = beat === bpm;
                         return `
-                            <div class="beat-drop-zone" data-beat="${beat}" data-measure="${measure}" data-absolute-beat="${i + 1}">
+                            <div class="beat-drop-zone${isMeasureEnd ? ' measure-end' : ''}" data-beat="${beat}" data-measure="${measure}" data-absolute-beat="${i + 1}">
                                 <div class="beat-notation"></div>
                             </div>
                         `;
@@ -533,7 +557,7 @@ class RhythmStudent {
         container.appendChild(measureContainer);
 
         this.setupDropZones();
-        this.userAnswer = Array(this.measureCount).fill(null).map(() => Array(4).fill(null));
+        this.userAnswer = Array(this.measureCount).fill(null).map(() => Array(bpm).fill(null));
       } catch (err) {
         // Surface the failure on-screen instead of silently leaving an empty
         // answer area, so it can be diagnosed without opening dev tools.
@@ -758,7 +782,17 @@ class RhythmStudent {
 
                 notationArea.innerHTML = `<button class="remove-btn" onclick="rhythmStudent.removeTile(${measure}, ${startBeat})">×</button>`;
 
-                if (decomposition) {
+                if (pattern.id && pattern.id.indexOf('cd-') === 0) {
+                    // Compound figure: one dotted-quarter beat. Place the whole
+                    // pre-rendered figure spanning the cell (compound/ SVGs).
+                    const img = document.createElement('img');
+                    img.src = `./rhythm-assets/compound/${pattern.id}.svg`;
+                    img.className = 'placed-note placed-compound';
+                    img.style.width = '100%';
+                    img.style.left = '0';
+                    img.alt = pattern.id;
+                    notationArea.appendChild(img);
+                } else if (decomposition) {
                     // SPLIT placement: drop each single-note glyph at its beat
                     // offset. Each glyph is a single note in a 200px-per-beat
                     // canvas, shown at one beat-cell wide -> identical notehead
@@ -931,7 +965,7 @@ class RhythmStudent {
             zone.querySelector('.beat-notation').innerHTML = '';
             zone.classList.remove('filled', 'revealed', 'continuation');
         });
-        this.userAnswer = Array(this.measureCount).fill(null).map(() => Array(4).fill(null));
+        this.userAnswer = Array(this.measureCount).fill(null).map(() => Array(this.beatsPerMeasure || 4).fill(null));
     }
 
     showFeedback(message, type) {

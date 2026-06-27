@@ -321,9 +321,9 @@
             transition: all 0.3s ease;
         }
 
-        /* Bar line between measures — every beat-4 EXCEPT the final cell.
+        /* Bar line between measures — last cell of each measure EXCEPT the final.
            Colour comes from --bar-ink (each theme sets it to its staff ink). */
-        .beat-drop-zone[data-beat="4"]:not(:last-child) {
+        .beat-drop-zone.measure-end:not(:last-child) {
             border-right: 3px solid var(--bar-ink, #333); /* Bar line between measures */
             margin-right: 15px; /* Add space after bar line */
         }
@@ -678,7 +678,7 @@
         </div>
     </div>
 
-    <script type="module" src="rhythm-student.js?v=20260626j"></script>
+    <script type="module" src="rhythm-student.js?v=20260626k"></script>
     <script src="suite-theme.js"></script>
     <script src="solo-mode.js"></script>
 </body>
