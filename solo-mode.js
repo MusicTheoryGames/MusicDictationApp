@@ -584,8 +584,20 @@
     document.getElementById('soloNext').style.display = 'none';
     document.getElementById('soloSubmit').style.display = '';
     render();
+    if (rs) rs.onAnswerChanged = updateSubmitBtn;   // re-evaluate Submit on each placement
+    updateSubmitBtn();
     // No auto-play — the rhythm only sounds when the student presses Play.
     msg('Press ▶ Play rhythm to hear it.');
+  }
+
+  // On small screens, save space: only show Submit once every beat is filled.
+  function updateSubmitBtn() {
+    var btn = document.getElementById('soloSubmit'); if (!btn) return;
+    var next = document.getElementById('soloNext');
+    if (S.solved || (next && next.style.display !== 'none')) { btn.style.display = 'none'; return; }
+    var mobile = false;
+    try { mobile = window.matchMedia('(pointer: coarse) and (max-width: 1400px)').matches; } catch (e) {}
+    btn.style.display = (mobile && rs && rs.isComplete && !rs.isComplete()) ? 'none' : '';
   }
 
   function submit() {

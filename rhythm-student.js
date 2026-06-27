@@ -991,6 +991,7 @@ class RhythmStudent {
 
         // Send answer to teacher (in real implementation)
         this.sendAnswerToTeacher(measure, startBeat, patternId);
+        if (this.onAnswerChanged) this.onAnswerChanged();
     }
 
 
@@ -1018,6 +1019,13 @@ class RhythmStudent {
 
         // Send removal to teacher
         this.sendAnswerToTeacher(measure, beat, null);
+        if (this.onAnswerChanged) this.onAnswerChanged();
+    }
+
+    // True only when EVERY beat of every measure holds a figure (no empty beats).
+    isComplete() {
+        if (!this.userAnswer || !this.userAnswer.length) return false;
+        return this.userAnswer.every(row => row.every(cell => cell !== null && cell !== undefined));
     }
 
     sendAnswerToTeacher(measure, beat, patternId) {

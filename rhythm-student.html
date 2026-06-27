@@ -764,12 +764,17 @@
                 overflow-x: auto;
                 -webkit-overflow-scrolling: touch;
                 max-height: none;
-                justify-content: flex-start;
+                /* center when few tiles fit; fall back to start (reachable) when
+                   they overflow and need scrolling */
+                justify-content: safe center;
                 gap: 8px;
                 padding-bottom: 2px;
             }
             .rhythm-tile { width: 104px; flex: 0 0 104px; min-height: 60px; }
             .game-area { padding-bottom: 88px; }       /* clear the pinned bank */
+            /* Theme cosmetics that fight the controls on small screens */
+            #themeSwitcher { display: none !important; }   /* was covering Speed/Bars */
+            .dq-screws { display: none !important; }       /* corner bolts collided with tiles */
 
             /* Portrait: block the cramped game and ask the user to rotate */
             body.app-portrait .game-area.active { display: none; }
@@ -858,8 +863,8 @@
             updateOrientation();
         })();
     </script>
-    <script type="module" src="rhythm-student.js?v=20260627aa"></script>
+    <script type="module" src="rhythm-student.js?v=20260627ab"></script>
     <script src="suite-theme.js"></script>
-    <script src="solo-mode.js?v=20260627k"></script>
+    <script src="solo-mode.js?v=20260627l"></script>
 </body>
 </html>
