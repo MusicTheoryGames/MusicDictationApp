@@ -368,21 +368,17 @@
       '#soloHud .solo-bar{flex:1;max-width:240px;height:10px;border-radius:6px;background:rgba(255,255,255,.15);overflow:hidden}' +
       '#soloHud .solo-bar i{display:block;height:100%;width:100%;background:#19e07a;transition:width .35s,background .35s}' +
       '#soloHud .solo-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}' +
-      // shared button styling across the top HUD and the bottom action bar (.solo-ctl)
-      '.solo-ctl button{display:inline-flex;align-items:center;font-family:inherit;font-weight:700;font-size:.85rem;border:none;border-radius:10px;padding:9px 14px;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;transition:.12s}' +
+      // ALL solo buttons are one uniform size — hierarchy is by COLOR, not size
+      // (Play = theme accent + raised, Submit = red, hints = muted). Per-theme
+      // CSS supplies the colors.
+      '.solo-ctl button{display:inline-flex;align-items:center;justify-content:center;font-family:inherit;font-weight:700;font-size:.85rem;border:none;border-radius:10px;padding:11px 16px;min-height:42px;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;transition:.12s}' +
       '.solo-ctl button:hover{transform:translateY(-1px);background:rgba(255,255,255,.2)}' +
       '.solo-ctl button.go{background:#2196f3}' +
-      // primary actions (Play, Submit) sit above the rest in size/weight
-      '.solo-ctl button.primary{padding:12px 24px;font-size:.98rem;border-radius:12px}' +
-      // Play is THE start action: biggest. COLOR is supplied per-theme (no
-      // universal color) — base only sets size + the press-down feedback.
-      '#soloHud button.play{padding:15px 34px;font-size:1.12rem}' +
-      '#soloHud button.play:active{transform:translateY(2px)}' +
-      '#soloHud button.play .ic{width:1.15em;height:1.15em;stroke-width:2.1}' +
-      // bottom Submit bar gets a top divider since it's now under the bank
+      '#soloHud button.play:active,#soloActions button:active{transform:translateY(2px)}' +
+      // bottom Submit bar gets a top divider since it is under the bank
       '#soloActions{border-top:1px solid rgba(255,255,255,.12);padding-top:14px}' +
-      // hints are tertiary: smaller, muted, grouped behind a divider + label
-      '.solo-ctl button.hint{font-size:.74rem;padding:7px 10px;background:rgba(255,255,255,.06);color:#cfd3e0;font-weight:600}' +
+      // hints: muted color (same size as everything), grouped behind a divider
+      '.solo-ctl button.hint{background:rgba(255,255,255,.06);color:#cfd3e0;font-weight:600}' +
       '#soloHud .solo-hints{display:inline-flex;align-items:center;gap:6px;padding-left:12px;margin-left:2px;border-left:1px solid rgba(255,255,255,.18)}' +
       '#soloHud .solo-hints .hints-label{font-size:.6rem;letter-spacing:.14em;opacity:.5;font-weight:800}' +
       // icons inherit the button text color so they restyle per theme

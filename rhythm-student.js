@@ -557,6 +557,12 @@ class RhythmStudent {
                 e.dataTransfer.setData('text/plain', tile.dataset.patternId);
                 tile.classList.add('dragging');
                 this.currentDragPattern = tile.dataset.patternId;
+                // High-contrast drag image (white card + dark glyph) so the note
+                // is visible on ANY theme bg — the browser's default snapshot of
+                // the Arcade tile drops the invert filter and looks dark.
+                const di = this.buildDragImage(tile);
+                try { e.dataTransfer.setDragImage(di, 52, 35); } catch (err) {}
+                setTimeout(() => di.remove(), 0);
             });
 
             tile.addEventListener('dragend', () => {
@@ -613,21 +619,29 @@ class RhythmStudent {
         });
     }
 
+    // Build a theme-agnostic drag image: a white card with the glyph in its
+    // native (dark) ink, so it reads on light AND dark backgrounds.
+    buildDragImage(tile) {
+        const card = document.createElement('div');
+        card.className = 'drag-preview';
+        card.style.cssText = 'position:fixed;top:-2000px;left:-2000px;width:104px;height:70px;' +
+            'background:#fff;border:2px solid #111;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.45);' +
+            'display:flex;align-items:center;justify-content:center;padding:8px;box-sizing:border-box;' +
+            'pointer-events:none;z-index:10000';
+        const img = tile.querySelector('img');
+        if (img) {
+            const c = img.cloneNode(true);
+            c.style.cssText = 'width:100%;height:100%;object-fit:contain;filter:none;mix-blend-mode:normal';
+            card.appendChild(c);
+        }
+        document.body.appendChild(card);
+        return card;
+    }
+
     createDragPreview(originalTile, x, y) {
         this.removeDragPreview();
-        this.dragPreview = originalTile.cloneNode(true);
-        this.dragPreview.style.position = 'fixed';
-        this.dragPreview.style.pointerEvents = 'none';
-        this.dragPreview.style.zIndex = '10000';
-        this.dragPreview.style.opacity = '0.8';
-        this.dragPreview.style.transform = 'scale(0.35)';
-        this.dragPreview.style.transformOrigin = 'top left';
-        this.dragPreview.style.width = 'auto';
-        this.dragPreview.style.height = 'auto';
-        this.dragPreview.style.transition = 'none';
-        this.dragPreview.classList.add('drag-preview');
+        this.dragPreview = this.buildDragImage(originalTile); // white card, follows the finger
         this.updateDragPreview(x, y);
-        document.body.appendChild(this.dragPreview);
     }
 
     updateDragPreview(x, y) {

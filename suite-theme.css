@@ -214,7 +214,8 @@ body.theme-arcade #soloHud{background:rgba(22,8,43,.7);border:2px solid #2a1860}
 body.theme-arcade #soloHud .solo-stat>span,body.theme-arcade #soloHud .solo-toggle{color:#8a7adf;font-family:'Press Start 2P',monospace;font-size:.5rem}
 body.theme-arcade #soloHud .solo-stat b,body.theme-arcade #soloHud #soloGroovePct{font-family:'Press Start 2P',monospace;font-size:.7rem;color:#16f0ff;text-shadow:0 0 8px #16f0ff}
 body.theme-arcade .solo-ctl button{font-family:'Press Start 2P',monospace;font-size:.55rem;color:#fff;background:radial-gradient(120% 120% at 50% 20%,#3a1170,#1a0840);border:2px solid #16f0ff;border-radius:8px;box-shadow:0 0 10px rgba(22,240,255,.5),0 4px 0 #0a6e78}
-body.theme-arcade .solo-ctl button.go{border-color:#ff2ea6;box-shadow:0 0 12px rgba(255,46,166,.6),0 4px 0 #7a0f52}
+/* Submit is RED in every theme (semantic commit color) — neon red for Arcade */
+body.theme-arcade .solo-ctl button.go{background:linear-gradient(180deg,#ff3a5e,#cc1438);border-color:#ff2e4d;color:#fff;box-shadow:0 0 16px rgba(255,58,94,.6),0 4px 0 #7a0f23}
 body.theme-arcade .solo-ctl button.hint{border-color:#ffe44d;box-shadow:0 0 10px rgba(255,228,77,.4),0 4px 0 #8a7a10;color:#ffe44d}
 body.theme-arcade .solo-ctl button.toggle.on{background:linear-gradient(180deg,#16f0ff,#06b6c9);color:#06121f;box-shadow:0 0 14px #16f0ff}
 body.theme-arcade #soloHud select{font-family:'Press Start 2P',monospace;font-size:.5rem;background:#10082b;color:#16f0ff;border:1px solid #16f0ff}

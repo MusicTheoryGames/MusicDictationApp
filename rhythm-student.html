@@ -28,11 +28,17 @@
         .header {
             text-align: center;
             margin-bottom: 10px;
+            /* Consistent header height across themes (Arcade's pixel font is
+               short and was shifting the whole layout up vs the other skins). */
+            min-height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .header h1 {
             font-size: 2rem;
-            margin-bottom: 10px;
+            margin-bottom: 0;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
 
@@ -671,7 +677,7 @@
         </div>
     </div>
 
-    <script type="module" src="rhythm-student.js?v=20260626i"></script>
+    <script type="module" src="rhythm-student.js?v=20260626j"></script>
     <script src="suite-theme.js"></script>
     <script src="solo-mode.js"></script>
 </body>
