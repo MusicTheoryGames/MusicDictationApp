@@ -431,6 +431,23 @@
       if (z) { z.classList.add('solo-beat-on'); pulse.lastHl = z; }
     }, Math.max(0, (when - c.currentTime) * 1000));
   }
+  // Autoscroll: keep the playing beat ~2/3 from the left so just-played beats stay
+  // visible on the left (where the student is still entering). Mobile single-line only.
+  function scrollToBeat(answerBeatIndex, when) {
+    var c = ctx(); if (!c) return;
+    var mc = document.querySelector('.measure-container');
+    if (!mc || mc.scrollWidth <= mc.clientWidth + 4) return;   // only when it actually scrolls
+    var mb = measureOfAbs(answerBeatIndex);
+    setTimeout(function () {
+      if (!pulse.running) return;
+      var z = document.querySelector('.beat-drop-zone[data-measure="' + mb.m + '"][data-beat="' + mb.b + '"]');
+      if (!z) return;
+      var zr = z.getBoundingClientRect(), mr = mc.getBoundingClientRect();
+      var zLeft = zr.left - mr.left + mc.scrollLeft;            // beat's left edge in content coords
+      var target = zLeft - mc.clientWidth * 0.66 + zr.width / 2;
+      mc.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+    }, Math.max(0, (when - c.currentTime) * 1000));
+  }
   function startPulse(startTime) {
     var c = ctx(); if (!c) return;
     stopPulse();
@@ -462,6 +479,7 @@
             subTick(pulse.nextTime + 2 * bd / 3);
           }
         }
+        if (!countIn) scrollToBeat(abs, pulse.nextTime);   // autoscroll follows playback (mobile)
         if (!countIn && S.beatGuide) lightBeat(abs, pulse.nextTime);
         pulse.beat++; pulse.nextTime += 60 / S.tempo;
       }
@@ -484,6 +502,8 @@
     if (S.playing) { msg('Already playing — let it finish.'); return; }  // no overlapping playback
     stopPlayback();                         // clean slate (cancels any leftover sound)
     S.playing = true;
+    var mcReset = document.querySelector('.measure-container');   // start the view at the beginning
+    if (mcReset) mcReset.scrollLeft = 0;
     var beatDur = 60 / S.tempo;
     var t0 = c.currentTime + 0.2;          // count-in start
     var t = t0 + (mBeats()[0] || bpm()) * beatDur;   // rhythm starts after one measure of count-in
