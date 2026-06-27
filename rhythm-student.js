@@ -445,7 +445,13 @@ class RhythmStudent {
         const tilesContainer = document.getElementById('rhythmTiles');
         tilesContainer.innerHTML = '';
 
-        const patterns = this.rhythmPatterns[this.currentDifficulty];
+        // Order the bank by ATTACKS per figure: rests (0 sounds) first, then 1, 2,
+        // 3, 4 sounds; ties broken by length (shorter first). Makes the palette read
+        // simplest -> busiest instead of random.
+        const attacks = p => (p.vexflow || []).filter(n => (('' + (n.duration || '')).indexOf('r') === -1)).length;
+        const patterns = this.rhythmPatterns[this.currentDifficulty]
+            .slice()
+            .sort((a, b) => (attacks(a) - attacks(b)) || ((a.beats || 1) - (b.beats || 1)));
 
         patterns.forEach((pattern, index) => {
             const tile = document.createElement('div');
