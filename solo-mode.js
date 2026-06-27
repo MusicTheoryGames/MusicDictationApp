@@ -252,7 +252,7 @@
       if (d.measures === 2 || d.measures === 4 || d.measures === 8 || d.measures === 16) S.measures = d.measures;
       // Meter first (sets family/beats), then restore the level within that family.
       if (d.ts && METER_BY_TS[d.ts]) setMeter(d.ts);
-      if (d.changing) { S.changing = true; S.changeKind = d.changeKind || 'simple'; S.changePool = ['2/4', '3/4', '4/4']; S.family = 'quarter'; S.meter = 'simple'; }
+      if (d.changing) { S.changing = true; S.changeKind = d.changeKind || 'simple'; S.changePool = CHANGE_POOLS[S.changeKind] || CHANGE_POOLS.simple; S.family = 'quarter'; S.meter = 'simple'; }
       if (d.level === 'all') S.level = 'all';
       else if (typeof d.level === 'number' && d.level >= 1 && d.level <= curFamily().steps.length) S.level = d.level;
       S.tempo = SPEEDS[S.speed] || 100;
@@ -268,6 +268,33 @@
     var ids = levelIds(), base = fullSet();
     return ids ? base.filter(function (p) { return ids.indexOf(p.id) !== -1; }) : base;
   }
+  // For changing meters: each measure draws from the family its OWN meter implies
+  // (simple -> quarter beat, compound -> dotted-quarter beat), so a beat-constant
+  // simple<->compound exercise mixes both vocabularies measure by measure.
+  function familyForTs(ts) { return isCompoundTs(ts) ? 'dotted-quarter' : 'quarter'; }
+  function idsForFamilyLevel(famKey) {
+    if (S.level === 'all') return null;
+    var steps = (FAMILIES[famKey] || FAMILIES.quarter).steps, acc = [], i, n = Math.min(S.level, steps.length);
+    for (i = 0; i < n; i++) acc = acc.concat(steps[i]);
+    return acc;
+  }
+  function patternsForTs(ts) {
+    var fk = familyForTs(ts), base = (rs.rhythmPatterns && rs.rhythmPatterns[FAMILIES[fk].key]) || [];
+    var ids = (S.changeKind === 'simple') ? idsForFamilyLevel(fk) : null;  // mixing -> full vocab
+    return ids ? base.filter(function (p) { return ids.indexOf(p.id) !== -1; }) : base;
+  }
+  // Active families across the current change pool (which vocabularies the bank needs).
+  function changeFamilies() {
+    var pool = S.changePool || [], set = {}, out = [];
+    pool.forEach(function (ts) { set[familyForTs(ts)] = 1; });
+    for (var k in set) out.push(k);
+    return out;
+  }
+  // Meter pools for each changing-meter kind.
+  var CHANGE_POOLS = {
+    simple: ['2/4', '3/4', '4/4'],
+    beatconst: ['2/4', '3/4', '4/4', '6/8', '9/8', '12/8']   // simple<->compound, beat constant
+  };
   function genMeasure(pats, beats) {
     var res = [], beat = 1, guard = 0, B = beats || bpm();
     while (beat <= B && guard++ < 20) {
@@ -283,12 +310,18 @@
   function generateTarget() {
     var pats = patternsFor(), t = [];
     if (S.changing) {
-      // Pick a fresh sequence of meters for this round, then fill each measure to
-      // its own beat count from the current family's vocabulary.
+      // Fresh meter sequence: NEVER repeat the previous measure's meter, so every
+      // measure shows its own time sig (genuinely "changing", and unambiguous to
+      // count). Each measure is then filled from the family ITS meter implies.
       var pool = (S.changePool && S.changePool.length) ? S.changePool : ['2/4', '3/4', '4/4'];
-      S.curMeters = [];
-      for (var c = 0; c < S.measures; c++) S.curMeters.push(pool[Math.floor(Math.random() * pool.length)]);
-      for (var m = 0; m < S.measures; m++) t.push(genMeasure(pats, beatsForTs(S.curMeters[m])));
+      S.curMeters = []; var prev = null;
+      for (var c = 0; c < S.measures; c++) {
+        var opts = pool.filter(function (x) { return x !== prev; });
+        if (!opts.length) opts = pool;
+        prev = opts[Math.floor(Math.random() * opts.length)];
+        S.curMeters.push(prev);
+      }
+      for (var m = 0; m < S.measures; m++) t.push(genMeasure(patternsForTs(S.curMeters[m]), beatsForTs(S.curMeters[m])));
     } else {
       S.curMeters = null;
       for (var m2 = 0; m2 < S.measures; m2++) t.push(genMeasure(pats));
@@ -319,8 +352,15 @@
   }
   // Hide bank tiles that aren't in the current level's vocabulary (the bank is
   // rebuilt each round by the engine; we filter it cosmetically afterwards).
+  // The engine's bank reads rhythmPatterns[difficulty]: a single family normally,
+  // 'medium' for changing-simple, the combined 'mixedSC' set for simple<->compound.
+  function bankKey() {
+    if (S.changing) return (S.changeKind === 'simple') ? 'medium' : 'mixedSC';
+    return curFamily().key;
+  }
   function filterBank() {
-    var ids = levelIds();
+    // changing-simple keeps the quarter level tier; mixing shows the full combined bank.
+    var ids = (S.changing && S.changeKind !== 'simple') ? null : levelIds();
     document.querySelectorAll('.rhythm-tile').forEach(function (t) {
       t.style.display = (!ids || ids.indexOf(t.dataset.patternId) !== -1) ? '' : 'none';
     });
@@ -502,7 +542,7 @@
     S.hintsThisRound = 0; S.wrongThisRound = false; S.solved = false;
     if (rs.updateGameSettings) rs.updateGameSettings({
       measureCount: S.measures,
-      difficulty: curFamily().key,            // engine bank reads rhythmPatterns[key]
+      difficulty: bankKey(),                  // engine bank reads rhythmPatterns[key]
       tempo: S.tempo,
       timeSignature: S.changing ? (S.curMeters[0] || '4/4') : S.ts,
       beatsPerMeasure: bpm(),
@@ -659,8 +699,10 @@
     });
     meterOpts += '</optgroup>';
     // Changing meters within one example (Hall Ch19+). Value 'change:simple' etc.
-    meterOpts += '<optgroup label="Changing"><option value="change:simple">Changing · simple (2/4·3/4·4/4)</option></optgroup>';
-    var CHANGE_POOLS = { simple: ['2/4', '3/4', '4/4'] };
+    meterOpts += '<optgroup label="Changing">' +
+      '<option value="change:simple">Changing · simple (2/4·3/4·4/4)</option>' +
+      '<option value="change:beatconst">Changing · simple↔compound · beat constant</option>' +
+      '</optgroup>';
     var hud = document.createElement('div'); hud.id = 'soloHud'; hud.className = 'solo-ctl';
     hud.innerHTML =
       '<div class="solo-stats">' +
@@ -766,6 +808,9 @@
       if (rs.rhythmPatterns.medium) TUPLET_FIGS.forEach(function (f) {
         if (!rs.rhythmPatterns.medium.some(function (p) { return p.id === f.id; })) rs.rhythmPatterns.medium.push(f);
       });
+      // Combined bank for simple<->compound changing meters: quarter + compound
+      // figures together so the player can build BOTH measure types.
+      rs.rhythmPatterns.mixedSC = (rs.rhythmPatterns.medium || []).concat(COMPOUND_FIGS);
     }
     load();
     document.getElementById('loginForm').classList.add('hidden');
