@@ -809,9 +809,9 @@ class RhythmStudent {
         // Beat badge floats ABOVE the preview so it's never under the finger.
         const num = document.createElement('div');
         num.className = 'drag-beat';
-        num.style.cssText = 'position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);' +
-            'font:800 16px/1 system-ui,sans-serif;color:#fff;background:#c0392b;border-radius:9px;padding:3px 11px;' +
-            'box-shadow:0 3px 10px rgba(0,0,0,.45);white-space:nowrap;opacity:0;transition:opacity .1s';
+        num.style.cssText = 'position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);' +
+            'font:600 11px/1 system-ui,sans-serif;letter-spacing:.03em;color:#fff;background:rgba(20,20,28,.8);' +
+            'border-radius:6px;padding:2px 7px;box-shadow:0 1px 4px rgba(0,0,0,.3);white-space:nowrap;opacity:0;transition:opacity .1s';
         card.appendChild(num);
         this.dragBeatLabel = num;
         const img = tile.querySelector('img');
