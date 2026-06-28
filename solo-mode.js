@@ -1443,6 +1443,18 @@
     msg('Press ▶ Play rhythm to hear it.');
   }
 
+  /* ---- DEFERRED tapping features (v1 is single-line beat+rhythm). Clean seams:
+       - Duet mode (two performers / two staff lines): newTappingRound builds ONE
+         line; a second line would be a second revealCorrect target + a 2nd tap zone
+         pair. The tap-back overlay (tb-zones) is the place to add the second hand-pair.
+       - App-plays-a-line: playTarget() already renders the rhythm to audio; a duet
+         variant would call it for the app's line during the player's capture window.
+       - Hint buttons (beat / measure / line): the dictation hint machinery
+         (hintMistakes / doHearBeat / doCountBeat) is intact and hidden by
+         applyModeChrome — re-show + repoint at the tap-back staff to enable.
+       - Teacher syllable layer (count-singing / Takadimi etc.): would annotate the
+         cloned tb-staff cells (TB.cells) with syllable text on each onset.
+     None are wired now — v1 deliberately ships the clean single-line game. ---- */
   /* TAPPING GAME round. Reuses the dictation round wholesale up to here (same
      generateTarget -> same level ladder, same updateGameSettings -> same staff +
      time signature), then DIFFERS only in what happens after the rhythm exists:
