@@ -981,34 +981,50 @@
   /* Count-off + capture — ONE clock, indexed off TB.beatTimes (the scheduled metro
      clicks). The flow is anchored by monotonic beat INDEX, never by recomputed
      `start + k*beatDur`:
-       - coStartIdx       = idx of the first future DOWNBEAT (count-off "1").
+       - coStartIdx       = TB.lastBeatTapIdx + 1  (the NEXT click after the 4th lock
+                            tap — exactly where the player's 5th beat-tap would land).
+                            The count-off "1" lands there: no gap, no early/late start.
        - captureStartIdx  = coStartIdx + bpm()  (the downbeat AFTER the count-off bar).
      Every on-screen number, the "GO" flash, the beat-guide highlight, and the scoring
      anchor all reference these indices and resolve to the ACTUAL scheduled click time
      via beatTimeByIdx — so what the player hears (the click), sees (number/highlight),
-     and is graded against (target onsets) are byte-for-byte the same instants. */
+     and is graded against (target onsets) are byte-for-byte the same instants.
+
+     The prediction anchor passed to beatTimeByIdx is the lock tap's OWN beat
+     (beatByIdx(lastBeatTapIdx)) — a beat the lookahead has already emitted, so its
+     scheduled time is ground truth. Future indices (the count-off + capture beats) are
+     predicted linearly from it until the lookahead emits them, at which point beatByIdx
+     returns the real click time. Same grid, by index, end to end. */
   function scheduleCountoff() {
     var c = ctx(); if (!c) return;
     var countBeats = bpm();   // one measure of count-off
-    // Anchor on the first scheduled DOWNBEAT strictly in the future. Downbeats are the
-    // beats the metro accented (idx % bpm() === 0); we need one slightly ahead so its
-    // setTimeout doesn't fire in the past.
-    var future = TB.beatTimes.filter(function (b) { return b.t > c.currentTime + 0.06; });
-    var anchor = null, fi;
-    for (fi = 0; fi < future.length; fi++) { if (future[fi].accent) { anchor = future[fi]; break; } }
-    if (!anchor) anchor = future[0] || TB.beatTimes[TB.beatTimes.length - 1];
+    // Anchor on the lock tap's own beat — already emitted, so its time is exact. The
+    // count-off begins on the very NEXT click (lastBeatTapIdx + 1): the instant the
+    // player's 5th beat-tap would have landed.
+    var anchor = beatByIdx(TB.lastBeatTapIdx);
+    if (!anchor) {
+      // Fallback (lock tap's beat aged out of the buffer): nearest still-known beat just
+      // ahead. coStartIdx is still pinned to lastBeatTapIdx + 1 so the cadence is intact.
+      var future = TB.beatTimes.filter(function (b) { return b.t > c.currentTime + 0.06; });
+      anchor = future[0] || TB.beatTimes[TB.beatTimes.length - 1];
+    }
     if (!anchor) return;      // metro not running yet (shouldn't happen post lock-in)
-    var coStartIdx = anchor.idx;
+    var coStartIdx = TB.lastBeatTapIdx + 1;   // next click after the final lock tap
     var captureStartIdx = coStartIdx + countBeats;
     TB.captureStartIdx = captureStartIdx;
 
     TB._countTimers = [];
+    // Inspectable record of the count-off schedule: each number's beat index and the
+    // exact scheduled display time (== that beat's click time). Drives the alignment
+    // assertions; harmless in production.
+    TB._coSchedule = [];
     var co = document.getElementById('tbCountoff');
     if (co) { co.textContent = ''; co.classList.add('show'); }
     // Count-off numbers 1..countBeats, each fired at the ACTUAL click time of its beat.
     for (var k = 0; k < countBeats; k++) {
       (function (k) {
         var when = beatTimeByIdx(coStartIdx + k, anchor);
+        TB._coSchedule.push({ n: k + 1, idx: coStartIdx + k, when: when });
         TB._countTimers.push(setTimeout(function () {
           if (!TB.open || TB.phase !== 'countoff') return;
           if (co) { co.textContent = String(k + 1); co.classList.remove('tb-pop'); void co.offsetWidth; co.classList.add('tb-pop'); }
@@ -1804,6 +1820,8 @@
       openTapBack: openTapBack, closeTapBack: closeTapBack,
       onStartMetro: onStartMetro, onBeatTap: onBeatTap, onRhythmTap: onRhythmTap,
       scoreTapBack: scoreTapBack, targetOnsets: targetOnsets,
+      lockIn: lockIn, scheduleCountoff: scheduleCountoff,
+      beatByIdx: beatByIdx, beatTimeByIdx: beatTimeByIdx,
       enterReady: enterReady, newRound: newRound, playTarget: playTarget,
       tapLatency: function () { return TAP_LATENCY; },
       tapTolerance: function () { return TAP_TOLERANCE; }
