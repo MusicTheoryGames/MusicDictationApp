@@ -17,7 +17,15 @@
     ts: '4/4', family: 'quarter',              // selected meter -> beat-unit family
     meter: 'simple', beatsPerMeasure: 4, speed: 'medium',
     changing: false, changePool: null, curMeters: null,  // changing-meter mode
-    hintsThisRound: 0, wrongThisRound: false, solved: false
+    hintsThisRound: 0, wrongThisRound: false, solved: false,
+    /* mode: 'dictation' (build-the-answer, the original solo loop) or 'tapping'
+       (the standalone TAPPING / performance game). Tapping reuses EVERYTHING in
+       this file — the same level ladder (L_STEPS / FAMILIES / generateTarget),
+       the same staff + note glyphs, and the same tap-back performance engine —
+       but skips the dictation step: the rhythm is shown on the staff straight
+       away and the player performs it with the tap-back mechanic. Set from the
+       URL (?mode=tapping) in wireEntry. */
+    mode: 'dictation'
   };
   var GROOVE_PER_WRONG = 12, GROOVE_HINT_MISTAKES = 8, GROOVE_HINT_COUNT = 5, GROOVE_HINT_NARROW = 10, GROOVE_HINT_PLAY = 6, GROOVE_GAIN_CLEAN = 15;
   var SPEEDS = { slow: 72, medium: 100, fast: 132 };   // beat BPM (dotted-quarter in compound)
@@ -392,6 +400,11 @@
     var ga = document.getElementById('gameArea'); var bank = document.querySelector('.rhythm-bank');
     var actions = document.getElementById('soloActions');
     if (!ga || !bank) return;
+    // Tapping mode hides the bank entirely (no palette), so there is nothing to
+    // reserve space for — just clear any padding the dictation layout left behind.
+    if (S.mode === 'tapping' || (bank.style.display === 'none')) {
+      ga.style.paddingBottom = ''; if (actions) actions.style.bottom = ''; return;
+    }
     if (!mobile) {
       ga.style.paddingBottom = '';
       if (actions) actions.style.bottom = '';   // clear the phone-only floating offset
@@ -1423,10 +1436,37 @@
     var tbBtn = document.getElementById('soloTapBack'); if (tbBtn) tbBtn.style.display = 'none';
     document.getElementById('soloSubmit').style.display = '';
     render();
+    if (S.mode === 'tapping') { newTappingRound(); return; }
     if (rs) rs.onAnswerChanged = updateSubmitBtn;   // re-evaluate Submit on each placement
     updateSubmitBtn();
     // No auto-play — the rhythm only sounds when the student presses Play.
     msg('Press ▶ Play rhythm to hear it.');
+  }
+
+  /* TAPPING GAME round. Reuses the dictation round wholesale up to here (same
+     generateTarget -> same level ladder, same updateGameSettings -> same staff +
+     time signature), then DIFFERS only in what happens after the rhythm exists:
+     instead of asking the player to dictate it, we SHOW it on the staff right
+     away (revealCorrect places the exact target tiles, identical glyphs to the
+     dictation game) and route straight to the Tap-it-back performance overlay.
+     The player can Play to hear it, then "Perform it" to tap it back. */
+  function newTappingRound() {
+    // Pre-fill the staff with the generated rhythm (same note glyphs as dictation).
+    revealCorrect();
+    // S.solved=true so the shared tap-back overlay (openTapBack) is allowed to open.
+    // It is gated behind S.solved by construction; the tapping game's whole point is
+    // that the rhythm is already revealed, so that gate is satisfied immediately.
+    S.solved = true;
+    if (rs) rs.onAnswerChanged = null;                 // no answer-editing in tapping mode
+    document.getElementById('soloSubmit').style.display = 'none';
+    document.getElementById('soloNext').style.display = '';
+    var tbBtn = document.getElementById('soloTapBack'); if (tbBtn) { tbBtn.style.display = ''; tbBtn.classList.add('tb-perform'); }
+    // Relabel the staff pill: this isn't the player's answer, it's the rhythm to perform.
+    var lbl = document.querySelector('#measureContainer .answer-staff-label');
+    if (lbl) lbl.textContent = 'Perform this rhythm (' + S.measures + ' bar' + (S.measures === 1 ? '' : 's') + ')';
+    syncBankPad();
+    save(); render();
+    msg('Here’s the rhythm — press ▶ Play to hear it, then Perform it to tap it back.');
   }
 
   // On small screens, save space: only show Submit once every beat is filled.
@@ -1618,6 +1658,14 @@
       '#soloTapBack:active{transform:translateY(2px)}' +
       // "+ bonus" badge advertising the extra points (value from TB_BONUS_HINT)
       '#soloTapBack .tb-badge{margin-left:8px;font-size:.66rem;font-weight:800;letter-spacing:.04em;background:rgba(255,255,255,.22);color:#fff;border-radius:999px;padding:2px 7px;line-height:1.3}' +
+      // Tapping game: the "Perform it" button IS the primary action (not a bonus),
+      // so make it the prominent control and never let the bank reclaim the screen.
+      '#soloTapBack.tb-perform{font-size:.95rem;padding:13px 22px;min-height:48px}' +
+      'body.tapping-mode .rhythm-bank{display:none!important}' +
+      'body.tapping-mode .game-area.active{padding-bottom:8px!important}' +
+      // The rhythm is SHOWN, not edited, in tapping mode — drop the per-note remove
+      // buttons so the staff reads as a clean piece of notation to perform.
+      'body.tapping-mode .remove-btn{display:none!important}' +
       /* ---- full-screen tap-it-back overlay (mobile-first, dark) ---- */
       '.tapback-ov{position:fixed;inset:0;z-index:10000;display:none;align-items:stretch;justify-content:center;background:rgba(8,8,14,.92);backdrop-filter:blur(6px);color:#eef1fb;font-family:system-ui,sans-serif;-webkit-tap-highlight-color:transparent}' +
       '.tapback-ov.show{display:flex}' +
@@ -1987,19 +2035,52 @@
     var statusBar = document.querySelector('.status-bar'); if (statusBar) statusBar.style.display = 'none';
     rs.connected = true;
     buildHud();
+    applyModeChrome();
     S.groove = 100;
     newRound();
+  }
+
+  // Enter the standalone TAPPING game. Same engine, same page, same levels —
+  // it just flips S.mode before start() so newRound() routes to newTappingRound.
+  function startTapping() { S.mode = 'tapping'; start(); }
+
+  /* Tailor the shared HUD for whichever mode is active. The dictation game and
+     the tapping game share ONE control bar (built by buildHud); tapping simply
+     hides the controls that only make sense while DICTATING an answer — the
+     rhythm bank (palette), the hint buttons, Fix-it mode, and Submit — since in
+     tapping the rhythm is shown, not built. Everything timing/level related
+     (Meter, Level, Bars, Speed, Metronome, Beat guide, Play, Tap-back) stays. */
+  function applyModeChrome() {
+    var tapping = (S.mode === 'tapping');
+    document.body.classList.toggle('tapping-mode', tapping);
+    if (!tapping) return;
+    // Hide the dictation-only affordances.
+    var bank = document.querySelector('.rhythm-bank'); if (bank) bank.style.display = 'none';
+    var hints = document.querySelector('.solo-actions .solo-hints'); if (hints) hints.style.display = 'none';
+    var fixit = document.querySelector('.solo-actions .solo-cfg'); if (fixit) fixit.style.display = 'none';
+    var submit = document.getElementById('soloSubmit'); if (submit) submit.style.display = 'none';
+    var h1 = document.querySelector('.header h1'); if (h1) h1.textContent = 'Tapping — Perform the Rhythm';
+    try { document.title = 'Tapping — Music Dictation'; } catch (e) {}
+    // Relabel the tap-back entry button: in tapping it IS the game, not a bonus.
+    var tb = document.getElementById('soloTapBack');
+    if (tb) {
+      tb.innerHTML = IC.tap + 'Perform it';
+      tb.classList.add('tb-perform');
+    }
   }
 
   function wireEntry() {
     var solo = document.getElementById('soloBtn');
     if (solo) solo.addEventListener('click', start);
-    if (/[?&]mode=solo/.test(location.search)) setTimeout(start, 300);
+    // ?mode=tapping boots straight into the standalone TAPPING game (no login form);
+    // ?mode=solo boots the dictation solo game. Both reuse this same page + engine.
+    if (/[?&]mode=tapping/.test(location.search)) setTimeout(startTapping, 300);
+    else if (/[?&]mode=solo/.test(location.search)) setTimeout(start, 300);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wireEntry); else wireEntry();
   // Public surface.
   window.BeatQuestSolo = {
-    start: start, state: S
+    start: start, startTapping: startTapping, state: S
   };
   // Test seam — ONLY active with ?tbtest=1 in the URL. Exposes the tap-back internals
   // so the timing pipeline (single metronome clock, exact lock-count, onset alignment)

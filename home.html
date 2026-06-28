@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Dictation Games</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(140deg, #2d3436 0%, #636e72 100%);
+            min-height: 100vh;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+        }
+
+        .subtitle {
+            font-size: 1.3rem;
+            opacity: 0.9;
+        }
+
+        .games-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .game-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .game-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .game-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .game-title {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .game-description {
+            font-size: 1rem;
+            opacity: 0.8;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .game-link {
+            display: inline-block;
+            background: linear-gradient(45deg, #74b9ff, #0984e3);
+            color: white;
+            text-decoration: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .game-link:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(116, 185, 255, 0.4);
+        }
+
+        .beat-quest {
+            background: linear-gradient(135deg, rgba(231, 76, 60, 0.2), rgba(192, 57, 43, 0.2));
+        }
+
+        .melodic-dictation {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.2), rgba(41, 128, 185, 0.2));
+        }
+
+        .tapping {
+            background: linear-gradient(135deg, rgba(22, 194, 176, 0.2), rgba(14, 158, 142, 0.2));
+        }
+
+        /* Inline SVG card icon (no emoji): matches the .game-icon footprint. */
+        .game-icon svg {
+            width: 4rem; height: 4rem; fill: none; stroke: currentColor;
+            stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
+        }
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2.5rem;
+            }
+            .games-container {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            .game-card {
+                padding: 25px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">🎵 Music Dictation Games</div>
+        <div class="subtitle">Choose your musical challenge</div>
+    </div>
+
+    <div class="games-container">
+        <div class="game-card beat-quest" onclick="window.location.href='beatquest.html'">
+            <div class="game-icon">🥁</div>
+            <div class="game-title">Beat Quest</div>
+            <div class="game-description">
+                Test your rhythm skills! Listen to drum patterns and recreate them by dragging rhythm tiles onto the staff.
+            </div>
+            <a href="beatquest.html" class="game-link">Enter Beat Quest</a>
+        </div>
+
+        <div class="game-card melodic-dictation" onclick="window.location.href='index.html'">
+            <div class="game-icon">🎼</div>
+            <div class="game-title">Melodic Dictation</div>
+            <div class="game-description">
+                Challenge your ear training! Listen to melodies and identify the correct musical intervals and patterns.
+            </div>
+            <a href="index.html" class="game-link">Play Melodic Dictation</a>
+        </div>
+
+        <div class="game-card tapping" onclick="window.location.href='tapping.html?mode=tapping'">
+            <div class="game-icon"><svg viewBox="0 0 64 64"><path d="M27 30V13a4 4 0 0 1 8 0v17"/><path d="M35 30v-4a4 4 0 0 1 8 0v4"/><path d="M43 30v-2a4 4 0 0 1 8 0v10a14 14 0 0 1-14 14h-3a12 12 0 0 1-9-4l-7-8a4 4 0 0 1 6-5l6 5V30"/></svg></div>
+            <div class="game-title">Tapping</div>
+            <div class="game-description">
+                Perform a rhythm! Keep the beat in one hand and tap the rhythm in the other — same levels as BeatQuest.
+            </div>
+            <a href="tapping.html?mode=tapping" class="game-link">Play Tapping</a>
+        </div>
+    </div>
+</body>
+</html>

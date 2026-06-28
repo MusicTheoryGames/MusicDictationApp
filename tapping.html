@@ -12,8 +12,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Rhythm">
-    <title>Rhythm Student - Music Dictation</title>
+    <meta name="apple-mobile-web-app-title" content="Tapping">
+    <title>Tapping — Music Dictation</title>
     <style>
         * {
             margin: 0;
@@ -1014,23 +1014,26 @@
 </head>
 <body>
     <div class="header">
-        <h1>Rhythm Dictation — Student</h1>
+        <h1>Tapping — Perform the Rhythm</h1>
     </div>
 
-    <!-- Login Form -->
+    <!-- Tapping is a STANDALONE single-player game: no classroom/login. This start
+         card mirrors the dictation game's "Practice on your own" entry, but the
+         #soloBtn here boots the TAPPING game (BeatQuestSolo.startTapping) via the
+         inline auto-boot script below. The hidden #joinBtn / inputs are kept only
+         so the shared rhythm-student.js wiring (which queries them) never errors. -->
     <div class="login-form" id="loginForm">
-        <h2 style="text-align: center; margin-bottom: 20px;">Join Rhythm Session</h2>
-        <div class="form-group">
-            <label for="studentName">Your Name:</label>
-            <input type="text" id="studentName" placeholder="Enter your name" value="Test Student" required>
+        <h2 style="text-align: center; margin-bottom: 16px;">Tapping</h2>
+        <p style="text-align:center;opacity:.8;line-height:1.5;margin-bottom:20px">
+            A rhythm is shown on the staff. Keep the beat in one hand and tap the
+            rhythm in the other — lock in with the metronome, then perform it.
+        </p>
+        <button class="btn-login" id="soloBtn" style="background:linear-gradient(45deg,#16c2b0,#0e9e8e)">Start tapping</button>
+        <div style="display:none">
+            <input type="text" id="studentName" value="Tapping Player">
+            <input type="text" id="roomCode" value="TAP">
+            <button id="joinBtn">Join</button>
         </div>
-        <div class="form-group">
-            <label for="roomCode">Room Code:</label>
-            <input type="text" id="roomCode" placeholder="Enter room code" value="TEST123" required>
-        </div>
-        <button class="btn-login" id="joinBtn">Join Session</button>
-        <div style="text-align:center;margin:14px 0 4px;opacity:.7;font-size:.85rem">— or —</div>
-        <button class="btn-login" id="soloBtn" style="background:linear-gradient(45deg,#16c2b0,#0e9e8e)">Practice on your own</button>
     </div>
 
     <!-- Game Area -->
@@ -1127,5 +1130,31 @@
     <script type="module" src="rhythm-student.js?v=20260627ah"></script>
     <script src="suite-theme.js"></script>
     <script src="solo-mode.js?v=20260628-tapping-v1"></script>
+    <!-- TAPPING boot: this page is always the tapping game. The shared solo-mode.js
+         auto-boots when the URL carries ?mode=tapping; for a clean bare URL we also
+         wire the Start button to BeatQuestSolo.startTapping() directly. The button's
+         tap is the user gesture that unlocks audio (required for the metronome). -->
+    <script>
+        (function () {
+            function bootTapping() {
+                if (window.BeatQuestSolo && window.BeatQuestSolo.startTapping) {
+                    window.BeatQuestSolo.startTapping();
+                } else {
+                    setTimeout(bootTapping, 120);  // wait for solo-mode.js to register
+                }
+            }
+            // When arriving via the hub link (?mode=tapping), solo-mode.js auto-boots
+            // tapping itself — don't double-boot. Otherwise (bare URL) wire the Start
+            // button: its tap is the user gesture that unlocks audio for the metronome.
+            if (/[?&]mode=tapping/.test(location.search)) return;
+            var btn = document.getElementById('soloBtn');
+            if (btn) {
+                // Replace the dictation handler (solo-mode wired start()) with tapping.
+                var clone = btn.cloneNode(true);
+                btn.parentNode.replaceChild(clone, btn);
+                clone.addEventListener('click', bootTapping);
+            }
+        })();
+    </script>
 </body>
 </html>
