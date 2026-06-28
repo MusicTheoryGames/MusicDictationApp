@@ -755,6 +755,40 @@
         TB.cells.push(z || null);
       }
     }
+    // On phones the overlay gives the staff the lion's share of the screen but that
+    // is still short in landscape; a 4-measure rhythm clones to TWO stacked staff
+    // rows that can overrun the band. Uniformly scale the clone DOWN (never up) so
+    // its full natural box fits the available staff height — the notation stays
+    // pixel-proportional and fully legible, never clipped. Cosmetic only: the cell
+    // geometry the beat-guide indexes is untouched (transforms don't move TB.cells'
+    // logical mapping). No-op on iPad/desktop, where the natural box already fits.
+    fitTbStaff();
+  }
+  // Measure-and-scale the cloned staff to fit its host band. Reads the clone's
+  // natural (untransformed) size, compares to the padded inner box of #tbStaff, and
+  // applies a single transform:scale so the whole rhythm is visible. Re-run on
+  // resize/orientation so rotation re-fits. Phone-gated by being a no-op when the
+  // content already fits (scale clamps to 1).
+  function fitTbStaff() {
+    var host = document.getElementById('tbStaff'); if (!host) return;
+    var clone = host.querySelector('.tb-clone'); if (!clone) return;
+    clone.style.transform = 'none';            // reset before measuring natural size
+    clone.style.transformOrigin = 'top center';
+    var cs = window.getComputedStyle(host);
+    var availH = host.clientHeight - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0);
+    var availW = host.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
+    var natH = clone.offsetHeight, natW = clone.offsetWidth;
+    if (!natH || !natW || availH <= 0 || availW <= 0) return;
+    var s = Math.min(1, availH / natH, availW / natW);
+    if (s < 1) {
+      clone.style.transform = 'scale(' + s + ')';
+      // The transformed box keeps its natural height in flow; collapse the leftover
+      // so the flex host centres the SCALED rhythm instead of leaving a tall gap.
+      clone.style.marginBottom = (-(natH * (1 - s))) + 'px';
+    } else {
+      clone.style.transform = 'none';
+      clone.style.marginBottom = '';
+    }
   }
   // Tap-back beat guide: light the cell for an ABSOLUTE beat index on the cloned
   // staff (scoped via TB.cells, so it never touches the real answer board). The
@@ -1553,7 +1587,45 @@
       '.tb-rbtns button .ic{margin-right:7px;width:1.05em;height:1.05em;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}' +
       '.tb-rbtns button.go{background:var(--tb-accent,#7c5cff);color:#fff}' +
       // landscape phones: keep zones big & side-by-side, shrink chrome
-      '@media (orientation:landscape) and (max-height:560px){.tb-instruct{min-height:1.8em;font-size:.9rem}.tb-title{font-size:1.05rem}.tb-zone .tb-zlabel{font-size:1.3rem}}';
+      '@media (orientation:landscape) and (max-height:560px){.tb-instruct{min-height:1.8em;font-size:.9rem}.tb-title{font-size:1.05rem}.tb-zone .tb-zlabel{font-size:1.3rem}}' +
+      /* ===== iPHONE DECLUTTER — gated to the app's phone breakpoint so iPad and
+         desktop overlays are untouched. The rhythm staff + the two tap zones are
+         the ONLY things that should command the screen; everything else collapses
+         to a thin strip so the notation reads clearly and never gets covered. The
+         staff itself flex-grows to claim the freed vertical space and the clone is
+         JS-scaled (fitTbStaff) to fit, so 2- and 4-measure rhythms stay fully
+         visible and legible. ===== */
+      '@media (pointer: coarse) and (max-height: 500px){' +
+        // tighten the card so no padding eats the rhythm's room
+        '.tb-card{padding:4px env(safe-area-inset-right,8px) calc(env(safe-area-inset-bottom,0px) + 6px) env(safe-area-inset-left,8px)}' +
+        // smaller close button tucked into the corner
+        '.tb-close{top:4px;right:4px;width:30px;height:30px}' +
+        '.tb-close .ic{width:1em;height:1em}' +
+        // HIDE the title + meta line entirely — pure chrome, not needed mid-tap
+        '.tb-head{display:none}' +
+        // STAFF is the star: claim all the slack, never capped, content centred and
+        // the clone is scaled to fit by fitTbStaff so it can never be clipped
+        '.tb-staff{flex:1 1 auto;min-height:0;max-height:none!important;margin:2px 0;padding:6px 10px;display:flex;align-items:center;justify-content:center;overflow:hidden}' +
+        '.tb-staff .tb-clone{margin:0 auto}' +
+        // instruction folds to a single tiny hint line that never reserves height
+        '.tb-instruct{min-height:0;font-size:.78rem;font-weight:600;padding:2px 6px;line-height:1.2}' +
+        // setup row: compact metronome button + tempo stepper on one tight line
+        '.tb-setup{gap:8px;margin:2px 0;flex-wrap:nowrap}' +
+        '.tb-start{font-size:.82rem;padding:8px 14px;min-height:38px;gap:5px;border-radius:10px}' +
+        '.tb-start .ic{width:1em;height:1em}' +
+        '.tb-tempo{gap:5px;padding:4px 8px;border-radius:10px}' +
+        '.tb-tempo .tb-tlabel{display:none}' +     // drop the "TEMPO" word, the number is self-evident
+        '.tb-tempo b{font-size:1rem;min-width:2.4ch}' +
+        '.tb-tstep{width:30px;height:30px;font-size:1.15rem;border-radius:8px}' +
+        // tap zones: still big enough for two-hand tapping, but bounded so the staff
+        // keeps the lion\'s share. Fixed height (not flex:1) so the staff grows, not them
+        '.tb-zones{flex:0 0 auto;min-height:0;height:34vh;gap:10px}' +
+        '.tb-zone{border-radius:14px}' +
+        '.tb-zone .tb-zlabel{font-size:1.25rem}' +
+        '.tb-zone .tb-zhint{font-size:.62rem}' +
+        // count-off overlays the centre (already absolute) — keep it from pushing layout
+        '.tb-countoff{top:38%;font-size:3.6rem}' +
+      '}';
     document.head.appendChild(st);
   }
 
@@ -1697,6 +1769,10 @@
     // Re-sync the staff's bottom padding to the (wrapping) bank height on rotate/resize.
     window.addEventListener('resize', syncBankPad);
     window.addEventListener('orientationchange', function () { setTimeout(syncBankPad, 250); });
+    // Re-fit the tap-back staff scale when the viewport changes while the overlay is
+    // open (rotation changes the available height the rhythm must fit into).
+    window.addEventListener('resize', function () { if (TB.open) fitTbStaff(); });
+    window.addEventListener('orientationchange', function () { if (TB.open) setTimeout(fitTbStaff, 260); });
     document.getElementById('soloHintBeats').onclick = hintMistakes;
     document.getElementById('soloHintCount').onclick = function () { armPick('count'); };
     document.getElementById('soloHearBeat').onclick = function () { armPick('play'); };
