@@ -1115,50 +1115,109 @@
     showResults(res);
   }
 
-  /* Score the captured taps against the metronome grid + target onsets.
-     - Rhythm hand: each target onset claims the nearest unused rhythm tap within
-       tolerance (hit); unclaimed onsets are misses; leftover rhythm taps are extra.
-     - Beat hand: each metronome beat inside the capture window claims the nearest
-       unused beat tap within tolerance (steady) — measures the second hand.
-     - A measure PASSES iff all its onsets hit, it had no extra rhythm taps, and the
-       beat hand stayed steady across its beats. */
+  /* Score the captured taps against the metronome grid + target onsets — PER-BEAT,
+     ALL-OR-NOTHING. Strict on RHYTHM, forgiving on TIMING.
+
+     Why per-beat all-or-nothing: the old scorer graded each onset independently, so
+     tapping the WRONG subdivision but on the beat still earned credit — tapping a
+     quarter where the beat actually has two eighths scored half, and tapping the
+     EXACT OPPOSITE rhythm of an example scored ~67% "because there's always a note on
+     the beat." That rewards tapping the beats, not performing the rhythm. Now a beat
+     scores only if the player reproduced THAT beat's rhythm exactly.
+
+     Grouping: each beat b (0..totalBeats()-1) owns the target onsets whose offset
+     floors to b. A rhythm tap is grouped the same way, but a tap up to TAP_TOLERANCE
+     EARLY of a downbeat is pulled forward into that downbeat's beat (tolBeats below) —
+     so a slightly-early on-beat tap counts for the beat it was aiming at, keeping
+     timing forgiving without leaking credit across beats. The example has totalBeats()
+     beats off the same TB.beatTimes/onset grid the rest of the tap-back uses.
+
+     A beat is CORRECT iff its taps EXACTLY match its onsets: same COUNT, each onset
+     matched by a distinct tap within ±TAP_TOLERANCE, with NO missing and NO extra
+     taps in the beat. Otherwise the whole beat scores 0 (no partial credit in a beat).
+       - two eighths, player taps once (a quarter)  → missing off-beat → WRONG.
+       - a quarter, player taps twice               → extra            → WRONG.
+       - correct count + sub-positions in tolerance → CORRECT (jitter inside window ok).
+
+     Score = (# fully-correct beats) / totalBeats() × 100.
+     A measure passes iff ALL its beats are correct (and the beat hand stayed steady).
+     Beat-hand steadiness is unchanged (forgiving: one slip allowed per measure). */
   function scoreTapBack() {
     var beatDur = 60 / S.tempo;
+    var tb = totalBeats();
+    var tolBeats = TAP_TOLERANCE / beatDur;      // tolerance expressed in beats
     var onsets = targetOnsets();                 // [{beat, mi}] from the shared walk
     var mb = mBeats(), nMeas = mb.length;
-    // ---- rhythm hand ----
-    var taps = TB.rhythmTaps.slice().sort(function (a, b) { return a - b; });
-    var used = taps.map(function () { return false; });
-    var perMeas = [];
-    for (var m = 0; m < nMeas; m++) perMeas[m] = { onsets: 0, hits: 0, extra: 0, beatBeats: 0, beatHits: 0 };
-    onsets.forEach(function (o) {
-      var want = TB.captureStart + o.beat * beatDur;
-      perMeas[o.mi].onsets++;
-      var bi = -1, bd = Infinity;
-      for (var i = 0; i < taps.length; i++) {
-        if (used[i]) continue;
-        var d = Math.abs(taps[i] - want);
-        if (d < bd) { bd = d; bi = i; }
-      }
-      if (bi !== -1 && bd <= TAP_TOLERANCE) { used[bi] = true; perMeas[o.mi].hits++; }
-    });
-    // leftover rhythm taps inside the capture window = extras, attributed to their measure
-    var extraTotal = 0;
-    for (var i = 0; i < taps.length; i++) {
-      if (used[i]) continue;
-      if (taps[i] < TB.captureStart - TAP_TOLERANCE || taps[i] > TB.captureEnd + TAP_TOLERANCE) continue;
-      var rel = (taps[i] - TB.captureStart) / beatDur;          // beats into the pass
-      var mi = measureOfAbs(Math.max(0, Math.min(totalBeats() - 0.0001, rel))).m - 1;
-      perMeas[mi].extra++; extraTotal++;
+
+    // Map an absolute beat index (0..tb-1) -> its measure (0-based).
+    function measOfBeat(b) {
+      return measureOfAbs(Math.max(0, Math.min(tb - 0.0001, b))).m - 1;
     }
-    // ---- beat hand ----
+    // ---- group TARGET onsets by beat ----
+    // beatGroups[b] = { mi, want: [absolute target times] } for each beat that has onsets,
+    // plus an entry for every beat 0..tb-1 (silent beats have 0 onsets and 0 taps).
+    var beatGroups = [];
+    for (var b = 0; b < tb; b++) beatGroups[b] = { mi: measOfBeat(b), want: [] };
+    onsets.forEach(function (o) {
+      var b = Math.floor(o.beat + 1e-9);
+      if (b < 0) b = 0; if (b >= tb) b = tb - 1;
+      beatGroups[b].want.push(TB.captureStart + o.beat * beatDur);
+    });
+
+    // ---- group RHYTHM-zone taps by beat (tolerance-shifted boundary) ----
+    var taps = TB.rhythmTaps.slice().sort(function (a, b) { return a - b; });
+    for (var i = 0; i < taps.length; i++) {
+      var rel = (taps[i] - TB.captureStart) / beatDur;          // beats into the pass
+      // ignore taps clearly outside the captured pass (with tolerance slack)
+      if (rel < -tolBeats || rel >= tb + tolBeats) continue;
+      // pull a tap up to tolBeats EARLY of a downbeat forward into that beat
+      var b = Math.floor(rel + tolBeats + 1e-9);
+      if (b < 0) b = 0; if (b >= tb) b = tb - 1;
+      beatGroups[b].got = beatGroups[b].got || [];
+      beatGroups[b].got.push(taps[i]);
+    }
+
+    // ---- evaluate each beat: ALL-OR-NOTHING exact match ----
+    var perMeas = [];
+    for (var m = 0; m < nMeas; m++) perMeas[m] = { beats: 0, beatsOk: 0, onsets: 0, hits: 0, extra: 0, beatBeats: 0, beatHits: 0 };
+    var beatsOkTotal = 0;
+    for (var bb = 0; bb < tb; bb++) {
+      var g = beatGroups[bb];
+      var want = g.want, got = g.got || [];
+      var pm = perMeas[g.mi];
+      pm.beats++;
+      pm.onsets += want.length;
+      // exact count is the first gate — missing OR extra fails the whole beat
+      var ok = (got.length === want.length);
+      var matched = 0;
+      if (ok) {
+        // greedy nearest-match: each onset claims the nearest unused tap within tolerance.
+        // Equal counts + all matched within tolerance == exact rhythm reproduction.
+        var usedT = got.map(function () { return false; });
+        for (var wi = 0; wi < want.length; wi++) {
+          var best = -1, bd = Infinity;
+          for (var ti = 0; ti < got.length; ti++) {
+            if (usedT[ti]) continue;
+            var d = Math.abs(got[ti] - want[wi]);
+            if (d < bd) { bd = d; best = ti; }
+          }
+          if (best !== -1 && bd <= TAP_TOLERANCE) { usedT[best] = true; matched++; }
+          else { ok = false; break; }
+        }
+      }
+      pm.hits += matched;
+      if (got.length > want.length) pm.extra += (got.length - want.length);
+      if (ok) { pm.beatsOk++; beatsOkTotal++; }
+    }
+
+    // ---- beat hand (steadiness) — UNCHANGED ----
     var btaps = TB.beatTaps.slice().sort(function (a, b) { return a - b; });
     var bused = btaps.map(function () { return false; });
     // metronome beats that fall within the capture window, tagged by measure
     TB.beatTimes.forEach(function (bt) {
       if (bt.t < TB.captureStart - 0.001 || bt.t >= TB.captureEnd - 0.001) return;
       var rel = (bt.t - TB.captureStart) / beatDur;
-      var mi = measureOfAbs(Math.max(0, Math.min(totalBeats() - 0.0001, rel))).m - 1;
+      var mi = measOfBeat(rel);
       perMeas[mi].beatBeats++;
       var bi = -1, bd = Infinity;
       for (var j = 0; j < btaps.length; j++) {
@@ -1168,12 +1227,12 @@
       }
       if (bi !== -1 && bd <= TAP_TOLERANCE) { bused[bi] = true; perMeas[mi].beatHits++; }
     });
+
     // ---- per-measure pass/fail + totals ----
-    var totalOnsets = 0, totalHits = 0, passed = 0, measures = [];
+    var passed = 0, measures = [];
     for (var mm = 0; mm < nMeas; mm++) {
       var p = perMeas[mm];
-      totalOnsets += p.onsets; totalHits += p.hits;
-      var rhythmOk = (p.hits === p.onsets) && p.extra === 0;
+      var rhythmOk = (p.beats > 0) ? (p.beatsOk === p.beats) : true;  // ALL beats in the bar correct
       // steady = at least all but one beat tracked (forgiving — one slip allowed)
       var beatOk = p.beatBeats === 0 ? true : (p.beatHits >= p.beatBeats - 1);
       var pass = rhythmOk && beatOk;
@@ -1182,14 +1241,17 @@
         m: mm + 1, pass: pass,
         rhythmSlip: !rhythmOk, beatSlip: !beatOk,
         onsets: p.onsets, hits: p.hits, extra: p.extra,
+        beatsOk: p.beatsOk, beats: p.beats,
         beatBeats: p.beatBeats, beatHits: p.beatHits
       });
     }
-    var accuracy = totalOnsets ? Math.round((totalHits / totalOnsets) * 100) : 100;
+    // Score = fully-correct beats / total beats. Tapping the wrong subdivision (even on
+    // the beat) fails its whole beat, so the opposite rhythm scores ~0, not the 60s.
+    var accuracy = tb ? Math.round((beatsOkTotal / tb) * 100) : 100;
     // bonus rewards passed measures (clean rhythm + steady beat), not raw accuracy,
     // so partial credit can't be farmed by mashing taps.
     var bonus = passed * TB_BONUS_PER_MEASURE;
-    return { measures: measures, accuracy: accuracy, passed: passed, total: nMeas, extra: extraTotal, bonus: bonus };
+    return { measures: measures, accuracy: accuracy, passed: passed, total: nMeas, beatsOk: beatsOkTotal, totalBeatsScored: tb, bonus: bonus };
   }
 
   function showResults(res) {
@@ -1199,7 +1261,7 @@
     var rows = res.measures.map(function (m) {
       var status = m.pass ? 'pass' : 'fail';
       var note = m.pass ? 'clean' :
-        [m.rhythmSlip ? (m.hits + '/' + m.onsets + ' rhythm' + (m.extra ? ' · +' + m.extra + ' extra' : '')) : '',
+        [m.rhythmSlip ? (m.beatsOk + '/' + m.beats + ' beats' + (m.extra ? ' · +' + m.extra + ' extra' : '')) : '',
          m.beatSlip ? 'beat unsteady' : ''].filter(Boolean).join(' · ');
       return '<div class="tb-mrow tb-' + status + '"><span class="tb-mlabel">Bar ' + m.m + '</span>' +
         '<span class="tb-mstat">' + (m.pass ? IC.check + 'pass' : IC.close + 'fix') + '</span>' +
