@@ -801,10 +801,10 @@
                 gap: 8px;
                 padding-bottom: 2px;
             }
-            .rhythm-tile { width: 104px; flex: 0 0 104px; min-height: 60px; }
+            .rhythm-tile { width: 90px; flex: 0 0 90px; min-height: 52px; }
             /* padding-bottom is set in JS to the bank's live height (it varies with
                the tile count) so the last staff row never hides behind it. */
-            .game-area { padding-top: 50px; padding-bottom: 96px; }   /* clear fixed slim bar + bank (JS refines) */
+            .game-area { padding-top: 36px; padding-bottom: 96px; }   /* clear fixed slim bar + bank (JS refines) */
             /* Theme cosmetics that fight the controls on small screens */
             #themeSwitcher { display: none !important; }   /* was covering Speed/Bars */
             .dq-screws { display: none !important; }       /* corner bolts collided with tiles */
@@ -817,7 +817,7 @@
                bar scrolled away). Always pinned to the very top. */
             #soloHud {
                 position: fixed !important; top: 0; left: 0; right: 0; z-index: 60;
-                padding: 6px 8px; margin: 0;
+                padding: 2px 8px; margin: 0;
                 background: rgba(18, 18, 24, 0.95); backdrop-filter: blur(10px);
                 border-bottom: 1px solid rgba(255, 255, 255, 0.14);
             }
@@ -833,7 +833,7 @@
             /* Groove fills whatever space is left between Settings and the Theme icon. */
             .solo-actions .solo-stat.groove { flex: 1 1 auto !important; min-width: 90px !important; }
             .solo-actions .solo-stat.groove .solo-bar { flex: 1 1 auto !important; width: auto !important; max-width: none !important; }
-            .solo-actions .icon-only { padding: 7px 9px; }
+            .solo-actions .icon-only { padding: 4px 8px; }
             /* Theme: palette icon at the far right (Groove's flex pushes it there) */
             #soloThemeToggle { margin-left: 0; flex: 0 0 auto; }
             body.theme-open #themeSwitcher {
@@ -954,6 +954,6 @@
     </script>
     <script type="module" src="rhythm-student.js?v=20260627ah"></script>
     <script src="suite-theme.js"></script>
-    <script src="solo-mode.js?v=20260627-tapback2"></script>
+    <script src="solo-mode.js?v=20260627-tapback3"></script>
 </body>
 </html>

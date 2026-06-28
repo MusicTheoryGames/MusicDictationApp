@@ -594,14 +594,30 @@
   // beat / target onset if it lands within ±this. Deliberately generous — this is
   // a groove game, not a millisecond drum-machine quantizer. Tune here only.
   var TAP_TOLERANCE = 0.12;
+  /* Tap-back STATE MACHINE (TB.phase):
+       'idle'     overlay closed.
+       'ready'    overlay open; cloned staff shown; metronome OFF; nothing captures.
+                  Player can change tempo and press "Start metronome".
+       'metro'    clicks running on ctx()'s clock; player taps the BEAT zone to lock in.
+                  Lock-in = bpm() CONSECUTIVE on-beat taps (an off-beat tap resets).
+       'countoff' lock confirmed; one measure of on-screen count-off ("1·2·3·4 → GO"),
+                  each number fired on a scheduled click time. No capture yet.
+       'capture'  begins on the count-off's final downbeat: record RHYTHM-zone taps for
+                  one pass (totalBeats()); the beat-guide highlight tracks the clock.
+       'done'     score + per-measure results.
+     ctx() is the SINGLE timing reference throughout — taps and the highlight are
+     compared against scheduled click times, never against player-inferred tempo. */
   var TB = {
-    open: false, phase: 'idle',     // 'prep' | 'capture' | 'done'
-    timer: null, nextBeat: 0, beatTimes: [],   // scheduled metronome beat times (audio clock)
-    prepHits: 0, captureStart: 0, captureEnd: 0,
+    open: false, phase: 'idle',
+    timer: null, nextBeat: 0, beatIdx: 0, beatTimes: [],  // scheduled metronome beat times (audio clock)
+    metroOn: false,                 // has the player pressed "Start metronome"?
+    lockStreak: 0, lastBeatTapIdx: -1,  // consecutive on-beat taps + the beat index of the last counted tap
+    captureStart: 0, captureEnd: 0,
     beatTaps: [], rhythmTaps: [],   // captured tap times (audio clock)
-    el: null
+    cells: [], el: null             // cloned per-beat highlight cells (absolute-beat ordered)
   };
   var TB_BONUS_PER_MEASURE = 25;    // bonus points per passed measure (added to S.bonus)
+  var TB_BONUS_HINT = '+' + TB_BONUS_PER_MEASURE + '/bar';   // advertised on the entry button badge
 
   function buildTapBackOverlay() {
     if (TB.el) return TB.el;
@@ -614,11 +630,23 @@
           '<div class="tb-title">Tap it back</div>' +
           '<div class="tb-meta" id="tbMeta"></div>' +
         '</div>' +
-        // Read-only notation of the rhythm being tapped, with a moving beat guide.
+        // Read-only CLONE of the live answer staff (pixel-identical note spacing).
         '<div class="tb-staff" id="tbStaff"></div>' +
+        // Big on-screen count-off overlay (hidden until lock-in).
+        '<div class="tb-countoff" id="tbCountoff" aria-hidden="true"></div>' +
+        // Metronome setup row: Start button + the app's tempo control (bound to S.tempo).
+        '<div class="tb-setup" id="tbSetup">' +
+          '<button class="tb-start" id="tbStart">' + IC.metro + 'Start metronome</button>' +
+          '<div class="tb-tempo"><span class="tb-tlabel">TEMPO</span>' +
+            '<button class="tb-tstep" id="tbTempoDown" aria-label="Slower">&minus;</button>' +
+            '<b id="tbTempoVal">' + S.tempo + '</b>' +
+            '<button class="tb-tstep" id="tbTempoUp" aria-label="Faster">+</button>' +
+            '<span class="tb-tunit">bpm</span>' +
+          '</div>' +
+        '</div>' +
         '<div class="tb-instruct" id="tbInstruct"></div>' +
         '<div class="tb-zones" id="tbZones">' +
-          '<button class="tb-zone tb-beat" id="tbBeat"><span class="tb-zlabel">Beat</span><span class="tb-zhint">left hand</span></button>' +
+          '<button class="tb-zone tb-beat" id="tbBeat"><span class="tb-zlabel">Beat</span><span class="tb-zhint" id="tbBeatHint">left hand</span></button>' +
           '<button class="tb-zone tb-rhythm" id="tbRhythm"><span class="tb-zlabel">Rhythm</span><span class="tb-zhint">right hand</span></button>' +
         '</div>' +
         '<div class="tb-results" id="tbResults" style="display:none"></div>' +
@@ -626,6 +654,11 @@
     document.body.appendChild(ov);
     TB.el = ov;
     document.getElementById('tbClose').onclick = closeTapBack;
+    document.getElementById('tbStart').onclick = onStartMetro;
+    // Tempo stepper: reuses S.tempo (the app's speed control state). Changing it
+    // LIVE re-rates the running click without resetting the scheduler.
+    document.getElementById('tbTempoDown').onclick = function () { nudgeTempo(-4); };
+    document.getElementById('tbTempoUp').onclick = function () { nudgeTempo(4); };
     // Both pointer (desktop/dev) AND touch (mobile) — touchstart fires first on
     // touch devices, so preventDefault stops the synthetic click/pointer double-fire.
     function bindZone(id, fn) {
@@ -638,85 +671,89 @@
     bindZone('tbRhythm', onRhythmTap);
     return ov;
   }
+  // Live tempo change: clamp, update S.tempo (so it persists like the speed control)
+  // and the readout. The lookahead scheduler reads 60/S.tempo each beat, so the next
+  // scheduled click simply uses the new rate — no reset, no drift.
+  function nudgeTempo(d) {
+    var t = Math.max(40, Math.min(220, (S.tempo || 100) + d));
+    S.tempo = t; save();
+    var v = document.getElementById('tbTempoVal'); if (v) v.textContent = t;
+    var meta = document.getElementById('tbMeta');
+    if (meta) meta.textContent = (S.changing ? 'changing meter' : S.ts) + ' · ' + S.measures + ' bar' + (S.measures === 1 ? '' : 's') + ' · ' + t + ' bpm';
+  }
   function flashZone(z) { if (!z) return; z.classList.add('tb-flash'); setTimeout(function () { z.classList.remove('tb-flash'); }, 110); }
   function tbMsg(t) { var el = document.getElementById('tbInstruct'); if (el) el.textContent = t; }
 
-  /* Read-only notation of S.target inside the overlay. Mirrors the answer board's
-     DOM (rows of .tb-cell with .beat-notation) so the engine's placement art draws
-     identically, and reuses rhythmStudent.renderPatternArt for each figure. Cells
-     carry data-measure/data-beat so the tap-back beat guide can light them. The
-     class is .tb-cell (NOT .beat-drop-zone) so the main board's selectors never
-     collide with the overlay. Changing meters: each measure uses its own beat count. */
+  /* RENDER — deep-CLONE the live answer-board staff so the overlay's note spacing
+     is pixel-identical to the answer the player just built. The live board is
+     `#measureContainer .answer-staff`; we copy that whole subtree (its inline width
+     + per-cell layout come along, so the proportional note placement is preserved),
+     then make the copy READ-ONLY and inert:
+       - strip every id (so getElementById never resolves into the clone),
+       - drop the editing affordances (.remove-btn, the "Your Answer" label),
+       - kill draggable + any solo marking classes,
+       - namespace the highlight cells: cloneNode does NOT copy addEventListener
+         handlers, so the engine's drag/drop/click listeners are already gone; we
+         only neutralise the inline remove-button onclick by removing the buttons.
+     The clone's own `.beat-drop-zone[data-measure][data-beat]` cells become the
+     beat-guide highlight targets. We collect them in absolute-beat order into
+     TB.cells so the clock-anchored highlight can index them directly. */
   function buildTapBackStaff() {
-    var host = document.getElementById('tbStaff'); if (!host || !S.target) return;
+    var host = document.getElementById('tbStaff'); if (!host) return;
+    host.innerHTML = ''; TB.cells = [];
+    var live = document.querySelector('#measureContainer .answer-staff');
+    if (!live) return;
+    var clone = live.cloneNode(true);
+    // Strip ids throughout (avoid colliding with the real board's getElementById).
+    if (clone.id) clone.removeAttribute('id');
+    clone.querySelectorAll('[id]').forEach(function (n) { n.removeAttribute('id'); });
+    // Remove editing chrome: the answer label and per-note remove buttons.
+    clone.querySelectorAll('.answer-staff-label, .remove-btn').forEach(function (n) { n.parentNode && n.parentNode.removeChild(n); });
+    // Make it inert: no dragging, no leftover solo marks, no pointer interaction.
+    clone.querySelectorAll('[draggable]').forEach(function (n) { n.removeAttribute('draggable'); });
+    clone.querySelectorAll('.solo-wrong,.solo-right,.solo-beat-on,.filled').forEach(function (n) { n.classList.remove('solo-wrong', 'solo-right', 'solo-beat-on'); });
+    clone.classList.add('tb-clone'); clone.style.maxWidth = '100%';
+    host.appendChild(clone);
+    // Collect the per-beat cells in ABSOLUTE-beat order (measure, then beat) so the
+    // clock-anchored highlight maps beat-index -> cell deterministically.
     var mb = mBeats();
-    // Pack measures into rows: more bars/row when each has few beats. Keeps the
-    // staff compact at the top of the overlay regardless of bar count.
-    var MAX_CELLS_PER_ROW = 8, rows = [], cur = [], curCells = 0;
-    for (var i = 0; i < mb.length; i++) {
-      if (cur.length && (curCells + mb[i] > MAX_CELLS_PER_ROW)) { rows.push(cur); cur = []; curCells = 0; }
-      cur.push(i); curCells += mb[i];
+    for (var m = 0; m < mb.length; m++) {
+      for (var b = 1; b <= mb[m]; b++) {
+        var z = clone.querySelector('.beat-drop-zone[data-measure="' + (m + 1) + '"][data-beat="' + b + '"]');
+        TB.cells.push(z || null);
+      }
     }
-    if (cur.length) rows.push(cur);
-    var html = '';
-    rows.forEach(function (row) {
-      var cells = '';
-      row.forEach(function (mi, idxInRow) {
-        var beats = mb[mi], tsShown = (idxInRow === 0) || (S.curMeters && S.curMeters[mi] !== S.curMeters[row[idxInRow - 1]]);
-        var ts = S.changing && S.curMeters ? S.curMeters[mi] : S.ts;
-        if (tsShown) {
-          var p = String(ts).split('/');
-          cells += '<div class="tb-ts"><span>' + p[0] + '</span><span>' + p[1] + '</span></div>';
-        }
-        for (var b = 1; b <= beats; b++) {
-          var end = (b === beats);
-          var finalCell = (mi === mb.length - 1) && end;
-          cells += '<div class="tb-cell' + (end ? ' tb-mend' : '') + (finalCell ? ' tb-final' : '') + '" data-measure="' + (mi + 1) + '" data-beat="' + b + '">' +
-                     '<span class="tb-bnum">' + b + '</span>' +
-                     '<div class="beat-notation"></div>' +
-                   '</div>';
-        }
-      });
-      html += '<div class="tb-row"><div class="tb-line"></div><div class="tb-cells">' + cells + '</div></div>';
-    });
-    host.innerHTML = html;
-    // Fill each figure's start cell with its placement art via the engine renderer.
-    S.target.forEach(function (meas, mi) {
-      meas.forEach(function (it) {
-        var cell = host.querySelector('.tb-cell[data-measure="' + (mi + 1) + '"][data-beat="' + it.startBeat + '"]');
-        if (!cell) return;
-        var na = cell.querySelector('.beat-notation');
-        if (na && rs && rs.renderPatternArt) { try { rs.renderPatternArt(na, it.patternId, it.beats || 1); } catch (e) {} }
-      });
-    });
   }
-  // Tap-back beat guide: light the current beat on the OVERLAY notation (scoped to
-  // #tbStaff so it never touches the main answer board). ON by default in tap-back.
+  // Tap-back beat guide: light the cell for an ABSOLUTE beat index on the cloned
+  // staff (scoped via TB.cells, so it never touches the real answer board). The
+  // caller passes the scheduled click time; we light exactly then.
   var tbLastHl = null;
-  function tbLightBeat(answerBeatIndex, when) {
+  function tbLightBeat(absBeat, when) {
     var c = ctx(); if (!c) return;
-    var mbi = measureOfAbs(answerBeatIndex);
     setTimeout(function () {
       if (!TB.open) return;
       if (tbLastHl) tbLastHl.classList.remove('solo-beat-on');
-      var host = document.getElementById('tbStaff'); if (!host) return;
-      var z = host.querySelector('.tb-cell[data-measure="' + mbi.m + '"][data-beat="' + mbi.b + '"]');
+      var z = TB.cells[absBeat];
       if (z) { z.classList.add('solo-beat-on'); tbLastHl = z; }
+      else tbLastHl = null;
     }, Math.max(0, (when - c.currentTime) * 1000));
   }
   function tbClearBeat() { if (tbLastHl) { tbLastHl.classList.remove('solo-beat-on'); tbLastHl = null; } }
 
-  // Dedicated lookahead metronome for tap-back. Records each beat's scheduled time
-  // in TB.beatTimes (the ground-truth grid taps are compared against) and clicks
-  // (accent on downbeats). Runs continuously while the overlay is open.
+  // Dedicated lookahead metronome for tap-back. Starts ONLY when the player presses
+  // "Start metronome" (TB.metroOn). Records each beat's scheduled time in TB.beatTimes
+  // (the ground-truth grid taps and the highlight are anchored to) and clicks (accent
+  // on downbeats). The beat-guide highlight is NOT driven here — it runs only during
+  // the count-off + capture, anchored to TB.captureStart (see scheduleCountoff).
   function tbStartMetro() {
     var c = ctx(); if (!c) return;
-    tbStopMetro();
+    if (TB.timer) { clearTimeout(TB.timer); TB.timer = null; }   // clear any prior loop (keep metroOn)
+    TB.metroOn = true;
     TB.beatTimes = [];
     TB.nextBeat = c.currentTime + 0.25;   // small lead-in
     TB.beatIdx = 0;
     (function sched() {
-      if (!TB.open) return;
+      if (!TB.open || !TB.metroOn) return;
       var cc = ctx(); if (!cc) return;
       while (TB.nextBeat < cc.currentTime + 0.15) {
         var idx = TB.beatIdx;
@@ -726,34 +763,16 @@
         // compound meters: soft eighth-pulse subdivisions, like the main metronome
         if (isCompoundTs(S.ts)) { var bd = 60 / S.tempo; subTick(TB.nextBeat + bd / 3); subTick(TB.nextBeat + 2 * bd / 3); }
         TB.beatTimes.push({ t: TB.nextBeat, idx: idx, accent: accent });
-        pulseBeatDot(idx);
-        tbDriveGuide(TB.nextBeat, idx);   // move the beat guide across the notation
-        TB.beatIdx++; TB.nextBeat += 60 / S.tempo;
+        pulseBeatDot(TB.nextBeat);
+        TB.beatIdx++; TB.nextBeat += 60 / S.tempo;   // tempo read live each beat
       }
       TB.timer = setTimeout(sched, 25);
     })();
   }
-  function tbStopMetro() { if (TB.timer) { clearTimeout(TB.timer); TB.timer = null; } }
-  // Map a scheduled metronome beat to a cell in the overlay notation and light it.
-  // During CAPTURE the beat times are anchored to TB.captureStart so the guide
-  // tracks the real example position; before capture it cycles the example beats
-  // (idx modulo the example length) so the player previews the moving guide.
-  function tbDriveGuide(beatTime, idx) {
-    var total = totalBeats(); if (total <= 0) return;
-    var absBeat;
-    if (TB.captureStart && beatTime >= TB.captureStart - 0.001) {
-      var rel = Math.round((beatTime - TB.captureStart) / (60 / S.tempo));
-      if (rel < 0 || rel >= total) return;     // outside the example pass -> no light
-      absBeat = rel;
-    } else {
-      absBeat = idx % total;                    // count-in / prep preview cycles the bars
-    }
-    tbLightBeat(absBeat, beatTime);
-  }
+  function tbStopMetro() { TB.metroOn = false; if (TB.timer) { clearTimeout(TB.timer); TB.timer = null; } }
   // Visual pulse on the Beat zone in time with the click (purely cosmetic cue).
-  function pulseBeatDot(idx) {
+  function pulseBeatDot(when) {
     var c = ctx(); if (!c) return;
-    var when = TB.beatTimes.length ? TB.beatTimes[TB.beatTimes.length - 1].t : c.currentTime;
     setTimeout(function () {
       if (!TB.open) return;
       var z = document.getElementById('tbBeat'); if (!z) return;
@@ -780,49 +799,82 @@
     TB.open = true;
     document.body.classList.add('tapback-open');
     TB.el.classList.add('show');
-    var beatsInMeasure = bpm();
     var meta = document.getElementById('tbMeta');
     if (meta) meta.textContent = (S.changing ? 'changing meter' : S.ts) + ' · ' + S.measures + ' bar' + (S.measures === 1 ? '' : 's') + ' · ' + S.tempo + ' bpm';
     document.getElementById('tbResults').style.display = 'none';
     document.getElementById('tbZones').style.display = '';
     document.getElementById('tbStaff').style.display = '';
-    TB.captureStart = 0; TB.captureEnd = 0;   // reset so the guide previews before capture
-    buildTapBackStaff();                       // render the read-only notation + beat guide
-    startPrep();
-    tbStartMetro();
+    document.getElementById('tbSetup').style.display = '';
+    var tv = document.getElementById('tbTempoVal'); if (tv) tv.textContent = S.tempo;
+    buildTapBackStaff();                       // clone the answer staff (read-only)
+    enterReady();
   }
   function closeTapBack() {
     TB.open = false; TB.phase = 'idle';
     tbStopMetro(); stopAllAudio(); tbClearBeat();
-    if (TB._goTimer) { clearTimeout(TB._goTimer); TB._goTimer = null; }
-    if (TB._endTimer) { clearTimeout(TB._endTimer); TB._endTimer = null; }
+    clearTbTimers();
     if (TB.el) TB.el.classList.remove('show');
     document.body.classList.remove('tapback-open');
   }
+  function clearTbTimers() {
+    ['_goTimer', '_endTimer'].forEach(function (k) { if (TB[k]) { clearTimeout(TB[k]); TB[k] = null; } });
+    (TB._countTimers || []).forEach(function (t) { clearTimeout(t); }); TB._countTimers = [];
+  }
 
-  function startPrep() {
-    TB.phase = 'prep';
-    TB.prepHits = 0; TB.beatTaps = []; TB.rhythmTaps = [];
+  /* 'ready' — overlay open, metronome NOT started, nothing captures. The player
+     can set the tempo and must press "Start metronome" to begin. */
+  function enterReady() {
+    TB.phase = 'ready';
+    TB.metroOn = false; TB.lockStreak = 0; TB.lastBeatTapIdx = -1;
+    TB.captureStart = 0; TB.captureEnd = 0; TB.beatTaps = []; TB.rhythmTaps = [];
+    tbStopMetro(); tbClearBeat(); clearTbTimers();
+    var co = document.getElementById('tbCountoff'); if (co) { co.classList.remove('show'); co.textContent = ''; }
+    var setup = document.getElementById('tbSetup'); if (setup) setup.style.display = '';
+    var start = document.getElementById('tbStart'); if (start) { start.disabled = false; start.classList.remove('tb-on'); }
+    setBeatLocked(false);
     document.getElementById('tbBeat').classList.remove('tb-armed');
     document.getElementById('tbRhythm').classList.remove('tb-armed');
+    tbMsg('Set the tempo, then press Start metronome.');
+  }
+
+  /* 'metro' — player pressed Start metronome. Clicks run; player taps the Beat zone
+     to lock in. */
+  function onStartMetro() {
+    if (!TB.open) return;
+    if (TB.phase !== 'ready') return;     // ignore re-presses mid-flow
+    var c = ctx(); if (!c) return;
+    unlockAudio();
+    TB.phase = 'metro';
+    TB.metroOn = true;
+    TB.lockStreak = 0; TB.lastBeatTapIdx = -1;
+    var start = document.getElementById('tbStart'); if (start) { start.disabled = true; start.classList.add('tb-on'); }
     document.getElementById('tbBeat').classList.add('tb-armed');
-    tbMsg('Tap the BEAT (left) in time — ' + bpm() + ' on-beat taps to start.');
+    tbStartMetro();
+    tbMsg('Tap the BEAT in time — ' + bpm() + ' in a row to lock in.');
+    updateLockHint();
+  }
+  function updateLockHint() {
+    var hint = document.getElementById('tbBeatHint');
+    if (hint) hint.textContent = TB.lockStreak > 0 ? (TB.lockStreak + '/' + bpm() + ' locked') : 'keep tapping the beat';
   }
 
   function onBeatTap() {
     var c = ctx(); if (!c) return;
     var now = c.currentTime;
-    var nb = nearestBeat(now);
-    if (TB.phase === 'prep') {
-      if (nb && nb.absDelta <= TAP_TOLERANCE) {
-        TB.prepHits++;
-        tbMsg('On the beat — ' + TB.prepHits + ' / ' + bpm());
-        if (TB.prepHits >= bpm()) startCapture();
+    if (TB.phase === 'metro') {
+      var nb = nearestBeat(now);
+      // Only count a given metronome beat ONCE (consecutive distinct on-beat taps).
+      if (nb && nb.absDelta <= TAP_TOLERANCE && nb.beat.idx !== TB.lastBeatTapIdx) {
+        TB.lockStreak++; TB.lastBeatTapIdx = nb.beat.idx;
+        updateLockHint();
+        tbMsg('On the beat — ' + TB.lockStreak + ' / ' + bpm());
+        if (TB.lockStreak >= bpm()) lockIn();
       } else {
-        // strict gate: a single off-beat tap resets the count-in
-        TB.prepHits = 0;
+        // strict gate: an off-beat tap resets the streak
+        TB.lockStreak = 0; TB.lastBeatTapIdx = -1;
+        updateLockHint();
         flashOffbeat();
-        tbMsg('Stay on the beat — restart the count-in (0 / ' + bpm() + ').');
+        tbMsg('Stay on the beat — streak reset (0 / ' + bpm() + ').');
       }
     } else if (TB.phase === 'capture') {
       TB.beatTaps.push(now);
@@ -831,39 +883,93 @@
   function onRhythmTap() {
     var c = ctx(); if (!c) return;
     if (TB.phase === 'capture') TB.rhythmTaps.push(c.currentTime);
-    // ignored during prep (rhythm hand idle until "Go!")
+    // ignored before capture (rhythm hand idle until the count-off ends)
   }
   function flashOffbeat() {
     var z = document.getElementById('tbBeat'); if (!z) return;
     z.classList.add('tb-bad'); setTimeout(function () { z.classList.remove('tb-bad'); }, 220);
   }
 
-  // Lock in: the rhythm capture begins on the NEXT downbeat after lock-in.
-  function startCapture() {
-    var c = ctx(); if (!c) return;
-    TB.phase = 'arming';
+  /* Lock-in confirmation: the Beat pad turns green + reads "Locked", then a visual
+     count-off (one measure) runs in time with the metronome, and capture begins on
+     its final downbeat. */
+  function lockIn() {
+    TB.phase = 'countoff';
+    setBeatLocked(true);
+    var setup = document.getElementById('tbSetup'); if (setup) setup.style.display = 'none';
     document.getElementById('tbRhythm').classList.add('tb-armed');
-    // find the next metronome downbeat (start of a measure) strictly in the future
-    var start = null;
-    for (var i = 0; i < TB.beatTimes.length; i++) {
-      var b = TB.beatTimes[i];
-      if (b.accent && b.t > c.currentTime + 0.05) { start = b.t; break; }
-    }
-    if (start == null) {
-      // none scheduled yet — fall back to the next whole measure from now
-      start = c.currentTime + (bpm()) * (60 / S.tempo);
-    }
+    tbMsg('Locked! Count-off…');
+    scheduleCountoff();
+  }
+  function setBeatLocked(on) {
+    var z = document.getElementById('tbBeat'), hint = document.getElementById('tbBeatHint');
+    if (!z) return;
+    z.classList.toggle('tb-locked', !!on);
+    var label = z.querySelector('.tb-zlabel');
+    if (label) label.textContent = on ? 'Locked' : 'Beat';
+    if (hint) hint.textContent = on ? 'keep the beat' : 'left hand';
+  }
+
+  /* Count-off + capture, ALL anchored to scheduled metronome click times (ctx()
+     clock). We find the next downbeat strictly in the future, then map one measure
+     of clicks (bpm() beats) onto big on-screen numbers; the click AFTER that measure
+     is the capture downbeat. From there the highlight indexes TB.cells by the
+     beat number computed from the clock, so it tracks smoothly bar-to-bar. */
+  function scheduleCountoff() {
+    var c = ctx(); if (!c) return;
     var beatDur = 60 / S.tempo;
-    TB.captureStart = start;
-    TB.captureEnd = start + totalBeats() * beatDur;
-    tbMsg('Get ready…');
-    // "Go!" cue on the downbeat
+    // collect upcoming scheduled beats; ensure enough are scheduled to cover the
+    // count-off measure + first capture downbeat.
+    var future = TB.beatTimes.filter(function (b) { return b.t > c.currentTime + 0.06; });
+    // find the first DOWNBEAT (accent) in the future to anchor the count-off start.
+    var firstDown = null, fi = 0;
+    for (fi = 0; fi < future.length; fi++) { if (future[fi].accent) { firstDown = future[fi]; break; } }
+    var countBeats = bpm();   // one measure of count-off
+    var coStart;
+    if (firstDown) coStart = firstDown.t;
+    else coStart = (future[0] ? future[0].t : c.currentTime + 0.25);
+    // count-off numbers fall on coStart + k*beatDur for k in [0, countBeats)
+    TB._countTimers = [];
+    var co = document.getElementById('tbCountoff');
+    if (co) { co.textContent = ''; co.classList.add('show'); }
+    for (var k = 0; k < countBeats; k++) {
+      (function (k) {
+        var when = coStart + k * beatDur;
+        TB._countTimers.push(setTimeout(function () {
+          if (!TB.open || TB.phase !== 'countoff') return;
+          if (co) { co.textContent = String(k + 1); co.classList.remove('tb-pop'); void co.offsetWidth; co.classList.add('tb-pop'); }
+        }, Math.max(0, (when - c.currentTime) * 1000)));
+      })(k);
+    }
+    // capture begins on the downbeat AFTER the count-off measure.
+    var captureStart = coStart + countBeats * beatDur;
+    TB.captureStart = captureStart;
+    TB.captureEnd = captureStart + totalBeats() * beatDur;
+    // "GO" flash on the capture downbeat.
+    TB._countTimers.push(setTimeout(function () {
+      if (!TB.open) return;
+      if (co) { co.textContent = 'GO'; co.classList.remove('tb-pop'); void co.offsetWidth; co.classList.add('tb-pop'); }
+      setTimeout(function () { if (co) co.classList.remove('show'); }, 520);
+    }, Math.max(0, (captureStart - c.currentTime) * 1000)));
+    beginCapture(captureStart);
+  }
+
+  /* Capture starts at the explicit moment `captureStart` (the count-off's final
+     downbeat) — so the app unambiguously knows when rhythm-tapping begins. The
+     beat-guide highlight is scheduled per-beat from this clock anchor: beat j lights
+     at captureStart + j*beatDur on cell TB.cells[j]. Deterministic; no jumping. */
+  function beginCapture(captureStart) {
+    var c = ctx(); if (!c) return;
+    var beatDur = 60 / S.tempo, total = totalBeats();
+    // schedule the moving highlight, anchored to real click times
+    for (var j = 0; j < total; j++) tbLightBeat(j, captureStart + j * beatDur);
+    // flip to capture phase exactly at the downbeat
     TB._goTimer = setTimeout(function () {
       if (!TB.open) return;
       TB.phase = 'capture';
       tbMsg('Go! Tap the RHYTHM (right), keep the BEAT (left).');
       var z = document.getElementById('tbZones'); if (z) { z.classList.add('tb-go'); setTimeout(function () { z.classList.remove('tb-go'); }, 600); }
-    }, Math.max(0, (start - c.currentTime) * 1000));
+    }, Math.max(0, (captureStart - c.currentTime) * 1000));
     // stop capture one beat after the last beat of the pass, then score
     TB._endTimer = setTimeout(function () {
       if (!TB.open) return;
@@ -873,6 +979,7 @@
 
   function finishCapture() {
     TB.phase = 'done';
+    tbStopMetro();
     var res = scoreTapBack();
     showResults(res);
   }
@@ -985,8 +1092,8 @@
       document.getElementById('tbResults').style.display = 'none';
       document.getElementById('tbZones').style.display = '';
       document.getElementById('tbStaff').style.display = '';
-      TB.captureStart = 0; TB.captureEnd = 0; tbClearBeat();   // guide previews again until next capture
-      startPrep();           // metronome keeps running; just re-enter the prep gate
+      // Full reset back to 'ready' (metronome off): the player re-starts + re-locks.
+      enterReady();
     };
   }
   function showTapBackBtn() {
@@ -1259,8 +1366,11 @@
       // Tap-it-back entry button (sits in the actions bar next to Submit/Next).
       // Per-theme color comes from suite-theme.css; this is the neutral default.
       '#soloTapBack{display:inline-flex;align-items:center;justify-content:center;font-family:inherit;font-weight:700;font-size:.85rem;border:none;border-radius:10px;padding:11px 16px;min-height:42px;cursor:pointer;background:#7c5cff;color:#fff;transition:.12s}' +
+      '#soloTapBack{position:relative}' +
       '#soloTapBack:hover{transform:translateY(-1px);filter:brightness(1.08)}' +
       '#soloTapBack:active{transform:translateY(2px)}' +
+      // "+ bonus" badge advertising the extra points (value from TB_BONUS_HINT)
+      '#soloTapBack .tb-badge{margin-left:8px;font-size:.66rem;font-weight:800;letter-spacing:.04em;background:rgba(255,255,255,.22);color:#fff;border-radius:999px;padding:2px 7px;line-height:1.3}' +
       /* ---- full-screen tap-it-back overlay (mobile-first, dark) ---- */
       '.tapback-ov{position:fixed;inset:0;z-index:10000;display:none;align-items:stretch;justify-content:center;background:rgba(8,8,14,.92);backdrop-filter:blur(6px);color:#eef1fb;font-family:system-ui,sans-serif;-webkit-tap-highlight-color:transparent}' +
       '.tapback-ov.show{display:flex}' +
@@ -1285,9 +1395,33 @@
       '.tb-cell .tb-bnum{position:absolute;bottom:2px;left:0;transform:translateX(-50%);font-size:.8rem;color:#bbb;font-weight:300;z-index:0}' +
       '.tb-cell .beat-notation{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}' +
       '.tb-cell .placed-note{position:absolute;left:0;top:50%;transform:translateY(-64%) scale(1.05);transform-origin:left center;height:auto;pointer-events:none;z-index:2}' +
-      // moving beat guide on the overlay notation (same blue as the main beat guide)
-      '.tb-cell.solo-beat-on{background:rgba(33,150,243,.18);box-shadow:inset 0 0 0 2px rgba(33,150,243,.7);border-radius:4px}' +
-      '@media (orientation:landscape) and (max-height:560px){.tb-staff{max-height:30vh}.tb-row{height:64px}}' +
+      // moving beat guide on the cloned answer staff (same blue as the main beat guide)
+      '.tb-staff .beat-drop-zone.solo-beat-on{background:rgba(33,150,243,.18)!important;box-shadow:inset 0 0 0 2px rgba(33,150,243,.7);border-radius:4px}' +
+      // cloned answer staff: read-only, centered, never wider than the card
+      '.tb-staff .tb-clone{width:100%!important;max-width:100%!important;margin:0 auto;pointer-events:none}' +
+      '.tb-staff .tb-clone .remove-btn{display:none}' +
+      '@media (orientation:landscape) and (max-height:560px){.tb-staff{max-height:30vh}}' +
+      // metronome setup row: Start button + tempo stepper (bound to S.tempo)
+      '.tb-setup{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;margin:8px 0 2px}' +
+      '.tb-start{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;font-weight:800;font-size:.95rem;border:none;border-radius:12px;padding:13px 22px;min-height:50px;cursor:pointer;background:var(--tb-accent,#7c5cff);color:#fff;transition:.12s}' +
+      '.tb-start .ic{margin:0;width:1.2em;height:1.2em;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}' +
+      '.tb-start:hover{filter:brightness(1.08)}.tb-start:active{transform:translateY(2px)}' +
+      '.tb-start:disabled{opacity:.45;cursor:default;transform:none}' +
+      '.tb-start.tb-on{opacity:.5}' +
+      '.tb-tempo{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border-radius:12px;padding:7px 12px}' +
+      '.tb-tempo .tb-tlabel{font-size:.6rem;letter-spacing:.14em;opacity:.55;font-weight:800}' +
+      '.tb-tempo b{font-size:1.2rem;min-width:2.6ch;text-align:center;font-weight:800}' +
+      '.tb-tempo .tb-tunit{font-size:.66rem;opacity:.55;letter-spacing:.08em}' +
+      '.tb-tstep{width:34px;height:34px;border-radius:9px;border:none;background:rgba(255,255,255,.12);color:#eef1fb;font-size:1.3rem;font-weight:700;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center}' +
+      '.tb-tstep:hover{background:rgba(255,255,255,.22)}.tb-tstep:active{transform:translateY(1px)}' +
+      // big on-screen count-off ("1·2·3·4 → GO"), centered over the zones
+      '.tb-countoff{position:absolute;left:0;right:0;top:46%;display:none;align-items:center;justify-content:center;font-size:5.5rem;font-weight:900;letter-spacing:.03em;color:var(--tb-accent,#7c5cff);text-shadow:0 4px 30px rgba(0,0,0,.5);pointer-events:none;z-index:5}' +
+      '.tb-countoff.show{display:flex}' +
+      '.tb-countoff.tb-pop{animation:tbPop .42s ease-out}' +
+      '@keyframes tbPop{0%{transform:scale(.5);opacity:.2}40%{transform:scale(1.12);opacity:1}100%{transform:scale(1);opacity:.9}}' +
+      // locked-in confirmation on the Beat pad (unmistakable: green + "Locked")
+      '.tb-zone.tb-locked{background:rgba(25,224,122,.22)!important;border-color:#19e07a!important;box-shadow:0 0 0 2px #19e07a,0 0 22px rgba(25,224,122,.4)}' +
+      '.tb-zone.tb-locked .tb-zlabel{color:#19e07a}' +
       '.tb-instruct{text-align:center;font-size:1rem;font-weight:600;min-height:2.6em;display:flex;align-items:center;justify-content:center;padding:6px 8px;color:var(--tb-accent,#7c5cff)}' +
       '.tb-zones{flex:1;display:flex;gap:12px;min-height:150px}' +
       '.tb-zones.tb-go .tb-zone{box-shadow:inset 0 0 0 3px var(--tb-accent,#7c5cff)}' +
@@ -1388,7 +1522,7 @@
     var actions = document.createElement('div'); actions.id = 'soloActions'; actions.className = 'solo-ctl';
     actions.innerHTML =
       '<button id="soloSubmit" class="primary go">' + IC.check + 'Submit answer</button>' +
-      '<button id="soloTapBack" class="tapback" style="display:none">' + IC.tap + 'Tap it back</button>' +
+      '<button id="soloTapBack" class="tapback" style="display:none">' + IC.tap + 'Tap it back<span class="tb-badge">' + TB_BONUS_HINT + '</span></button>' +
       '<button id="soloNext" class="go" style="display:none">' + IC.next + 'Next</button>';
     if (ga) ga.appendChild(actions);
 
@@ -1573,24 +1707,8 @@
     if (/[?&]mode=solo/.test(location.search)) setTimeout(start, 300);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wireEntry); else wireEntry();
-  // Public surface. `_tapBackScore` lets a headless smoke test exercise the real
-  // scorer on synthetic capture data (it can't tap in real time) — it seeds the
-  // capture window from the current metronome grid, injects taps, and runs the
-  // actual scoreTapBack(). No effect on normal play.
+  // Public surface.
   window.BeatQuestSolo = {
-    start: start, state: S,
-    _tapBackScore: function () {
-      var c = ctx(); if (!c || !S.target) return null;
-      var beatDur = 60 / S.tempo;
-      TB.captureStart = c.currentTime;
-      TB.captureEnd = TB.captureStart + totalBeats() * beatDur;
-      // ground-truth beat grid across the capture window
-      TB.beatTimes = [];
-      for (var b = 0; b < totalBeats(); b++) TB.beatTimes.push({ t: TB.captureStart + b * beatDur, idx: b, accent: (b % bpm()) === 0 });
-      // "perfect" performance: a beat tap on every beat, a rhythm tap on every onset
-      TB.beatTaps = TB.beatTimes.map(function (x) { return x.t; });
-      TB.rhythmTaps = targetOnsets().map(function (o) { return TB.captureStart + o.beat * beatDur; });
-      return scoreTapBack();
-    }
+    start: start, state: S
   };
 })();
