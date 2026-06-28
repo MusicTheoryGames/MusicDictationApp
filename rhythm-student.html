@@ -2,7 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <!-- viewport-fit=cover is REQUIRED for env(safe-area-inset-*) to resolve to non-zero
+         on notched iPhones. Without it the insets are always 0 and the fixed top bar
+         (#soloHud) ends up under the iOS status bar in home-screen / standalone mode. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <!-- Home-screen (PWA) standalone: no Safari chrome, so the web app fills the whole
+         screen including under the status bar. The status-bar-style + the safe-area
+         insets (honored in CSS) keep the slim bar below the status bar and reachable. -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Rhythm">
     <title>Rhythm Student - Music Dictation</title>
     <style>
         * {
@@ -928,8 +938,18 @@
                padding and its actions row wraps to a 2nd line, ~120px tall,
                covering the top of the staff). */
             #soloHud {
-                padding: 4px 8px !important; margin: 0 !important;
+                /* Honor the safe-area insets on every side. In iOS standalone (home
+                   screen) there is no Safari chrome, so the web app fills the screen
+                   under the status bar and behind the landscape notch; without these
+                   insets the slim bar slid under the status bar / behind the notch and
+                   was unreachable. viewport-fit=cover (meta) makes these resolve > 0.
+                   The taller bar feeds --solo-bar-h (measured live), so the staff scroll
+                   region below starts under the bar automatically. */
+                margin: 0 !important;
                 padding-top: calc(4px + env(safe-area-inset-top, 0px)) !important;
+                padding-right: calc(8px + env(safe-area-inset-right, 0px)) !important;
+                padding-bottom: 4px !important;
+                padding-left: calc(8px + env(safe-area-inset-left, 0px)) !important;
             }
             #soloHud .solo-actions {
                 margin: 0 !important; gap: 6px !important; align-items: center !important;
@@ -954,6 +974,31 @@
                 width: 84px !important;
                 flex: 0 0 84px !important;
                 min-height: 52px !important;
+            }
+            /* ===== BUG 1: keep Submit / Tap-back / Next ALWAYS reachable =====
+               #soloActions is the last child of .game-area.active, which on iPhone is
+               the FIXED, bounded scroll region. As a normal flow child it scrolled with
+               the (8-bar) staff and ended up hidden behind the fixed bank at the bottom —
+               unreachable. Pin it as a fixed row floating directly ABOVE the bank instead,
+               so it is tappable no matter how long the staff is. Its `bottom` is set by JS
+               (syncBankPad) to the live bank height + gap so it always hugs the bank top.
+               Only the buttons themselves catch pointer events, so taps pass through the
+               transparent gutter to the staff/bank behind it. */
+            .game-area.active #soloActions {
+                position: fixed !important;
+                left: 8px; right: 8px;
+                bottom: calc(env(safe-area-inset-bottom, 0px) + 7px); /* JS refines to bank top */
+                z-index: 55;                 /* above the bank (z-index:50) */
+                margin: 0 !important;
+                padding: 0 !important;
+                border-top: none !important; /* the under-staff divider made no sense floating */
+                pointer-events: none;        /* transparent gutter passes touches through */
+                justify-content: center;
+                gap: 10px;
+            }
+            .game-area.active #soloActions button {
+                pointer-events: auto;        /* but the buttons themselves are tappable */
+                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45); /* lift off the busy bank below */
             }
         }
 
@@ -1081,6 +1126,6 @@
     </script>
     <script type="module" src="rhythm-student.js?v=20260627ah"></script>
     <script src="suite-theme.js"></script>
-    <script src="solo-mode.js?v=20260628-tapback8-perbeat"></script>
+    <script src="solo-mode.js?v=20260628-iphone-actions-tbfit-standalone"></script>
 </body>
 </html>

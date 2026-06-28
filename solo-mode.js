@@ -390,12 +390,32 @@
   function syncBankPad() {
     var mobile = false; try { mobile = window.matchMedia('(pointer: coarse) and (max-width: 1400px)').matches; } catch (e) {}
     var ga = document.getElementById('gameArea'); var bank = document.querySelector('.rhythm-bank');
+    var actions = document.getElementById('soloActions');
     if (!ga || !bank) return;
-    if (!mobile) { ga.style.paddingBottom = ''; return; }
-    // Reserve everything from the (floating) bank's top down to the viewport bottom,
-    // so the last staff row clears the bank AND its bottom gap.
-    var top = bank.getBoundingClientRect().top;
-    ga.style.paddingBottom = Math.max(0, Math.round(window.innerHeight - top + 8)) + 'px';
+    if (!mobile) {
+      ga.style.paddingBottom = '';
+      if (actions) actions.style.bottom = '';   // clear the phone-only floating offset
+      return;
+    }
+    var bankTop = bank.getBoundingClientRect().top;
+    // BUG 1: float the action row (Submit / Tap-back / Next) directly ABOVE the bank.
+    // It is position:fixed on phones (CSS), so set its bottom to the bank's height from
+    // the viewport bottom plus a small gap — it then always hugs the bank top regardless
+    // of how far the staff has scrolled. (Only the phone breakpoint fixes it; on iPad it
+    // stays in flow and this offset is harmless because the CSS there isn't fixed.)
+    var phone = false; try { phone = window.matchMedia('(pointer: coarse) and (max-height: 500px)').matches; } catch (e) {}
+    var actionsH = 0;
+    if (actions && phone && actions.style.display !== 'none') {
+      var aboveBank = Math.max(0, Math.round(window.innerHeight - bankTop + 6));
+      actions.style.bottom = aboveBank + 'px';
+      // Only count toward staff padding when buttons are actually visible.
+      var anyBtn = actions.querySelector('button:not([style*="display: none"]):not([style*="display:none"])');
+      if (anyBtn) actionsH = actions.getBoundingClientRect().height + 8;
+    }
+    // Reserve everything from the (floating) bank's top down to the viewport bottom PLUS
+    // the floating action row, so the last staff row clears the bank, the action row,
+    // and the gaps between them.
+    ga.style.paddingBottom = Math.max(0, Math.round(window.innerHeight - bankTop + 8 + actionsH)) + 'px';
   }
 
   /* ----------------------------------------------------------------- audio
@@ -762,7 +782,37 @@
     // pixel-proportional and fully legible, never clipped. Cosmetic only: the cell
     // geometry the beat-guide indexes is untouched (transforms don't move TB.cells'
     // logical mapping). No-op on iPad/desktop, where the natural box already fits.
-    fitTbStaff();
+    // Defer the FIRST fit until the overlay's flex layout has actually rendered.
+    // Measuring synchronously here (right after the overlay is shown) reads a
+    // not-yet-laid-out host/clone and computes a tiny scale; previously only an
+    // orientation flip (which fires a late resize re-fit) corrected it. scheduleTbFit
+    // waits for layout via double-rAF and retries until the measured boxes are
+    // non-zero, so landscape is correct on the FIRST open with no flip needed.
+    scheduleTbFit();
+  }
+  // Run fitTbStaff once layout has settled. The overlay is shown immediately before
+  // the clone is built, so the host band + clone have not been laid out yet on the
+  // first open; a synchronous measure reads a tiny/zero box. We wait two animation
+  // frames (style + layout flushed) and, if the measured natural box is still zero
+  // (layout not ready), retry on the next frame up to a sane cap. Cheap no-op once
+  // the box is non-zero. Used for the initial fit only; resize/orientation call
+  // fitTbStaff directly (their layout is already settled).
+  function scheduleTbFit(tries) {
+    tries = tries || 0;
+    var raf = window.requestAnimationFrame || function (cb) { return setTimeout(cb, 16); };
+    raf(function () {
+      raf(function () {
+        if (!TB.open) return;
+        var host = document.getElementById('tbStaff');
+        var clone = host && host.querySelector('.tb-clone');
+        // If the natural box hasn't been laid out yet, retry next frame (capped at
+        // ~16 frames ≈ 0.25s) so a slow first paint still ends up correctly sized.
+        var ready = clone && clone.offsetWidth > 0 && clone.offsetHeight > 0 &&
+                    host && host.clientWidth > 0 && host.clientHeight > 0;
+        if (!ready && tries < 16) { scheduleTbFit(tries + 1); return; }
+        fitTbStaff();
+      });
+    });
   }
   // Measure-and-scale the cloned staff to fit its host band. Reads the clone's
   // natural (untransformed) size, compares to the padded inner box of #tbStaff, and
@@ -1387,6 +1437,7 @@
     var mobile = false;
     try { mobile = window.matchMedia('(pointer: coarse) and (max-width: 1400px)').matches; } catch (e) {}
     btn.style.display = (mobile && rs && rs.isComplete && !rs.isComplete()) ? 'none' : '';
+    syncBankPad();   // the floating action row's height changed -> re-fit staff bottom pad + offset
   }
 
   function submit() {
@@ -1405,6 +1456,7 @@
       document.getElementById('soloSubmit').style.display = 'none';
       document.getElementById('soloNext').style.display = '';
       showTapBackBtn();   // OPTIONAL bonus — only ever offered after a correct answer
+      syncBankPad();      // Next + Tap-back now showing -> re-fit the floating action row
       save(); render(); return;
     }
     S.wrongThisRound = true;
@@ -1418,6 +1470,7 @@
       document.getElementById('soloSubmit').style.display = 'none';
       document.getElementById('soloNext').style.display = '';
     }
+    syncBankPad();   // Submit -> Next swap changed the floating action row
     if (S.groove <= 0) grooveBroken();
     save(); render();
   }
@@ -1859,6 +1912,7 @@
       msg('Here’s the correct rhythm. (No points — hit Next for a new one.)');
       document.getElementById('soloSubmit').style.display = 'none';
       document.getElementById('soloNext').style.display = '';
+      syncBankPad();
       save(); render();
     };
     var lv = document.getElementById('soloLevel');
@@ -1961,6 +2015,7 @@
       lockIn: lockIn, scheduleCountoff: scheduleCountoff,
       beatByIdx: beatByIdx, beatTimeByIdx: beatTimeByIdx,
       enterReady: enterReady, newRound: newRound, playTarget: playTarget,
+      fillCorrect: revealCorrect, submit: submit, setMeasures: function (n) { S.measures = n; save(); newRound(); },
       tapLatency: function () { return TAP_LATENCY; },
       tapTolerance: function () { return TAP_TOLERANCE; }
     };
