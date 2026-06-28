@@ -53,7 +53,19 @@ design docs (`ARCHITECTURE_RESEARCH.md`, `LEVEL_SYSTEM_RESEARCH.md`, `HALL_CATAL
 - **mastery arithmetic**: deltas, clamping, decay formula, the 3-part Mastered gate, demotion, advance
   gate all correct + boundary-inclusive; tests assert specific values (not "didn't throw").
 
-## D. NOT yet verified (rate-limited; resets 4:20am)
-- **grading** doc-conformance vs `LEVEL_SYSTEM_RESEARCH.md` + **review** scheduler conformance vs
-  `ARCHITECTURE_RESEARCH.md` — that combined review hit the session limit. (I independently re-ran both
-  suites — pass — and read grading's tests myself: rigorous. Still owe the formal doc-conformance pass.)
+## D. Grader + scheduler review — COMPLETED 2026-06-28 (grading 28/28, review 39/39)
+- **grading**: faithful to LEVEL_SYSTEM_RESEARCH — per-beat all-or-nothing, meter-gate-first, ±1-once all
+  genuinely implemented; grid RES=840 matches solo-mode. Ship-worthy. LOW fixes: (a) the uniform-shift
+  score charges against FULL marks, ignoring already-correct beats → `max(beatsCorrect, total−penalty)/total`;
+  (b) an empty rhythm grades 100 → guard it. DECISION (document, don't change): the shift cap excuses up
+  to a FULL beat (vs the literal "±1") — pending product sign-off.
+- **review/scheduler**: Leitner core correct + well-tested. **MEDIUM:** `composeSession` overshoots the
+  documented 70–80/20–30 band at **10–11 due items / default sessionSize** (new ratio → 33%) — the band
+  trim guard (`reviewCount < dueAll.length`) is too narrow; untested. → relax the guard. LOW: the 20%-new
+  floor is dead config (document as advisory). INFO: `TARGET_RETENTION` is decorative (fine — not full FSRS).
+- **All of the above are queued into the assembly agent's fix pass** (in addition to §A).
+
+## E. Status: TRIPLE-CHECK COMPLETE across all 5 modules. All findings → the assembly+fix agent.
+Layer 1 (agent self-reports) ✓ · Layer 2 (I re-ran every suite: 58+39+58+28+73 = 256 passing) ✓ ·
+Layer 3 (independent adversarial review + doc-conformance vs the actual docs) ✓. Real issues found that
+the green suites hid: 1 bug (decay), 1 MEDIUM (scheduler band), 1 doc-miss (Ch7 double-dots), + LOWs/hardening.
