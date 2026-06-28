@@ -11,7 +11,7 @@
   var rs = null;
   var S = {
     target: null, measures: 2, difficulty: 'medium', tempo: 100,
-    groove: 100, score: 0, streak: 0,
+    groove: 100, score: 0, streak: 0, bonus: 0,
     correctionMode: true, metronome: false, beatGuide: false,
     level: 1,                                  // tier number within the family, or 'all'
     ts: '4/4', family: 'quarter',              // selected meter -> beat-unit family
@@ -241,7 +241,11 @@
     flame: '<svg viewBox="0 0 20 20" class="ic ic-fill ic-sm"><path d="M10 2c1.1 3 4 4.2 4 8a4 4 0 11-8 0c0-2.2 1.1-3.2 2-4.2.2 1.2 1 2 2 2.2.3-2.4-2-3.6-2-8z"/></svg>',
     gear:  '<svg viewBox="0 0 20 20" class="ic"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2.2M10 15.3v2.2M2.5 10h2.2M15.3 10h2.2M4.8 4.8l1.6 1.6M13.6 13.6l1.6 1.6M15.2 4.8l-1.6 1.6M6.4 13.6l-1.6 1.6"/></svg>',
     bulb:  '<svg viewBox="0 0 20 20" class="ic"><path d="M7 13.5a5 5 0 1 1 6 0c-.7.5-1 1.2-1 2H8c0-.8-.3-1.5-1-2z"/><path d="M8 17.5h4"/></svg>',
-    palette: '<svg viewBox="0 0 20 20" class="ic"><path d="M10 2.6a7.4 7.4 0 1 0 0 14.8c1.3 0 1.7-1.6.8-2.5-.7-.7-.2-1.8.8-1.8H14a3.4 3.4 0 0 0 3.4-3.5C17.4 5.6 14.1 2.6 10 2.6z"/><circle cx="6.6" cy="9.2" r="1"/><circle cx="9" cy="6.2" r="1"/><circle cx="12.8" cy="7.4" r="1"/></svg>'
+    palette: '<svg viewBox="0 0 20 20" class="ic"><path d="M10 2.6a7.4 7.4 0 1 0 0 14.8c1.3 0 1.7-1.6.8-2.5-.7-.7-.2-1.8.8-1.8H14a3.4 3.4 0 0 0 3.4-3.5C17.4 5.6 14.1 2.6 10 2.6z"/><circle cx="6.6" cy="9.2" r="1"/><circle cx="9" cy="6.2" r="1"/><circle cx="12.8" cy="7.4" r="1"/></svg>',
+    // hand/finger tapping a surface — the "Tap it back" performance mode
+    tap:   '<svg viewBox="0 0 20 20" class="ic"><path d="M9 9V4.4a1.3 1.3 0 0 1 2.6 0V9"/><path d="M11.6 9V7.6a1.2 1.2 0 0 1 2.4 0V9"/><path d="M14 9V8a1.2 1.2 0 0 1 2.4 0v3.2a4.6 4.6 0 0 1-4.6 4.6h-1.2a4 4 0 0 1-3-1.4l-2.3-2.7a1.3 1.3 0 0 1 1.9-1.7L9 11.4V9"/></svg>',
+    close: '<svg viewBox="0 0 20 20" class="ic"><path d="M5 5l10 10M15 5L5 15"/></svg>',
+    redo:  '<svg viewBox="0 0 20 20" class="ic"><path d="M15 6a6 6 0 1 0 1.5 4"/><path d="M16 3v3.5h-3.5"/></svg>'
   };
 
   /* --------------------------------------------------------- persistence */
@@ -250,6 +254,7 @@
       var d = JSON.parse(localStorage.getItem('beatquest-solo') || '{}');
       if (typeof d.score === 'number') S.score = d.score;
       if (typeof d.streak === 'number') S.streak = d.streak;
+      if (typeof d.bonus === 'number') S.bonus = d.bonus;
       if (typeof d.correctionMode === 'boolean') S.correctionMode = d.correctionMode;
       if (typeof d.metronome === 'boolean') S.metronome = d.metronome;
       if (typeof d.beatGuide === 'boolean') S.beatGuide = d.beatGuide;
@@ -264,7 +269,7 @@
     } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem('beatquest-solo', JSON.stringify({ score: S.score, streak: S.streak, correctionMode: S.correctionMode, metronome: S.metronome, beatGuide: S.beatGuide, level: S.level, ts: S.ts, speed: S.speed, measures: S.measures, changing: S.changing, changeKind: S.changeKind })); } catch (e) {}
+    try { localStorage.setItem('beatquest-solo', JSON.stringify({ score: S.score, streak: S.streak, bonus: S.bonus, correctionMode: S.correctionMode, metronome: S.metronome, beatGuide: S.beatGuide, level: S.level, ts: S.ts, speed: S.speed, measures: S.measures, changing: S.changing, changeKind: S.changeKind })); } catch (e) {}
   }
 
   /* ----------------------------------------------------- target generation */
@@ -523,6 +528,33 @@
     return d || 0.25;
   }
 
+  /* The single source of truth for WHERE the target's note attacks fall.
+     Walks the target exactly like playback did: for each item, scale its figure
+     so it occupies its beats, then accumulate beat-offsets, emitting an onset for
+     every non-rest note. Returns [{ beat, mi }] where `beat` is the attack time in
+     BEATS from the rhythm's first downbeat (multiply by beatDur for seconds) and
+     `mi` is the 0-based measure it belongs to. BOTH playTarget (for scheduling
+     sound) and the tap-back scorer (for expected attack times) use this, so they
+     can never drift apart. */
+  function targetOnsets() {
+    if (!S.target) return [];
+    var onsets = [], beat = 0;
+    S.target.forEach(function (meas, mi) {
+      meas.forEach(function (it) {
+        var pat = findPattern(it.patternId);
+        if (!pat || !pat.vexflow) { beat += (it.beats || 1); return; }
+        var raw = pat.vexflow.map(noteBeats);
+        var sum = raw.reduce(function (a, x) { return a + x; }, 0) || 1;
+        var scale = (it.beats || 1) / sum;  // make the figure occupy exactly its beats
+        pat.vexflow.forEach(function (nn, i) {
+          if (nn.duration.indexOf('r') === -1) onsets.push({ beat: beat, mi: mi });
+          beat += raw[i] * scale;
+        });
+      });
+    });
+    return onsets;
+  }
+
   function playTarget() {
     if (!S.target) return;
     var c = ctx(); if (!c) { msg('Tap a button to enable sound.'); return; }
@@ -534,24 +566,342 @@
     // downward-only autoscroll follows the beat if the page overflows.)
     var beatDur = 60 / S.tempo;
     var t0 = c.currentTime + 0.2;          // count-in start
-    var t = t0 + (mBeats()[0] || bpm()) * beatDur;   // rhythm starts after one measure of count-in
-    S.target.forEach(function (meas) {
-      meas.forEach(function (it) {
-        var pat = findPattern(it.patternId);
-        if (!pat || !pat.vexflow) { t += (it.beats || 1) * beatDur; return; }
-        var raw = pat.vexflow.map(noteBeats);
-        var sum = raw.reduce(function (a, x) { return a + x; }, 0) || 1;
-        var scale = (it.beats || 1) / sum;  // make the figure occupy exactly its beats
-        pat.vexflow.forEach(function (nn, i) {
-          if (nn.duration.indexOf('r') === -1) rhythmHit(t);
-          t += raw[i] * scale * beatDur;
-        });
-      });
-    });
+    var rhythmStart = t0 + (mBeats()[0] || bpm()) * beatDur;   // rhythm starts after one measure of count-in
+    var onsets = targetOnsets();
+    onsets.forEach(function (o) { rhythmHit(rhythmStart + o.beat * beatDur); });
+    // playback runs through the full example (one onset-walk pass == totalBeats()).
+    var t = rhythmStart + totalBeats() * beatDur;
     startPulse(t0);   // count-in always ticks; metronome/guide continue per toggles
     // playback ends at `t`; allow Play again after that
     S._playTimer = setTimeout(function () { S.playing = false; }, Math.max(0, (t - c.currentTime + 0.3) * 1000));
     msg('Count-in… then the rhythm' + (S.metronome ? ' · metronome on' : '') + (S.beatGuide ? ' · beat guide on' : '') + '. Build your answer.');
+  }
+
+  /* ========================================================================
+     TAP-IT-BACK — optional performance bonus, offered ONLY after a correct
+     answer. Two tap zones: LEFT keeps the BEAT, RIGHT taps the RHYTHM. The
+     metronome (on ctx()'s clock) is the single timing reference — we never infer
+     tempo from the player's taps. Scoring is accuracy-first and forgiving.
+
+       PREP  — player taps the LEFT (Beat) zone ON the metronome beat; bpm()
+               consecutive on-beat taps (one full measure) "lock in". An off-beat
+               tap resets the streak (the gate is strict by product requirement).
+       GO    — on the next downbeat, capture begins. Record every RIGHT (Rhythm)
+               tap and keep the beat with LEFT. Runs one pass (totalBeats()).
+       DONE  — score, show per-measure pass/fail + accuracy %, award bonus.
+     ====================================================================== */
+  // SINGLE tunable tolerance window (seconds). A tap counts as "on" a metronome
+  // beat / target onset if it lands within ±this. Deliberately generous — this is
+  // a groove game, not a millisecond drum-machine quantizer. Tune here only.
+  var TAP_TOLERANCE = 0.12;
+  var TB = {
+    open: false, phase: 'idle',     // 'prep' | 'capture' | 'done'
+    timer: null, nextBeat: 0, beatTimes: [],   // scheduled metronome beat times (audio clock)
+    prepHits: 0, captureStart: 0, captureEnd: 0,
+    beatTaps: [], rhythmTaps: [],   // captured tap times (audio clock)
+    el: null
+  };
+  var TB_BONUS_PER_MEASURE = 25;    // bonus points per passed measure (added to S.bonus)
+
+  function buildTapBackOverlay() {
+    if (TB.el) return TB.el;
+    var ov = document.createElement('div');
+    ov.id = 'tapBack'; ov.className = 'tapback-ov';
+    ov.innerHTML =
+      '<div class="tb-card">' +
+        '<button class="tb-close" id="tbClose" aria-label="Close">' + IC.close + '</button>' +
+        '<div class="tb-head">' +
+          '<div class="tb-title">Tap it back</div>' +
+          '<div class="tb-meta" id="tbMeta"></div>' +
+        '</div>' +
+        '<div class="tb-instruct" id="tbInstruct"></div>' +
+        '<div class="tb-zones" id="tbZones">' +
+          '<button class="tb-zone tb-beat" id="tbBeat"><span class="tb-zlabel">Beat</span><span class="tb-zhint">left hand</span></button>' +
+          '<button class="tb-zone tb-rhythm" id="tbRhythm"><span class="tb-zlabel">Rhythm</span><span class="tb-zhint">right hand</span></button>' +
+        '</div>' +
+        '<div class="tb-results" id="tbResults" style="display:none"></div>' +
+      '</div>';
+    document.body.appendChild(ov);
+    TB.el = ov;
+    document.getElementById('tbClose').onclick = closeTapBack;
+    // Both pointer (desktop/dev) AND touch (mobile) — touchstart fires first on
+    // touch devices, so preventDefault stops the synthetic click/pointer double-fire.
+    function bindZone(id, fn) {
+      var z = document.getElementById(id);
+      var handler = function (e) { if (e.cancelable) e.preventDefault(); fn(); flashZone(z); };
+      z.addEventListener('touchstart', handler, { passive: false });
+      z.addEventListener('pointerdown', function (e) { if (e.pointerType === 'touch') return; handler(e); });
+    }
+    bindZone('tbBeat', onBeatTap);
+    bindZone('tbRhythm', onRhythmTap);
+    return ov;
+  }
+  function flashZone(z) { if (!z) return; z.classList.add('tb-flash'); setTimeout(function () { z.classList.remove('tb-flash'); }, 110); }
+  function tbMsg(t) { var el = document.getElementById('tbInstruct'); if (el) el.textContent = t; }
+
+  // Dedicated lookahead metronome for tap-back. Records each beat's scheduled time
+  // in TB.beatTimes (the ground-truth grid taps are compared against) and clicks
+  // (accent on downbeats). Runs continuously while the overlay is open.
+  function tbStartMetro() {
+    var c = ctx(); if (!c) return;
+    tbStopMetro();
+    TB.beatTimes = [];
+    TB.nextBeat = c.currentTime + 0.25;   // small lead-in
+    TB.beatIdx = 0;
+    (function sched() {
+      if (!TB.open) return;
+      var cc = ctx(); if (!cc) return;
+      while (TB.nextBeat < cc.currentTime + 0.15) {
+        var idx = TB.beatIdx;
+        // accent the start of every metronome measure (bpm() beats per measure)
+        var accent = (idx % bpm()) === 0;
+        metroTick(TB.nextBeat, accent);
+        // compound meters: soft eighth-pulse subdivisions, like the main metronome
+        if (isCompoundTs(S.ts)) { var bd = 60 / S.tempo; subTick(TB.nextBeat + bd / 3); subTick(TB.nextBeat + 2 * bd / 3); }
+        TB.beatTimes.push({ t: TB.nextBeat, idx: idx, accent: accent });
+        pulseBeatDot(idx);
+        TB.beatIdx++; TB.nextBeat += 60 / S.tempo;
+      }
+      TB.timer = setTimeout(sched, 25);
+    })();
+  }
+  function tbStopMetro() { if (TB.timer) { clearTimeout(TB.timer); TB.timer = null; } }
+  // Visual pulse on the Beat zone in time with the click (purely cosmetic cue).
+  function pulseBeatDot(idx) {
+    var c = ctx(); if (!c) return;
+    var when = TB.beatTimes.length ? TB.beatTimes[TB.beatTimes.length - 1].t : c.currentTime;
+    setTimeout(function () {
+      if (!TB.open) return;
+      var z = document.getElementById('tbBeat'); if (!z) return;
+      z.classList.add('tb-pulse'); setTimeout(function () { z.classList.remove('tb-pulse'); }, 90);
+    }, Math.max(0, (when - c.currentTime) * 1000));
+  }
+
+  // Nearest scheduled metronome beat to an audio-clock time, with its delta.
+  function nearestBeat(t) {
+    var best = null, bd = Infinity;
+    for (var i = 0; i < TB.beatTimes.length; i++) {
+      var d = Math.abs(TB.beatTimes[i].t - t);
+      if (d < bd) { bd = d; best = TB.beatTimes[i]; }
+    }
+    return best ? { beat: best, delta: t - best.t, absDelta: bd } : null;
+  }
+
+  function openTapBack() {
+    if (!S.solved || !S.target) return;   // gated strictly behind a correct answer
+    var c = ctx(); if (!c) { msg('Tap a button to enable sound first.'); return; }
+    unlockAudio();
+    stopPlayback();                        // silence any example playback first
+    buildTapBackOverlay();
+    TB.open = true;
+    document.body.classList.add('tapback-open');
+    TB.el.classList.add('show');
+    var beatsInMeasure = bpm();
+    var meta = document.getElementById('tbMeta');
+    if (meta) meta.textContent = (S.changing ? 'changing meter' : S.ts) + ' · ' + S.measures + ' bar' + (S.measures === 1 ? '' : 's') + ' · ' + S.tempo + ' bpm';
+    document.getElementById('tbResults').style.display = 'none';
+    document.getElementById('tbZones').style.display = '';
+    startPrep();
+    tbStartMetro();
+  }
+  function closeTapBack() {
+    TB.open = false; TB.phase = 'idle';
+    tbStopMetro(); stopAllAudio();
+    if (TB._goTimer) { clearTimeout(TB._goTimer); TB._goTimer = null; }
+    if (TB._endTimer) { clearTimeout(TB._endTimer); TB._endTimer = null; }
+    if (TB.el) TB.el.classList.remove('show');
+    document.body.classList.remove('tapback-open');
+  }
+
+  function startPrep() {
+    TB.phase = 'prep';
+    TB.prepHits = 0; TB.beatTaps = []; TB.rhythmTaps = [];
+    document.getElementById('tbBeat').classList.remove('tb-armed');
+    document.getElementById('tbRhythm').classList.remove('tb-armed');
+    document.getElementById('tbBeat').classList.add('tb-armed');
+    tbMsg('Tap the BEAT (left) in time — ' + bpm() + ' on-beat taps to start.');
+  }
+
+  function onBeatTap() {
+    var c = ctx(); if (!c) return;
+    var now = c.currentTime;
+    var nb = nearestBeat(now);
+    if (TB.phase === 'prep') {
+      if (nb && nb.absDelta <= TAP_TOLERANCE) {
+        TB.prepHits++;
+        tbMsg('On the beat — ' + TB.prepHits + ' / ' + bpm());
+        if (TB.prepHits >= bpm()) startCapture();
+      } else {
+        // strict gate: a single off-beat tap resets the count-in
+        TB.prepHits = 0;
+        flashOffbeat();
+        tbMsg('Stay on the beat — restart the count-in (0 / ' + bpm() + ').');
+      }
+    } else if (TB.phase === 'capture') {
+      TB.beatTaps.push(now);
+    }
+  }
+  function onRhythmTap() {
+    var c = ctx(); if (!c) return;
+    if (TB.phase === 'capture') TB.rhythmTaps.push(c.currentTime);
+    // ignored during prep (rhythm hand idle until "Go!")
+  }
+  function flashOffbeat() {
+    var z = document.getElementById('tbBeat'); if (!z) return;
+    z.classList.add('tb-bad'); setTimeout(function () { z.classList.remove('tb-bad'); }, 220);
+  }
+
+  // Lock in: the rhythm capture begins on the NEXT downbeat after lock-in.
+  function startCapture() {
+    var c = ctx(); if (!c) return;
+    TB.phase = 'arming';
+    document.getElementById('tbRhythm').classList.add('tb-armed');
+    // find the next metronome downbeat (start of a measure) strictly in the future
+    var start = null;
+    for (var i = 0; i < TB.beatTimes.length; i++) {
+      var b = TB.beatTimes[i];
+      if (b.accent && b.t > c.currentTime + 0.05) { start = b.t; break; }
+    }
+    if (start == null) {
+      // none scheduled yet — fall back to the next whole measure from now
+      start = c.currentTime + (bpm()) * (60 / S.tempo);
+    }
+    var beatDur = 60 / S.tempo;
+    TB.captureStart = start;
+    TB.captureEnd = start + totalBeats() * beatDur;
+    tbMsg('Get ready…');
+    // "Go!" cue on the downbeat
+    TB._goTimer = setTimeout(function () {
+      if (!TB.open) return;
+      TB.phase = 'capture';
+      tbMsg('Go! Tap the RHYTHM (right), keep the BEAT (left).');
+      var z = document.getElementById('tbZones'); if (z) { z.classList.add('tb-go'); setTimeout(function () { z.classList.remove('tb-go'); }, 600); }
+    }, Math.max(0, (start - c.currentTime) * 1000));
+    // stop capture one beat after the last beat of the pass, then score
+    TB._endTimer = setTimeout(function () {
+      if (!TB.open) return;
+      finishCapture();
+    }, Math.max(0, (TB.captureEnd + beatDur - c.currentTime) * 1000));
+  }
+
+  function finishCapture() {
+    TB.phase = 'done';
+    var res = scoreTapBack();
+    showResults(res);
+  }
+
+  /* Score the captured taps against the metronome grid + target onsets.
+     - Rhythm hand: each target onset claims the nearest unused rhythm tap within
+       tolerance (hit); unclaimed onsets are misses; leftover rhythm taps are extra.
+     - Beat hand: each metronome beat inside the capture window claims the nearest
+       unused beat tap within tolerance (steady) — measures the second hand.
+     - A measure PASSES iff all its onsets hit, it had no extra rhythm taps, and the
+       beat hand stayed steady across its beats. */
+  function scoreTapBack() {
+    var beatDur = 60 / S.tempo;
+    var onsets = targetOnsets();                 // [{beat, mi}] from the shared walk
+    var mb = mBeats(), nMeas = mb.length;
+    // ---- rhythm hand ----
+    var taps = TB.rhythmTaps.slice().sort(function (a, b) { return a - b; });
+    var used = taps.map(function () { return false; });
+    var perMeas = [];
+    for (var m = 0; m < nMeas; m++) perMeas[m] = { onsets: 0, hits: 0, extra: 0, beatBeats: 0, beatHits: 0 };
+    onsets.forEach(function (o) {
+      var want = TB.captureStart + o.beat * beatDur;
+      perMeas[o.mi].onsets++;
+      var bi = -1, bd = Infinity;
+      for (var i = 0; i < taps.length; i++) {
+        if (used[i]) continue;
+        var d = Math.abs(taps[i] - want);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      if (bi !== -1 && bd <= TAP_TOLERANCE) { used[bi] = true; perMeas[o.mi].hits++; }
+    });
+    // leftover rhythm taps inside the capture window = extras, attributed to their measure
+    var extraTotal = 0;
+    for (var i = 0; i < taps.length; i++) {
+      if (used[i]) continue;
+      if (taps[i] < TB.captureStart - TAP_TOLERANCE || taps[i] > TB.captureEnd + TAP_TOLERANCE) continue;
+      var rel = (taps[i] - TB.captureStart) / beatDur;          // beats into the pass
+      var mi = measureOfAbs(Math.max(0, Math.min(totalBeats() - 0.0001, rel))).m - 1;
+      perMeas[mi].extra++; extraTotal++;
+    }
+    // ---- beat hand ----
+    var btaps = TB.beatTaps.slice().sort(function (a, b) { return a - b; });
+    var bused = btaps.map(function () { return false; });
+    // metronome beats that fall within the capture window, tagged by measure
+    TB.beatTimes.forEach(function (bt) {
+      if (bt.t < TB.captureStart - 0.001 || bt.t >= TB.captureEnd - 0.001) return;
+      var rel = (bt.t - TB.captureStart) / beatDur;
+      var mi = measureOfAbs(Math.max(0, Math.min(totalBeats() - 0.0001, rel))).m - 1;
+      perMeas[mi].beatBeats++;
+      var bi = -1, bd = Infinity;
+      for (var j = 0; j < btaps.length; j++) {
+        if (bused[j]) continue;
+        var d = Math.abs(btaps[j] - bt.t);
+        if (d < bd) { bd = d; bi = j; }
+      }
+      if (bi !== -1 && bd <= TAP_TOLERANCE) { bused[bi] = true; perMeas[mi].beatHits++; }
+    });
+    // ---- per-measure pass/fail + totals ----
+    var totalOnsets = 0, totalHits = 0, passed = 0, measures = [];
+    for (var mm = 0; mm < nMeas; mm++) {
+      var p = perMeas[mm];
+      totalOnsets += p.onsets; totalHits += p.hits;
+      var rhythmOk = (p.hits === p.onsets) && p.extra === 0;
+      // steady = at least all but one beat tracked (forgiving — one slip allowed)
+      var beatOk = p.beatBeats === 0 ? true : (p.beatHits >= p.beatBeats - 1);
+      var pass = rhythmOk && beatOk;
+      if (pass) passed++;
+      measures.push({
+        m: mm + 1, pass: pass,
+        rhythmSlip: !rhythmOk, beatSlip: !beatOk,
+        onsets: p.onsets, hits: p.hits, extra: p.extra,
+        beatBeats: p.beatBeats, beatHits: p.beatHits
+      });
+    }
+    var accuracy = totalOnsets ? Math.round((totalHits / totalOnsets) * 100) : 100;
+    // bonus rewards passed measures (clean rhythm + steady beat), not raw accuracy,
+    // so partial credit can't be farmed by mashing taps.
+    var bonus = passed * TB_BONUS_PER_MEASURE;
+    return { measures: measures, accuracy: accuracy, passed: passed, total: nMeas, extra: extraTotal, bonus: bonus };
+  }
+
+  function showResults(res) {
+    document.getElementById('tbZones').style.display = 'none';
+    S.bonus += res.bonus; S.score += res.bonus;     // bonus folds into the running score too
+    save(); render();
+    var rows = res.measures.map(function (m) {
+      var status = m.pass ? 'pass' : 'fail';
+      var note = m.pass ? 'clean' :
+        [m.rhythmSlip ? (m.hits + '/' + m.onsets + ' rhythm' + (m.extra ? ' · +' + m.extra + ' extra' : '')) : '',
+         m.beatSlip ? 'beat unsteady' : ''].filter(Boolean).join(' · ');
+      return '<div class="tb-mrow tb-' + status + '"><span class="tb-mlabel">Bar ' + m.m + '</span>' +
+        '<span class="tb-mstat">' + (m.pass ? IC.check + 'pass' : IC.close + 'fix') + '</span>' +
+        '<span class="tb-mnote">' + note + '</span></div>';
+    }).join('');
+    var el = document.getElementById('tbResults');
+    el.innerHTML =
+      '<div class="tb-score">' +
+        '<div class="tb-acc"><b>' + res.accuracy + '%</b><span>accuracy</span></div>' +
+        '<div class="tb-acc"><b>' + res.passed + '/' + res.total + '</b><span>bars clean</span></div>' +
+        '<div class="tb-acc tb-bonus"><b>+' + res.bonus + '</b><span>bonus</span></div>' +
+      '</div>' +
+      '<div class="tb-mlist">' + rows + '</div>' +
+      '<div class="tb-rbtns solo-ctl">' +
+        '<button class="hint" id="tbRetry">' + IC.redo + 'Try again</button>' +
+        '<button class="go" id="tbDone">' + IC.check + 'Done</button>' +
+      '</div>';
+    el.style.display = '';
+    document.getElementById('tbDone').onclick = closeTapBack;
+    document.getElementById('tbRetry').onclick = function () {
+      document.getElementById('tbResults').style.display = 'none';
+      document.getElementById('tbZones').style.display = '';
+      startPrep();           // metronome keeps running; just re-enter the prep gate
+    };
+  }
+  function showTapBackBtn() {
+    var b = document.getElementById('soloTapBack'); if (b) b.style.display = '';
   }
 
   /* --------------------------------------------------------------- checking
@@ -630,6 +980,7 @@
     S.pick = null; setPickBtns();                                  // disarm the pick-a-beat hints
     clearMarks();
     document.getElementById('soloNext').style.display = 'none';
+    var tbBtn = document.getElementById('soloTapBack'); if (tbBtn) tbBtn.style.display = 'none';
     document.getElementById('soloSubmit').style.display = '';
     render();
     if (rs) rs.onAnswerChanged = updateSubmitBtn;   // re-evaluate Submit on each placement
@@ -663,6 +1014,7 @@
                 : 'Correct! +' + pts);
       document.getElementById('soloSubmit').style.display = 'none';
       document.getElementById('soloNext').style.display = '';
+      showTapBackBtn();   // OPTIONAL bonus — only ever offered after a correct answer
       save(); render(); return;
     }
     S.wrongThisRound = true;
@@ -770,6 +1122,7 @@
     var p = document.getElementById('soloGroovePct'); if (p) p.textContent = S.groove + '%';
     var sc = document.getElementById('soloScore'); if (sc) sc.textContent = S.score;
     var st = document.getElementById('soloStreak'); if (st) st.textContent = S.streak;
+    var bn = document.getElementById('soloBonus'); if (bn) bn.textContent = S.bonus;
   }
 
   function injectStyle() {
@@ -813,7 +1166,55 @@
       '#soloHud #soloMsg{margin-top:10px;font-size:.95rem;min-height:1.3em;font-weight:600}' +
       '.beat-drop-zone.solo-wrong{outline:2px solid #ff5a4d;outline-offset:-2px;background:rgba(255,90,77,.13)!important}' +
       '.beat-drop-zone.solo-right{background:rgba(25,224,122,.16)!important}' +
-      '.beat-drop-zone.solo-beat-on{background:rgba(33,150,243,.22)!important;box-shadow:inset 0 0 0 2px rgba(33,150,243,.7)}';
+      '.beat-drop-zone.solo-beat-on{background:rgba(33,150,243,.22)!important;box-shadow:inset 0 0 0 2px rgba(33,150,243,.7)}' +
+      // Tap-it-back entry button (sits in the actions bar next to Submit/Next).
+      // Per-theme color comes from suite-theme.css; this is the neutral default.
+      '#soloTapBack{display:inline-flex;align-items:center;justify-content:center;font-family:inherit;font-weight:700;font-size:.85rem;border:none;border-radius:10px;padding:11px 16px;min-height:42px;cursor:pointer;background:#7c5cff;color:#fff;transition:.12s}' +
+      '#soloTapBack:hover{transform:translateY(-1px);filter:brightness(1.08)}' +
+      '#soloTapBack:active{transform:translateY(2px)}' +
+      /* ---- full-screen tap-it-back overlay (mobile-first, dark) ---- */
+      '.tapback-ov{position:fixed;inset:0;z-index:10000;display:none;align-items:stretch;justify-content:center;background:rgba(8,8,14,.92);backdrop-filter:blur(6px);color:#eef1fb;font-family:system-ui,sans-serif;-webkit-tap-highlight-color:transparent}' +
+      '.tapback-ov.show{display:flex}' +
+      '.tb-card{display:flex;flex-direction:column;width:100%;max-width:760px;padding:16px env(safe-area-inset-right,12px) calc(env(safe-area-inset-bottom,0px) + 16px) env(safe-area-inset-left,12px);box-sizing:border-box;position:relative}' +
+      '.tb-close{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.1);border:none;color:#eef1fb;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}' +
+      '.tb-close .ic{margin:0;width:1.2em;height:1.2em;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round}' +
+      '.tb-head{text-align:center;margin:4px 0 2px}' +
+      '.tb-title{font-size:1.3rem;font-weight:800;letter-spacing:.02em}' +
+      '.tb-meta{font-size:.78rem;opacity:.65;letter-spacing:.06em;margin-top:2px}' +
+      '.tb-instruct{text-align:center;font-size:1rem;font-weight:600;min-height:2.6em;display:flex;align-items:center;justify-content:center;padding:6px 8px;color:var(--tb-accent,#7c5cff)}' +
+      '.tb-zones{flex:1;display:flex;gap:12px;min-height:200px}' +
+      '.tb-zones.tb-go .tb-zone{box-shadow:inset 0 0 0 3px var(--tb-accent,#7c5cff)}' +
+      '.tb-zone{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:2px solid rgba(255,255,255,.16);border-radius:18px;background:rgba(255,255,255,.05);color:#eef1fb;cursor:pointer;font-family:inherit;user-select:none;-webkit-user-select:none;transition:transform .06s,background .12s,box-shadow .12s;touch-action:manipulation}' +
+      '.tb-zone .tb-zlabel{font-size:1.6rem;font-weight:800;letter-spacing:.02em}' +
+      '.tb-zone .tb-zhint{font-size:.72rem;opacity:.55;letter-spacing:.1em;text-transform:uppercase}' +
+      '.tb-beat{background:rgba(33,150,243,.12)}' +
+      '.tb-rhythm{background:rgba(124,92,255,.12)}' +
+      '.tb-zone.tb-armed{border-color:var(--tb-accent,#7c5cff);box-shadow:0 0 0 1px var(--tb-accent,#7c5cff)}' +
+      '.tb-zone.tb-flash{transform:scale(.97);background:rgba(255,255,255,.22)}' +
+      '.tb-zone.tb-pulse .tb-zlabel{text-shadow:0 0 14px var(--tb-accent,#7c5cff)}' +
+      '.tb-zone.tb-bad{border-color:#ff5a4d!important;box-shadow:0 0 0 2px #ff5a4d;background:rgba(255,90,77,.18)}' +
+      // results
+      '.tb-results{flex:1;display:flex;flex-direction:column;gap:14px;padding-top:8px;overflow-y:auto}' +
+      '.tb-score{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}' +
+      '.tb-acc{display:flex;flex-direction:column;align-items:center;background:rgba(255,255,255,.06);border-radius:12px;padding:12px 20px;min-width:96px}' +
+      '.tb-acc b{font-size:1.8rem;font-weight:800;line-height:1}' +
+      '.tb-acc span{font-size:.66rem;opacity:.6;letter-spacing:.1em;text-transform:uppercase;margin-top:4px}' +
+      '.tb-acc.tb-bonus b{color:var(--tb-accent,#7c5cff)}' +
+      '.tb-mlist{display:flex;flex-direction:column;gap:6px}' +
+      '.tb-mrow{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.05);font-size:.85rem}' +
+      '.tb-mrow.tb-pass{box-shadow:inset 0 0 0 1px rgba(25,224,122,.5)}' +
+      '.tb-mrow.tb-fail{box-shadow:inset 0 0 0 2px rgba(255,90,77,.7);background:rgba(255,90,77,.1)}' +
+      '.tb-mlabel{font-weight:700;min-width:54px}' +
+      '.tb-mstat{display:inline-flex;align-items:center;gap:4px;font-weight:700;min-width:64px}' +
+      '.tb-mstat .ic{margin:0;width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}' +
+      '.tb-pass .tb-mstat{color:#19e07a}.tb-fail .tb-mstat{color:#ff7a6e}' +
+      '.tb-mnote{opacity:.7;font-size:.78rem;flex:1}' +
+      '.tb-rbtns{display:flex;gap:12px;justify-content:center;margin-top:6px}' +
+      '.tb-rbtns button{display:inline-flex;align-items:center;justify-content:center;font-family:inherit;font-weight:700;font-size:.9rem;border:none;border-radius:10px;padding:12px 20px;min-height:46px;cursor:pointer;background:rgba(255,255,255,.1);color:#fff}' +
+      '.tb-rbtns button .ic{margin-right:7px;width:1.05em;height:1.05em;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}' +
+      '.tb-rbtns button.go{background:var(--tb-accent,#7c5cff);color:#fff}' +
+      // landscape phones: keep zones big & side-by-side, shrink chrome
+      '@media (orientation:landscape) and (max-height:560px){.tb-instruct{min-height:1.8em;font-size:.9rem}.tb-title{font-size:1.05rem}.tb-zone .tb-zlabel{font-size:1.3rem}}';
     document.head.appendChild(st);
   }
 
@@ -850,6 +1251,7 @@
         '<div class="solo-stat"><span>BARS</span><select id="soloBars"><option value="2">2</option><option value="4">4</option><option value="8">8</option><option value="16">16</option></select></div>' +
         '<div class="solo-stat"><span>SCORE</span><b id="soloScore">0</b></div>' +
         '<div class="solo-stat"><span>STREAK</span><b id="soloStreak">0</b>' + IC.flame + '</div>' +
+        '<div class="solo-stat"><span>BONUS</span><b id="soloBonus">0</b></div>' +
       '</div>' +
       '<div class="solo-actions">' +
         '<button id="soloPlay" class="primary play">' + IC.play + 'Play rhythm</button>' +
@@ -879,6 +1281,7 @@
     var actions = document.createElement('div'); actions.id = 'soloActions'; actions.className = 'solo-ctl';
     actions.innerHTML =
       '<button id="soloSubmit" class="primary go">' + IC.check + 'Submit answer</button>' +
+      '<button id="soloTapBack" class="tapback" style="display:none">' + IC.tap + 'Tap it back</button>' +
       '<button id="soloNext" class="go" style="display:none">' + IC.next + 'Next</button>';
     if (ga) ga.appendChild(actions);
 
@@ -915,6 +1318,7 @@
     });
     document.getElementById('soloSubmit').onclick = submit;
     document.getElementById('soloNext').onclick = newRound;
+    document.getElementById('soloTapBack').onclick = openTapBack;
     document.getElementById('soloReveal').onclick = function () {
       if (S.solved) return;
       S.solved = true; S.streak = 0; S.wrongThisRound = true;
@@ -1006,5 +1410,24 @@
     if (/[?&]mode=solo/.test(location.search)) setTimeout(start, 300);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wireEntry); else wireEntry();
-  window.BeatQuestSolo = { start: start, state: S };
+  // Public surface. `_tapBackScore` lets a headless smoke test exercise the real
+  // scorer on synthetic capture data (it can't tap in real time) — it seeds the
+  // capture window from the current metronome grid, injects taps, and runs the
+  // actual scoreTapBack(). No effect on normal play.
+  window.BeatQuestSolo = {
+    start: start, state: S,
+    _tapBackScore: function () {
+      var c = ctx(); if (!c || !S.target) return null;
+      var beatDur = 60 / S.tempo;
+      TB.captureStart = c.currentTime;
+      TB.captureEnd = TB.captureStart + totalBeats() * beatDur;
+      // ground-truth beat grid across the capture window
+      TB.beatTimes = [];
+      for (var b = 0; b < totalBeats(); b++) TB.beatTimes.push({ t: TB.captureStart + b * beatDur, idx: b, accent: (b % bpm()) === 0 });
+      // "perfect" performance: a beat tap on every beat, a rhythm tap on every onset
+      TB.beatTaps = TB.beatTimes.map(function (x) { return x.t; });
+      TB.rhythmTaps = targetOnsets().map(function (o) { return TB.captureStart + o.beat * beatDur; });
+      return scoreTapBack();
+    }
+  };
 })();

@@ -262,3 +262,22 @@ body.theme-manuscript #soloHud button.play:hover{background:#688a54}
 body.theme-brutalist #soloHud button.play{color:#fff;background:#111;border:2px solid #111;border-radius:0;
   box-shadow:5px 5px 0 rgba(17,17,17,.22)}
 body.theme-brutalist #soloHud button.play:hover{background:#000}
+
+/* ============================================================================
+   TAP-IT-BACK — per-theme accent (no universal colors). --tb-accent drives the
+   armed zone outline, the "Go!" highlight, the bonus number and the Done button.
+   The entry button (#soloTapBack) takes each theme's accent too.
+   ========================================================================== */
+body.theme-mpc .tapback-ov{--tb-accent:#39ff8b}
+body.theme-manuscript .tapback-ov{--tb-accent:#5c7a4a}
+body.theme-arcade .tapback-ov{--tb-accent:#16f0ff}
+body.theme-brutalist .tapback-ov{--tb-accent:#e3231b}
+
+body.theme-mpc #soloTapBack{background:linear-gradient(180deg,#39ff8b,#19c46a);color:#06210f;font-family:'Saira Condensed',sans-serif;text-transform:uppercase;letter-spacing:.06em;box-shadow:0 3px 0 #0e7a3f}
+body.theme-manuscript #soloTapBack{background:#5c7a4a;color:#f3ead4;font-family:'Cormorant Garamond',serif;font-style:italic;border-radius:4px}
+body.theme-arcade #soloTapBack{background:linear-gradient(180deg,#3df0ff,#0bb6c9);color:#04121f;font-family:'Press Start 2P',monospace;font-size:.55rem;box-shadow:0 4px 0 #0a6e78}
+body.theme-brutalist #soloTapBack{background:#e3231b;color:#fff;border-radius:0;font-family:'Anton',sans-serif;text-transform:uppercase}
+
+/* Overlay surface tint per theme (kept dark; only the accents and card chrome shift). */
+body.theme-arcade .tapback-ov{background:rgba(8,2,20,.94)}
+body.theme-manuscript .tapback-ov{background:rgba(20,16,8,.92)}
