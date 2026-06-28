@@ -433,9 +433,14 @@
     scheduledOscs.forEach(function (o) { try { o.stop(); } catch (e) {} try { o.disconnect(); } catch (e) {} });
     scheduledOscs = [];
   }
-  // Full stop: the count-in/metronome scheduler AND all scheduled sound.
+  // Full stop: the count-in/metronome scheduler AND all scheduled sound. Also tears
+  // down the tap-back metronome loop — it is one of "all audio scheduling", so any
+  // path that fully stops playback (Play pressed, new round, stop-all) must silence
+  // it too. tbStopMetro is hoisted (function decl) and idempotent, so this is safe to
+  // call before the overlay ever opens. The tap-back metro and the game pulse are
+  // mutually exclusive clocks; stopPlayback guarantees neither is left running.
   function stopPlayback() {
-    stopPulse(); stopAllAudio();
+    stopPulse(); stopAllAudio(); tbStopMetro();
     S.playing = false;
     if (S._playTimer) { clearTimeout(S._playTimer); S._playTimer = null; }
   }
@@ -594,6 +599,18 @@
   // beat / target onset if it lands within ±this. Deliberately generous — this is
   // a groove game, not a millisecond drum-machine quantizer. Tune here only.
   var TAP_TOLERANCE = 0.12;
+  /* Input-latency offset (seconds), TUNED ON-DEVICE. Subtracted from every captured
+     tap time (beat-zone AND rhythm-zone) before it is compared to the scheduled
+     metronome grid. It models the fixed lag between the player FEELING a tap land on
+     the beat and the event timestamp we read off ctx().currentTime (touch dispatch +
+     audio output latency). 0 = no correction; raise it (e.g. 0.03–0.06) if on-device
+     testing shows taps that feel on-beat scoring consistently late. One knob, applied
+     in exactly one place (tapTime), so the whole pipeline stays single-clock. */
+  var TAP_LATENCY = 0;
+  // The audio-clock instant a physical tap should be COMPARED AT: when it was read,
+  // minus the tuned input latency. Every tap (beat + rhythm) goes through here so the
+  // latency correction can never be applied in one path and forgotten in another.
+  function tapTime() { var c = ctx(); return c ? c.currentTime - TAP_LATENCY : 0; }
   /* Tap-back STATE MACHINE (TB.phase):
        'idle'     overlay closed.
        'ready'    overlay open; cloned staff shown; metronome OFF; nothing captures.
@@ -609,13 +626,16 @@
      compared against scheduled click times, never against player-inferred tempo. */
   var TB = {
     open: false, phase: 'idle',
-    timer: null, nextBeat: 0, beatIdx: 0, beatTimes: [],  // scheduled metronome beat times (audio clock)
+    timer: null, runId: 0, nextBeat: 0, beatIdx: 0, beatTimes: [],  // scheduled metronome beat times (audio clock)
     metroOn: false,                 // has the player pressed "Start metronome"?
     lockStreak: 0, lastBeatTapIdx: -1,  // consecutive on-beat taps + the beat index of the last counted tap
-    captureStart: 0, captureEnd: 0,
-    beatTaps: [], rhythmTaps: [],   // captured tap times (audio clock)
+    captureStart: 0, captureEnd: 0, captureStartIdx: -1,  // capture anchor = an EXACT TB.beatTimes entry
+    beatTaps: [], rhythmTaps: [],   // captured tap times (audio clock, latency-corrected)
     cells: [], el: null             // cloned per-beat highlight cells (absolute-beat ordered)
   };
+  // One physical tap can dispatch BOTH touchstart and a synthetic pointerdown on some
+  // touch devices. Collapse any second event within this window to one logical tap.
+  var TAP_DEDUP_MS = 250;
   var TB_BONUS_PER_MEASURE = 25;    // bonus points per passed measure (added to S.bonus)
   var TB_BONUS_HINT = '+' + TB_BONUS_PER_MEASURE + '/bar';   // advertised on the entry button badge
 
@@ -659,13 +679,25 @@
     // LIVE re-rates the running click without resetting the scheduler.
     document.getElementById('tbTempoDown').onclick = function () { nudgeTempo(-4); };
     document.getElementById('tbTempoUp').onclick = function () { nudgeTempo(4); };
-    // Both pointer (desktop/dev) AND touch (mobile) — touchstart fires first on
-    // touch devices, so preventDefault stops the synthetic click/pointer double-fire.
+    // Both pointer (desktop/dev) AND touch (mobile). On touch devices ONE physical
+    // tap can dispatch touchstart AND a synthetic pointerdown — which would double-
+    // count and make lock-in fire one tap early (the 3-not-4 bug). We bind both (so
+    // a mouse pointerdown still works on desktop) but gate every event through a
+    // single per-zone wall-clock debounce: a second event within TAP_DEDUP_MS of an
+    // accepted one is dropped. preventDefault also suppresses the trailing synthetic
+    // click. Result: one physical tap === exactly one call to fn().
     function bindZone(id, fn) {
       var z = document.getElementById(id);
-      var handler = function (e) { if (e.cancelable) e.preventDefault(); fn(); flashZone(z); };
+      var lastAt = 0;
+      var handler = function (e) {
+        if (e.cancelable) e.preventDefault();
+        var now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        if (now - lastAt < TAP_DEDUP_MS) return;   // collapse touch+pointer twin events
+        lastAt = now;
+        fn(); flashZone(z);
+      };
       z.addEventListener('touchstart', handler, { passive: false });
-      z.addEventListener('pointerdown', function (e) { if (e.pointerType === 'touch') return; handler(e); });
+      z.addEventListener('pointerdown', handler);
     }
     bindZone('tbBeat', onBeatTap);
     bindZone('tbRhythm', onRhythmTap);
@@ -747,13 +779,22 @@
   // the count-off + capture, anchored to TB.captureStart (see scheduleCountoff).
   function tbStartMetro() {
     var c = ctx(); if (!c) return;
-    if (TB.timer) { clearTimeout(TB.timer); TB.timer = null; }   // clear any prior loop (keep metroOn)
+    // STARTING REPLACES, never stacks. Fully tear down any prior loop first, then
+    // bump runId so any stale setTimeout(sched) still in flight self-aborts when it
+    // sees its captured id no longer matches. The normal game pulse and the tap-back
+    // metro must NEVER both run — kill the pulse so we don't hear two clocks.
+    tbStopMetro();
+    stopPulse();
+    var myRun = ++TB.runId;
     TB.metroOn = true;
     TB.beatTimes = [];
     TB.nextBeat = c.currentTime + 0.25;   // small lead-in
     TB.beatIdx = 0;
     (function sched() {
-      if (!TB.open || !TB.metroOn) return;
+      // Single owner check: only the current run, with the overlay open and metro on,
+      // may schedule. A stale loop (older runId) or a closed overlay aborts here and
+      // never re-arms its timer.
+      if (myRun !== TB.runId || !TB.open || !TB.metroOn) return;
       var cc = ctx(); if (!cc) return;
       while (TB.nextBeat < cc.currentTime + 0.15) {
         var idx = TB.beatIdx;
@@ -769,7 +810,13 @@
       TB.timer = setTimeout(sched, 25);
     })();
   }
-  function tbStopMetro() { TB.metroOn = false; if (TB.timer) { clearTimeout(TB.timer); TB.timer = null; } }
+  // Stop the tap-back metro for good: clear the flag, invalidate the running loop via
+  // runId (so an in-flight setTimeout that already passed its guard can't re-arm), and
+  // cancel the pending timer. Idempotent — safe to call from close / stop / new round.
+  function tbStopMetro() {
+    TB.metroOn = false; TB.runId++;
+    if (TB.timer) { clearTimeout(TB.timer); TB.timer = null; }
+  }
   // Visual pulse on the Beat zone in time with the click (purely cosmetic cue).
   function pulseBeatDot(when) {
     var c = ctx(); if (!c) return;
@@ -788,6 +835,23 @@
       if (d < bd) { bd = d; best = TB.beatTimes[i]; }
     }
     return best ? { beat: best, delta: t - best.t, absDelta: bd } : null;
+  }
+  // Look up the scheduled metronome beat with a given monotonic index. Indices are
+  // the SINGLE source of truth: the count-off, capture downbeat, beat highlight, and
+  // scoring all reference beats by idx, then resolve the actual click time here. The
+  // metro lookahead keeps pushing future beats, so a near-future idx resolves cleanly.
+  function beatByIdx(idx) {
+    for (var i = 0; i < TB.beatTimes.length; i++) if (TB.beatTimes[i].idx === idx) return TB.beatTimes[i];
+    return null;
+  }
+  // The actual scheduled click time for an index if known; otherwise PREDICT it from
+  // a known anchor beat + the live beat duration (used only to place setTimeout fire
+  // moments for beats not yet emitted by the lookahead). Stored truth values always
+  // come from beatByIdx once the beat exists.
+  function beatTimeByIdx(idx, anchorBeat) {
+    var b = beatByIdx(idx);
+    if (b) return b.t;
+    return anchorBeat.t + (idx - anchorBeat.idx) * (60 / S.tempo);
   }
 
   function openTapBack() {
@@ -826,7 +890,7 @@
   function enterReady() {
     TB.phase = 'ready';
     TB.metroOn = false; TB.lockStreak = 0; TB.lastBeatTapIdx = -1;
-    TB.captureStart = 0; TB.captureEnd = 0; TB.beatTaps = []; TB.rhythmTaps = [];
+    TB.captureStart = 0; TB.captureEnd = 0; TB.captureStartIdx = -1; TB.beatTaps = []; TB.rhythmTaps = [];
     tbStopMetro(); tbClearBeat(); clearTbTimers();
     var co = document.getElementById('tbCountoff'); if (co) { co.classList.remove('show'); co.textContent = ''; }
     var setup = document.getElementById('tbSetup'); if (setup) setup.style.display = '';
@@ -860,17 +924,21 @@
 
   function onBeatTap() {
     var c = ctx(); if (!c) return;
-    var now = c.currentTime;
+    var now = tapTime();   // latency-corrected audio-clock instant for this physical tap
     if (TB.phase === 'metro') {
       var nb = nearestBeat(now);
-      // Only count a given metronome beat ONCE (consecutive distinct on-beat taps).
+      // Lock-in requires bpm() DISTINCT on-beat metronome beats in a row. Each beat is
+      // counted at most once (nb.beat.idx !== lastBeatTapIdx), and the event layer has
+      // already collapsed any touch+pointer twin into one call — so on a touchscreen
+      // one physical tap advances the streak by exactly one. In 4/4 that means 4 taps.
       if (nb && nb.absDelta <= TAP_TOLERANCE && nb.beat.idx !== TB.lastBeatTapIdx) {
         TB.lockStreak++; TB.lastBeatTapIdx = nb.beat.idx;
         updateLockHint();
         tbMsg('On the beat — ' + TB.lockStreak + ' / ' + bpm());
         if (TB.lockStreak >= bpm()) lockIn();
-      } else {
-        // strict gate: an off-beat tap resets the streak
+      } else if (!nb || nb.absDelta > TAP_TOLERANCE) {
+        // strict gate: a genuinely off-beat tap resets the streak. (A duplicate landing
+        // on the SAME beat is simply ignored above — it neither advances nor resets.)
         TB.lockStreak = 0; TB.lastBeatTapIdx = -1;
         updateLockHint();
         flashOffbeat();
@@ -882,7 +950,7 @@
   }
   function onRhythmTap() {
     var c = ctx(); if (!c) return;
-    if (TB.phase === 'capture') TB.rhythmTaps.push(c.currentTime);
+    if (TB.phase === 'capture') TB.rhythmTaps.push(tapTime());   // latency-corrected
     // ignored before capture (rhythm hand idle until the count-off ends)
   }
   function flashOffbeat() {
@@ -910,71 +978,84 @@
     if (hint) hint.textContent = on ? 'keep the beat' : 'left hand';
   }
 
-  /* Count-off + capture, ALL anchored to scheduled metronome click times (ctx()
-     clock). We find the next downbeat strictly in the future, then map one measure
-     of clicks (bpm() beats) onto big on-screen numbers; the click AFTER that measure
-     is the capture downbeat. From there the highlight indexes TB.cells by the
-     beat number computed from the clock, so it tracks smoothly bar-to-bar. */
+  /* Count-off + capture — ONE clock, indexed off TB.beatTimes (the scheduled metro
+     clicks). The flow is anchored by monotonic beat INDEX, never by recomputed
+     `start + k*beatDur`:
+       - coStartIdx       = idx of the first future DOWNBEAT (count-off "1").
+       - captureStartIdx  = coStartIdx + bpm()  (the downbeat AFTER the count-off bar).
+     Every on-screen number, the "GO" flash, the beat-guide highlight, and the scoring
+     anchor all reference these indices and resolve to the ACTUAL scheduled click time
+     via beatTimeByIdx — so what the player hears (the click), sees (number/highlight),
+     and is graded against (target onsets) are byte-for-byte the same instants. */
   function scheduleCountoff() {
     var c = ctx(); if (!c) return;
-    var beatDur = 60 / S.tempo;
-    // collect upcoming scheduled beats; ensure enough are scheduled to cover the
-    // count-off measure + first capture downbeat.
-    var future = TB.beatTimes.filter(function (b) { return b.t > c.currentTime + 0.06; });
-    // find the first DOWNBEAT (accent) in the future to anchor the count-off start.
-    var firstDown = null, fi = 0;
-    for (fi = 0; fi < future.length; fi++) { if (future[fi].accent) { firstDown = future[fi]; break; } }
     var countBeats = bpm();   // one measure of count-off
-    var coStart;
-    if (firstDown) coStart = firstDown.t;
-    else coStart = (future[0] ? future[0].t : c.currentTime + 0.25);
-    // count-off numbers fall on coStart + k*beatDur for k in [0, countBeats)
+    // Anchor on the first scheduled DOWNBEAT strictly in the future. Downbeats are the
+    // beats the metro accented (idx % bpm() === 0); we need one slightly ahead so its
+    // setTimeout doesn't fire in the past.
+    var future = TB.beatTimes.filter(function (b) { return b.t > c.currentTime + 0.06; });
+    var anchor = null, fi;
+    for (fi = 0; fi < future.length; fi++) { if (future[fi].accent) { anchor = future[fi]; break; } }
+    if (!anchor) anchor = future[0] || TB.beatTimes[TB.beatTimes.length - 1];
+    if (!anchor) return;      // metro not running yet (shouldn't happen post lock-in)
+    var coStartIdx = anchor.idx;
+    var captureStartIdx = coStartIdx + countBeats;
+    TB.captureStartIdx = captureStartIdx;
+
     TB._countTimers = [];
     var co = document.getElementById('tbCountoff');
     if (co) { co.textContent = ''; co.classList.add('show'); }
+    // Count-off numbers 1..countBeats, each fired at the ACTUAL click time of its beat.
     for (var k = 0; k < countBeats; k++) {
       (function (k) {
-        var when = coStart + k * beatDur;
+        var when = beatTimeByIdx(coStartIdx + k, anchor);
         TB._countTimers.push(setTimeout(function () {
           if (!TB.open || TB.phase !== 'countoff') return;
           if (co) { co.textContent = String(k + 1); co.classList.remove('tb-pop'); void co.offsetWidth; co.classList.add('tb-pop'); }
         }, Math.max(0, (when - c.currentTime) * 1000)));
       })(k);
     }
-    // capture begins on the downbeat AFTER the count-off measure.
-    var captureStart = coStart + countBeats * beatDur;
-    TB.captureStart = captureStart;
-    TB.captureEnd = captureStart + totalBeats() * beatDur;
-    // "GO" flash on the capture downbeat.
+    // "GO" flash on the capture downbeat (same instant capture begins).
+    var goWhen = beatTimeByIdx(captureStartIdx, anchor);
     TB._countTimers.push(setTimeout(function () {
       if (!TB.open) return;
       if (co) { co.textContent = 'GO'; co.classList.remove('tb-pop'); void co.offsetWidth; co.classList.add('tb-pop'); }
       setTimeout(function () { if (co) co.classList.remove('show'); }, 520);
-    }, Math.max(0, (captureStart - c.currentTime) * 1000)));
-    beginCapture(captureStart);
+    }, Math.max(0, (goWhen - c.currentTime) * 1000)));
+    beginCapture(anchor);
   }
 
-  /* Capture starts at the explicit moment `captureStart` (the count-off's final
-     downbeat) — so the app unambiguously knows when rhythm-tapping begins. The
-     beat-guide highlight is scheduled per-beat from this clock anchor: beat j lights
-     at captureStart + j*beatDur on cell TB.cells[j]. Deterministic; no jumping. */
-  function beginCapture(captureStart) {
+  /* Capture begins on the click at captureStartIdx. The beat-guide highlight, the
+     phase flip, and the end-of-capture are all scheduled at the ACTUAL scheduled
+     click times of beats captureStartIdx + j (resolved via beatTimeByIdx). At the
+     flip we re-read the now-emitted click as TB.captureStart so the stored anchor is
+     the exact time the player heard — the same value scoring uses. No drift. */
+  function beginCapture(anchor) {
     var c = ctx(); if (!c) return;
-    var beatDur = 60 / S.tempo, total = totalBeats();
-    // schedule the moving highlight, anchored to real click times
-    for (var j = 0; j < total; j++) tbLightBeat(j, captureStart + j * beatDur);
-    // flip to capture phase exactly at the downbeat
+    var total = totalBeats();
+    var captureStartIdx = TB.captureStartIdx;
+    // Provisional anchor time (refined to the real click time at the flip below).
+    TB.captureStart = beatTimeByIdx(captureStartIdx, anchor);
+    TB.captureEnd = beatTimeByIdx(captureStartIdx + total, anchor);
+    // Moving highlight: beat j lights at the actual click time of beat captureStartIdx+j
+    // on cloned cell TB.cells[j]. Same instants as the clicks the player hears.
+    for (var j = 0; j < total; j++) tbLightBeat(j, beatTimeByIdx(captureStartIdx + j, anchor));
+    // Flip to capture exactly on the capture downbeat. Pin TB.captureStart/End to the
+    // real scheduled clicks (now emitted by the lookahead) so scoring is exact.
     TB._goTimer = setTimeout(function () {
       if (!TB.open) return;
+      var sb = beatByIdx(captureStartIdx), eb = beatByIdx(captureStartIdx + total);
+      if (sb) TB.captureStart = sb.t;
+      if (eb) TB.captureEnd = eb.t; else TB.captureEnd = TB.captureStart + total * (60 / S.tempo);
       TB.phase = 'capture';
       tbMsg('Go! Tap the RHYTHM (right), keep the BEAT (left).');
       var z = document.getElementById('tbZones'); if (z) { z.classList.add('tb-go'); setTimeout(function () { z.classList.remove('tb-go'); }, 600); }
-    }, Math.max(0, (captureStart - c.currentTime) * 1000));
-    // stop capture one beat after the last beat of the pass, then score
+    }, Math.max(0, (beatTimeByIdx(captureStartIdx, anchor) - c.currentTime) * 1000));
+    // Stop capture one beat after the last beat of the pass, then score.
     TB._endTimer = setTimeout(function () {
       if (!TB.open) return;
       finishCapture();
-    }, Math.max(0, (TB.captureEnd + beatDur - c.currentTime) * 1000));
+    }, Math.max(0, (beatTimeByIdx(captureStartIdx + total + 1, anchor) - c.currentTime) * 1000));
   }
 
   function finishCapture() {
@@ -1159,7 +1240,8 @@
 
   /* ----------------------------------------------------------------- rounds */
   function newRound() {
-    stopPlayback();                 // stop any playing rhythm before building a new one
+    if (TB.open) closeTapBack();    // a new round tears down any open tap-back overlay + its metro
+    stopPlayback();                 // stop any playing rhythm (and the tap-back metro) before building a new one
     S.target = generateTarget();
     S.hintsThisRound = 0; S.wrongThisRound = false; S.solved = false;
     if (rs.updateGameSettings) rs.updateGameSettings({
@@ -1711,4 +1793,20 @@
   window.BeatQuestSolo = {
     start: start, state: S
   };
+  // Test seam — ONLY active with ?tbtest=1 in the URL. Exposes the tap-back internals
+  // so the timing pipeline (single metronome clock, exact lock-count, onset alignment)
+  // can be driven and asserted deterministically by automated traces. Zero effect in
+  // production: nothing reads window.__tbTest unless the flag is set.
+  if (/[?&]tbtest=1/.test(location.search)) {
+    window.__tbTest = {
+      TB: TB, S: S,
+      bpm: bpm, totalBeats: totalBeats, ctx: ctx,
+      openTapBack: openTapBack, closeTapBack: closeTapBack,
+      onStartMetro: onStartMetro, onBeatTap: onBeatTap, onRhythmTap: onRhythmTap,
+      scoreTapBack: scoreTapBack, targetOnsets: targetOnsets,
+      enterReady: enterReady, newRound: newRound, playTarget: playTarget,
+      tapLatency: function () { return TAP_LATENCY; },
+      tapTolerance: function () { return TAP_TOLERANCE; }
+    };
+  }
 })();
