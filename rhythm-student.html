@@ -801,16 +801,9 @@
                 gap: 8px;
                 padding-bottom: 2px;
             }
-            /* Genuinely compact phone tiles. `!important` so this beats BOTH the
-               desktop base rule (.rhythm-tile{width:150px;flex:0 0 150px}, equal
-               specificity but earlier in source) AND any device that reports a
-               non-coarse pointer falling through to 150px. 84px is well under the
-               150px desktop size and reads as clearly compact on an iPhone. */
-            .rhythm-tile {
-                width: 84px !important;
-                flex: 0 0 84px !important;
-                min-height: 52px !important;
-            }
+            /* iPad tiles stay at the touch-comfortable 90px (the phone-only block
+               below shrinks them further on small landscape phones). */
+            .rhythm-tile { width: 90px; flex: 0 0 90px; min-height: 52px; }
             /* ===== STAFF SCROLL REGION (iPad + iPhone fix) =====
                Previously the whole page scrolled and the top of the staff / time
                signature slid UNDER the fixed top bar (#soloHud, top:0). Instead,
@@ -843,48 +836,31 @@
                own the screen. */
             .focus-only { display: inline-flex !important; }   /* show the two toggles */
             /* FIXED (not sticky — sticky fails inside the flex column on iOS, so the
-               bar scrolled away). Always pinned to the very top.
-               `!important` THROUGHOUT beats the HUD's JS-injected base styles
-               (solo-mode.js appends them to <head> AFTER this sheet, so at equal
-               specificity they win on source order — without these the bar reverts
-               to desktop padding (12px 16px) and its actions row WRAPS into a 2nd
-               line, growing to ~120px and covering the top of the staff). */
+               bar scrolled away). Always pinned to the very top. This is the iPad +
+               iPhone shared bar; the phone-only block below slims it further. The
+               fixed position is what makes the staff-clearance scroll region work
+               (it gives --solo-bar-h a stable reference on BOTH iPad and iPhone). */
             #soloHud {
                 position: fixed !important; top: 0; left: 0; right: 0; z-index: 60;
-                padding: 4px 8px !important; margin: 0 !important;
+                padding: 2px 8px; margin: 0;
                 background: rgba(18, 18, 24, 0.95); backdrop-filter: blur(10px);
                 border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-                padding-top: calc(4px + env(safe-area-inset-top, 0px)) !important;
             }
+            /* !important beats the HUD's JS-injected base styles (added after this
+               sheet, so equal specificity would otherwise win on source order). */
             #soloHud .solo-stats { display: none !important; }   /* -> Settings dropdown */
             #soloHud #soloMsg { display: none !important; }
-            /* Single scrollable row — nowrap (with !important) so it never grows to
-               a second line and push the staff down behind the bar. */
-            #soloHud .solo-actions {
-                margin: 0 !important; gap: 6px !important; align-items: center !important;
-                justify-content: flex-start !important; flex-wrap: nowrap !important;
-                overflow-x: auto; -webkit-overflow-scrolling: touch;
-            }
+            #soloHud .solo-actions { margin: 0 !important; gap: 6px; justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
             /* Everyday controls (Speed, Groove) sit compactly in the bar; drop their
                labels to save room (the dropdown + progress bar are self-evident). */
             .solo-actions .bar-item { flex: 0 0 auto; gap: 4px; white-space: nowrap; }
             .solo-actions .bar-item > span { display: none; }
-            /* Groove is a COMPACT inline indicator on phones — it must NOT grow to
-               fill the row or own a whole line (that forced the slim bar onto a 2nd
-               row on narrow iPhones). Cap it hard, no flex-grow, no min-width, and
-               give the meter track a small fixed max so the whole control stays
-               inline with Play + Settings + the theme icon in one row. The injected
-               base sets `.solo-stat.groove{flex:1;min-width:200px}` so we need
-               !important to drop both. */
-            .solo-actions .solo-stat.groove {
-                flex: 0 0 auto !important; min-width: 0 !important; gap: 4px !important;
-            }
-            .solo-actions .solo-stat.groove .solo-bar {
-                flex: 0 0 auto !important; width: 36px !important; max-width: 36px !important; min-width: 36px !important;
-            }
-            /* Drop the trailing percentage text on phones to save the most room;
-               the colored fill bar already conveys the groove level. */
-            .solo-actions .solo-stat.groove #soloGroovePct { display: none !important; }
+            /* Groove fills whatever space is left between Settings and the Theme icon
+               (on iPad this spreads the controls across the bar and pushes the theme
+               icon to the far right — its prior, non-crammed look). The phone-only
+               block below overrides this to a compact fixed-width indicator. */
+            .solo-actions .solo-stat.groove { flex: 1 1 auto !important; min-width: 90px !important; }
+            .solo-actions .solo-stat.groove .solo-bar { flex: 1 1 auto !important; width: auto !important; max-width: none !important; }
             .solo-actions .icon-only { padding: 4px 8px; }
             /* Theme: palette icon at the far right (Groove's flex pushes it there) */
             #soloThemeToggle { margin-left: 0; flex: 0 0 auto; }
@@ -926,6 +902,58 @@
                 color: #fff;
                 align-items: center; justify-content: center;
                 text-align: center; padding: 28px;
+            }
+        }
+
+        /* ============================================================
+           PHONE-ONLY COMPACTING (landscape phones, NOT iPad)
+           The block above gives BOTH iPad and iPhone the focus layout +
+           staff-clearance scroll region. iPad has plenty of horizontal room,
+           so it keeps the spread-out bar (groove stretches, theme icon pushed
+           to the far right) and 90px tiles. Phones in landscape are short and
+           narrow, so here — and ONLY here — we slim the bar to a tight single
+           row, drop the groove % text, shrink the groove to a fixed-width
+           indicator, and shrink the tiles further.
+
+           Gate: `max-height: 500px` cleanly separates phone landscape (iPhone
+           ~390–430px tall) from iPad landscape (≥768px tall) and from iPad
+           portrait (which is rotate-gated anyway). Verified: iPhone 844×390 and
+           932×430 MATCH; iPad 1024×768 and 1180×820 do NOT. Coupled with
+           pointer:coarse so it never touches desktop. */
+        @media (pointer: coarse) and (max-height: 500px) {
+            /* Slim the bar hard and FORCE a single nowrap row. `!important`
+               throughout beats the HUD's JS-injected base styles (solo-mode.js
+               appends them to <head> AFTER this sheet, so at equal specificity
+               they win on source order — without these the bar reverts to desktop
+               padding and its actions row wraps to a 2nd line, ~120px tall,
+               covering the top of the staff). */
+            #soloHud {
+                padding: 4px 8px !important; margin: 0 !important;
+                padding-top: calc(4px + env(safe-area-inset-top, 0px)) !important;
+            }
+            #soloHud .solo-actions {
+                margin: 0 !important; gap: 6px !important; align-items: center !important;
+                justify-content: flex-start !important; flex-wrap: nowrap !important;
+                overflow-x: auto; -webkit-overflow-scrolling: touch;
+            }
+            /* Groove becomes a COMPACT fixed-width inline indicator — it must NOT
+               grow to fill the row (that, combined with the narrow phone width,
+               pushed the bar onto a 2nd line). Drop the % text; the fill conveys
+               the level. Overrides the iPad `flex:1 1 auto` rule above. */
+            .solo-actions .solo-stat.groove {
+                flex: 0 0 auto !important; min-width: 0 !important; gap: 4px !important;
+            }
+            .solo-actions .solo-stat.groove .solo-bar {
+                flex: 0 0 auto !important; width: 36px !important; max-width: 36px !important; min-width: 36px !important;
+            }
+            .solo-actions .solo-stat.groove #soloGroovePct { display: none !important; }
+            /* Genuinely compact phone tiles. `!important` so this beats the 90px
+               iPad rule above (equal specificity, earlier in source) AND the 150px
+               desktop base rule. 84px reads as clearly compact on an iPhone. */
+            .rhythm-tile {
+                width: 84px !important;
+                flex: 0 0 84px !important;
+                min-height: 52px !important;
             }
         }
 
@@ -1053,6 +1081,6 @@
     </script>
     <script type="module" src="rhythm-student.js?v=20260627ah"></script>
     <script src="suite-theme.js"></script>
-    <script src="solo-mode.js?v=20260627-tapback5"></script>
+    <script src="solo-mode.js?v=20260627-tapback6"></script>
 </body>
 </html>
