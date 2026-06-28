@@ -60,7 +60,9 @@ consolidated design spec. All four agents web-researched + cited real implementa
   8-bar capstone). BKT(0.95) = documented later upgrade.
 - **Spaced repetition = expanding-interval Leitner keyed to universal skill IDs** (NOT full FSRS —
   auto-generated items have no stable card identity, binary grading + kids break FSRS's assumptions).
-  Track the **skill not the card**; ~**70–80% review / 20–30% new** per session; one **cross-game
+  Track the **skill not the card**; ~**70–80% review / 20–30% new** per session (a **steady-state
+  target** for a healthy queue — at sparse review supply the session does all due review + up to the
+  absolute new-cap, which governs cognitive load, NOT the ratio; the 20%-new floor is advisory); one **cross-game
   review queue** `{skill_id, box, due}` that routes a due skill back into its owning game.
 - **Placement/adaptive = Elo-for-students** (Pelánek; 1PL/Rasch, ~10 lines, **auto-calibrates item
   difficulty from play** — no pre-calibrated bank). Placement **8–15 items**. Keep learner in the
