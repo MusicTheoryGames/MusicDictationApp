@@ -913,6 +913,61 @@ class RhythmStudent {
         });
     }
 
+    // Cross-family pattern lookup (searches EVERY registered figure set, not just
+    // the current difficulty) so callers like the solo tap-back overlay can resolve
+    // any id regardless of which bank is active.
+    findPatternAny(patternId) {
+        const rp = this.rhythmPatterns || {};
+        for (const k in rp) {
+            const set = rp[k];
+            if (!Array.isArray(set)) continue;
+            const f = set.find(p => p.id === patternId);
+            if (f) return f;
+        }
+        return null;
+    }
+
+    // Draw a figure's placement ART into `notationArea` exactly the way placeTile
+    // does (one-beat figDir SVG, split single-note glyphs, or a single pattern
+    // image), so a READ-ONLY staff (e.g. the tap-back overlay) renders identically
+    // to the answer board. Does NOT touch userAnswer or add a remove button.
+    renderPatternArt(notationArea, patternId, beatsNeeded) {
+        const decomposition = NOTE_DECOMPOSITION[patternId];
+        const asset = this.rhythmAssets[patternId];
+        const figDir = meterFigDir(patternId);
+        if (figDir) {
+            const img = document.createElement('img');
+            img.src = `./rhythm-assets/${figDir}/${patternId}.svg`;
+            img.className = 'placed-note placed-compound';
+            img.style.width = '100%';
+            img.style.left = '-9.2%';   // stave-padding shift so onset lands on the beat
+            img.alt = patternId;
+            notationArea.appendChild(img);
+        } else if (decomposition) {
+            decomposition.forEach(part => {
+                const g = noteGlyphs[part.glyph];
+                if (!g) return;
+                const gimg = document.createElement('img');
+                gimg.src = `./rhythm-assets/${g.file}`;
+                gimg.className = 'placed-note placed-glyph';
+                gimg.style.width = '100%';
+                gimg.style.left = (part.offset * 100 - GLYPH_NOTEHEAD_OFFSET) + '%';
+                gimg.alt = `${patternId}:${part.glyph}`;
+                notationArea.appendChild(gimg);
+            });
+        } else if (asset) {
+            const img = document.createElement('img');
+            img.src = `./rhythm-assets/${asset.file}`;
+            img.className = 'placed-note';
+            img.style.width = ((beatsNeeded || 1) * 100) + '%';
+            img.style.left = (-GLYPH_NOTEHEAD_OFFSET) + '%';
+            img.alt = asset.name;
+            notationArea.appendChild(img);
+        } else {
+            notationArea.insertAdjacentHTML('beforeend', `<span style="color: red; font-size: 0.7rem;">Missing: ${patternId}</span>`);
+        }
+    }
+
     placeTile(dropZone, patternId, measure, beat) {
         const pattern = this.rhythmPatterns[this.currentDifficulty].find(p => p.id === patternId);
         if (!pattern) return;
@@ -948,64 +1003,10 @@ class RhythmStudent {
             const notationArea = targetZone.querySelector('.beat-notation');
 
             if (b === startBeat) {
-                // First beat gets a copy of the tile's VexFlow notation
-                const sourceTile = document.getElementById(`notation-${pattern.id}`);
-                console.log('Source tile found:', sourceTile);
-                console.log('Has child:', sourceTile?.firstChild);
-
-                const decomposition = NOTE_DECOMPOSITION[pattern.id];
-                const asset = this.rhythmAssets[pattern.id];
-
                 notationArea.innerHTML = `<button class="remove-btn" onclick="rhythmStudent.removeTile(${measure}, ${startBeat})">×</button>`;
-
-                const figDir = meterFigDir(pattern.id);
-                if (figDir) {
-                    // One-beat figure (compound / half-beat / dotted-half /
-                    // dotted-eighth / tuplet): place the whole pre-rendered figure
-                    // spanning the cell from its own asset dir.
-                    const img = document.createElement('img');
-                    img.src = `./rhythm-assets/${figDir}/${pattern.id}.svg`;
-                    img.className = 'placed-note placed-compound';
-                    img.style.width = '100%';
-                    // Shift left by the glyph's stave padding (~9.2%) so the first
-                    // notehead lands on the beat onset (over the number).
-                    img.style.left = '-9.2%';
-                    img.alt = pattern.id;
-                    notationArea.appendChild(img);
-                } else if (decomposition) {
-                    // SPLIT placement: drop each single-note glyph at its beat
-                    // offset. Each glyph is a single note in a 200px-per-beat
-                    // canvas, shown at one beat-cell wide -> identical notehead
-                    // scale to every other note, positioned on its true beat.
-                    decomposition.forEach(part => {
-                        const g = noteGlyphs[part.glyph];
-                        if (!g) return;
-                        const gimg = document.createElement('img');
-                        gimg.src = `./rhythm-assets/${g.file}`;
-                        gimg.className = 'placed-note placed-glyph';
-                        gimg.style.width = '100%';                  // one beat wide
-                        // beat offset, minus the glyph's internal notehead inset so
-                        // the notehead lands on the beat onset.
-                        gimg.style.left = (part.offset * 100 - GLYPH_NOTEHEAD_OFFSET) + '%';
-                        gimg.alt = `${pattern.id}:${part.glyph}`;
-                        notationArea.appendChild(gimg);
-                    });
-                    console.log('Split glyphs placed for pattern:', pattern.id);
-                } else if (asset) {
-                    // Single pattern image (1-beat and beamed patterns).
-                    const img = document.createElement('img');
-                    img.src = `./rhythm-assets/${asset.file}`;
-                    img.className = 'placed-note';
-                    img.style.width = (beatsNeeded * 100) + '%';
-                    // Same notehead-inset shift as glyphs so the first note lands
-                    // on the beat onset and patterns/glyphs align consistently.
-                    img.style.left = (-GLYPH_NOTEHEAD_OFFSET) + '%';
-                    img.alt = asset.name;
-                    notationArea.appendChild(img);
-                } else {
-                    console.warn('No asset found for pattern:', pattern.id);
-                    notationArea.insertAdjacentHTML('beforeend', `<span style="color: red; font-size: 0.7rem;">Missing: ${pattern.id}</span>`);
-                }
+                // Draw the placement art (figDir SVG / split glyphs / single image)
+                // via the shared renderer so the tap-back overlay can reuse it.
+                this.renderPatternArt(notationArea, pattern.id, beatsNeeded);
                 targetZone.classList.add('filled');
                 this.userAnswer[measure - 1][b - 1] = patternId;
             } else {

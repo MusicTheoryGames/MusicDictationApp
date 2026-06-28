@@ -614,6 +614,8 @@
           '<div class="tb-title">Tap it back</div>' +
           '<div class="tb-meta" id="tbMeta"></div>' +
         '</div>' +
+        // Read-only notation of the rhythm being tapped, with a moving beat guide.
+        '<div class="tb-staff" id="tbStaff"></div>' +
         '<div class="tb-instruct" id="tbInstruct"></div>' +
         '<div class="tb-zones" id="tbZones">' +
           '<button class="tb-zone tb-beat" id="tbBeat"><span class="tb-zlabel">Beat</span><span class="tb-zhint">left hand</span></button>' +
@@ -639,6 +641,71 @@
   function flashZone(z) { if (!z) return; z.classList.add('tb-flash'); setTimeout(function () { z.classList.remove('tb-flash'); }, 110); }
   function tbMsg(t) { var el = document.getElementById('tbInstruct'); if (el) el.textContent = t; }
 
+  /* Read-only notation of S.target inside the overlay. Mirrors the answer board's
+     DOM (rows of .tb-cell with .beat-notation) so the engine's placement art draws
+     identically, and reuses rhythmStudent.renderPatternArt for each figure. Cells
+     carry data-measure/data-beat so the tap-back beat guide can light them. The
+     class is .tb-cell (NOT .beat-drop-zone) so the main board's selectors never
+     collide with the overlay. Changing meters: each measure uses its own beat count. */
+  function buildTapBackStaff() {
+    var host = document.getElementById('tbStaff'); if (!host || !S.target) return;
+    var mb = mBeats();
+    // Pack measures into rows: more bars/row when each has few beats. Keeps the
+    // staff compact at the top of the overlay regardless of bar count.
+    var MAX_CELLS_PER_ROW = 8, rows = [], cur = [], curCells = 0;
+    for (var i = 0; i < mb.length; i++) {
+      if (cur.length && (curCells + mb[i] > MAX_CELLS_PER_ROW)) { rows.push(cur); cur = []; curCells = 0; }
+      cur.push(i); curCells += mb[i];
+    }
+    if (cur.length) rows.push(cur);
+    var html = '';
+    rows.forEach(function (row) {
+      var cells = '';
+      row.forEach(function (mi, idxInRow) {
+        var beats = mb[mi], tsShown = (idxInRow === 0) || (S.curMeters && S.curMeters[mi] !== S.curMeters[row[idxInRow - 1]]);
+        var ts = S.changing && S.curMeters ? S.curMeters[mi] : S.ts;
+        if (tsShown) {
+          var p = String(ts).split('/');
+          cells += '<div class="tb-ts"><span>' + p[0] + '</span><span>' + p[1] + '</span></div>';
+        }
+        for (var b = 1; b <= beats; b++) {
+          var end = (b === beats);
+          var finalCell = (mi === mb.length - 1) && end;
+          cells += '<div class="tb-cell' + (end ? ' tb-mend' : '') + (finalCell ? ' tb-final' : '') + '" data-measure="' + (mi + 1) + '" data-beat="' + b + '">' +
+                     '<span class="tb-bnum">' + b + '</span>' +
+                     '<div class="beat-notation"></div>' +
+                   '</div>';
+        }
+      });
+      html += '<div class="tb-row"><div class="tb-line"></div><div class="tb-cells">' + cells + '</div></div>';
+    });
+    host.innerHTML = html;
+    // Fill each figure's start cell with its placement art via the engine renderer.
+    S.target.forEach(function (meas, mi) {
+      meas.forEach(function (it) {
+        var cell = host.querySelector('.tb-cell[data-measure="' + (mi + 1) + '"][data-beat="' + it.startBeat + '"]');
+        if (!cell) return;
+        var na = cell.querySelector('.beat-notation');
+        if (na && rs && rs.renderPatternArt) { try { rs.renderPatternArt(na, it.patternId, it.beats || 1); } catch (e) {} }
+      });
+    });
+  }
+  // Tap-back beat guide: light the current beat on the OVERLAY notation (scoped to
+  // #tbStaff so it never touches the main answer board). ON by default in tap-back.
+  var tbLastHl = null;
+  function tbLightBeat(answerBeatIndex, when) {
+    var c = ctx(); if (!c) return;
+    var mbi = measureOfAbs(answerBeatIndex);
+    setTimeout(function () {
+      if (!TB.open) return;
+      if (tbLastHl) tbLastHl.classList.remove('solo-beat-on');
+      var host = document.getElementById('tbStaff'); if (!host) return;
+      var z = host.querySelector('.tb-cell[data-measure="' + mbi.m + '"][data-beat="' + mbi.b + '"]');
+      if (z) { z.classList.add('solo-beat-on'); tbLastHl = z; }
+    }, Math.max(0, (when - c.currentTime) * 1000));
+  }
+  function tbClearBeat() { if (tbLastHl) { tbLastHl.classList.remove('solo-beat-on'); tbLastHl = null; } }
+
   // Dedicated lookahead metronome for tap-back. Records each beat's scheduled time
   // in TB.beatTimes (the ground-truth grid taps are compared against) and clicks
   // (accent on downbeats). Runs continuously while the overlay is open.
@@ -660,12 +727,29 @@
         if (isCompoundTs(S.ts)) { var bd = 60 / S.tempo; subTick(TB.nextBeat + bd / 3); subTick(TB.nextBeat + 2 * bd / 3); }
         TB.beatTimes.push({ t: TB.nextBeat, idx: idx, accent: accent });
         pulseBeatDot(idx);
+        tbDriveGuide(TB.nextBeat, idx);   // move the beat guide across the notation
         TB.beatIdx++; TB.nextBeat += 60 / S.tempo;
       }
       TB.timer = setTimeout(sched, 25);
     })();
   }
   function tbStopMetro() { if (TB.timer) { clearTimeout(TB.timer); TB.timer = null; } }
+  // Map a scheduled metronome beat to a cell in the overlay notation and light it.
+  // During CAPTURE the beat times are anchored to TB.captureStart so the guide
+  // tracks the real example position; before capture it cycles the example beats
+  // (idx modulo the example length) so the player previews the moving guide.
+  function tbDriveGuide(beatTime, idx) {
+    var total = totalBeats(); if (total <= 0) return;
+    var absBeat;
+    if (TB.captureStart && beatTime >= TB.captureStart - 0.001) {
+      var rel = Math.round((beatTime - TB.captureStart) / (60 / S.tempo));
+      if (rel < 0 || rel >= total) return;     // outside the example pass -> no light
+      absBeat = rel;
+    } else {
+      absBeat = idx % total;                    // count-in / prep preview cycles the bars
+    }
+    tbLightBeat(absBeat, beatTime);
+  }
   // Visual pulse on the Beat zone in time with the click (purely cosmetic cue).
   function pulseBeatDot(idx) {
     var c = ctx(); if (!c) return;
@@ -701,12 +785,15 @@
     if (meta) meta.textContent = (S.changing ? 'changing meter' : S.ts) + ' · ' + S.measures + ' bar' + (S.measures === 1 ? '' : 's') + ' · ' + S.tempo + ' bpm';
     document.getElementById('tbResults').style.display = 'none';
     document.getElementById('tbZones').style.display = '';
+    document.getElementById('tbStaff').style.display = '';
+    TB.captureStart = 0; TB.captureEnd = 0;   // reset so the guide previews before capture
+    buildTapBackStaff();                       // render the read-only notation + beat guide
     startPrep();
     tbStartMetro();
   }
   function closeTapBack() {
     TB.open = false; TB.phase = 'idle';
-    tbStopMetro(); stopAllAudio();
+    tbStopMetro(); stopAllAudio(); tbClearBeat();
     if (TB._goTimer) { clearTimeout(TB._goTimer); TB._goTimer = null; }
     if (TB._endTimer) { clearTimeout(TB._endTimer); TB._endTimer = null; }
     if (TB.el) TB.el.classList.remove('show');
@@ -897,6 +984,8 @@
     document.getElementById('tbRetry').onclick = function () {
       document.getElementById('tbResults').style.display = 'none';
       document.getElementById('tbZones').style.display = '';
+      document.getElementById('tbStaff').style.display = '';
+      TB.captureStart = 0; TB.captureEnd = 0; tbClearBeat();   // guide previews again until next capture
       startPrep();           // metronome keeps running; just re-enter the prep gate
     };
   }
@@ -1181,8 +1270,26 @@
       '.tb-head{text-align:center;margin:4px 0 2px}' +
       '.tb-title{font-size:1.3rem;font-weight:800;letter-spacing:.02em}' +
       '.tb-meta{font-size:.78rem;opacity:.65;letter-spacing:.06em;margin-top:2px}' +
+      // read-only notation of the rhythm being tapped (white "paper" staff like the
+      // main answer board); each row is a staff line with beat cells + placement art.
+      '.tb-staff{background:#fff;border-radius:10px;padding:10px 14px;margin:8px 0 2px;max-height:42vh;overflow:auto}' +
+      '.tb-row{position:relative;height:84px}' +
+      '.tb-row + .tb-row{margin-top:10px}' +
+      '.tb-line{position:absolute;left:0;right:0;top:50%;height:2px;background:#333}' +
+      '.tb-cells{position:absolute;inset:0;display:flex}' +
+      '.tb-ts{flex:0 0 auto;align-self:center;display:flex;flex-direction:column;align-items:center;line-height:.8;gap:.18em;font:700 30px Georgia,serif;color:#333;padding:0 8px 0 2px}' +
+      '.tb-cell{flex:1;position:relative;display:flex;align-items:center;justify-content:center;min-width:42px}' +
+      '.tb-cell.tb-mend{border-right:3px solid #333}' +
+      '.tb-cell.tb-final{border-right:3px solid transparent}' +
+      '.tb-cell.tb-final::after{content:"";position:absolute;right:0;top:22%;bottom:22%;width:7px;background:linear-gradient(90deg,#333 0 2px,transparent 2px 4px,#333 4px 7px)}' +
+      '.tb-cell .tb-bnum{position:absolute;bottom:2px;left:0;transform:translateX(-50%);font-size:.8rem;color:#bbb;font-weight:300;z-index:0}' +
+      '.tb-cell .beat-notation{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}' +
+      '.tb-cell .placed-note{position:absolute;left:0;top:50%;transform:translateY(-64%) scale(1.05);transform-origin:left center;height:auto;pointer-events:none;z-index:2}' +
+      // moving beat guide on the overlay notation (same blue as the main beat guide)
+      '.tb-cell.solo-beat-on{background:rgba(33,150,243,.18);box-shadow:inset 0 0 0 2px rgba(33,150,243,.7);border-radius:4px}' +
+      '@media (orientation:landscape) and (max-height:560px){.tb-staff{max-height:30vh}.tb-row{height:64px}}' +
       '.tb-instruct{text-align:center;font-size:1rem;font-weight:600;min-height:2.6em;display:flex;align-items:center;justify-content:center;padding:6px 8px;color:var(--tb-accent,#7c5cff)}' +
-      '.tb-zones{flex:1;display:flex;gap:12px;min-height:200px}' +
+      '.tb-zones{flex:1;display:flex;gap:12px;min-height:150px}' +
       '.tb-zones.tb-go .tb-zone{box-shadow:inset 0 0 0 3px var(--tb-accent,#7c5cff)}' +
       '.tb-zone{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:2px solid rgba(255,255,255,.16);border-radius:18px;background:rgba(255,255,255,.05);color:#eef1fb;cursor:pointer;font-family:inherit;user-select:none;-webkit-user-select:none;transition:transform .06s,background .12s,box-shadow .12s;touch-action:manipulation}' +
       '.tb-zone .tb-zlabel{font-size:1.6rem;font-weight:800;letter-spacing:.02em}' +
@@ -1290,15 +1397,71 @@
     var stog = document.getElementById('soloSettingsToggle');
     var htog = document.getElementById('soloHintsToggle');
     var ttog = document.getElementById('soloThemeToggle');
+    // Each toggle -> its open class, button, and the panel element to anchor.
+    // The panel is fetched lazily (themeSwitcher is created by suite-theme.js) and
+    // its left/top are pinned under the button each time it opens (so the dropdown
+    // sits directly below its OWN button instead of jammed to the far left).
+    var PANELS = [
+      { cls: 'settings-open', btn: stog, getPanel: function () { var h = document.getElementById('soloHud'); return h ? h.querySelector('.solo-stats') : null; } },
+      { cls: 'hints-open',    btn: htog, getPanel: function () { return document.querySelector('.solo-actions .solo-hints'); } },
+      { cls: 'theme-open',    btn: ttog, getPanel: function () { return document.getElementById('themeSwitcher'); } }
+    ];
+    function clearPanelPos() {
+      PANELS.forEach(function (p) { var el = p.getPanel(); if (el) { el.style.left = ''; el.style.right = ''; el.style.top = ''; } });
+    }
+    // Position an open panel directly below + horizontally aligned to its button,
+    // clamped so it never spills off either screen edge.
+    function anchorPanel(p) {
+      var el = p.getPanel(), btn = p.btn; if (!el || !btn) return;
+      // Let it lay out at its natural size first, then measure + clamp.
+      el.style.left = '0px'; el.style.right = 'auto'; el.style.top = '0px';
+      var br = btn.getBoundingClientRect();
+      var pw = el.offsetWidth || 240;
+      var margin = 6, vw = window.innerWidth;
+      var left = Math.min(Math.max(margin, br.left), Math.max(margin, vw - pw - margin));
+      el.style.left = Math.round(left) + 'px';
+      el.style.right = 'auto';
+      el.style.top = Math.round(br.bottom + 6) + 'px';
+    }
     function togglePanel(cls, btn) {
       var on = !document.body.classList.contains(cls);
       document.body.classList.remove('settings-open', 'hints-open', 'theme-open');
       [stog, htog, ttog].forEach(function (x) { if (x) x.classList.remove('on'); });
-      if (on) { document.body.classList.add(cls); if (btn) btn.classList.add('on'); }
+      clearPanelPos();
+      if (on) {
+        document.body.classList.add(cls); if (btn) btn.classList.add('on');
+        var p = PANELS.filter(function (x) { return x.cls === cls; })[0];
+        if (p) anchorPanel(p);
+      }
+    }
+    function anyPanelOpen() { return document.body.classList.contains('settings-open') || document.body.classList.contains('hints-open') || document.body.classList.contains('theme-open'); }
+    function closeAllPanels() {
+      document.body.classList.remove('settings-open', 'hints-open', 'theme-open');
+      [stog, htog, ttog].forEach(function (x) { if (x) x.classList.remove('on'); });
+      clearPanelPos();
     }
     if (stog) stog.onclick = function () { togglePanel('settings-open', stog); };
     if (htog) htog.onclick = function () { togglePanel('hints-open', htog); };
     if (ttog) ttog.onclick = function () { togglePanel('theme-open', ttog); };
+    // Click-outside-to-close: a tap anywhere that isn't an open panel or its toggle
+    // closes the dropdowns. Capture phase so it runs before per-control handlers,
+    // and we early-out when nothing is open so normal play is untouched.
+    document.addEventListener('pointerdown', function (e) {
+      if (!anyPanelOpen()) return;
+      var t = e.target;
+      if (t.closest && (t.closest('#soloSettingsToggle') || t.closest('#soloHintsToggle') || t.closest('#soloThemeToggle'))) return; // toggles handle themselves
+      for (var i = 0; i < PANELS.length; i++) {
+        var el = PANELS[i].getPanel();
+        if (el && document.body.classList.contains(PANELS[i].cls) && el.contains(t)) return; // click inside an open panel
+      }
+      closeAllPanels();
+    }, true);
+    // Keep an open panel anchored to its button on resize/scroll/rotate.
+    function reanchorOpen() {
+      for (var i = 0; i < PANELS.length; i++) if (document.body.classList.contains(PANELS[i].cls)) anchorPanel(PANELS[i]);
+    }
+    window.addEventListener('resize', reanchorOpen);
+    window.addEventListener('orientationchange', function () { setTimeout(reanchorOpen, 260); });
     // Re-sync the staff's bottom padding to the (wrapping) bank height on rotate/resize.
     window.addEventListener('resize', syncBankPad);
     window.addEventListener('orientationchange', function () { setTimeout(syncBankPad, 250); });
