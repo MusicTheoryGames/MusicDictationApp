@@ -282,7 +282,22 @@
     // set of mastered level ids, and the current session start (for the Mastered
     // spacing gate). Keyed by mode so dictation and tapping progress independently
     // while walking the SAME matched ladder.
-    var data = null;               // { idx, items:{levelId:ItemState}, mastered:[], sessionStart }
+    var data = null;               // { idx, items:{levelId:ItemState}, mastered:[], sessionStart, teach:{levelId:TeachState} }
+    /* Per-level TEACH state (drives the warm-up / escalation screens). Persisted so a
+       remembered skip survives a reload; the struggle counters are session-runtime but
+       harmlessly persisted too (they only ever escalate help, never gate play).
+         seenQuick   — the quick warm-up has been shown (or skipped) for this level once.
+         skipped     — the student skipped this level's warm-up (don't re-show it unless
+                       escalation fires).
+         escalated   — the fuller escalation lesson has fired for this level (back off:
+                       don't nag it again).
+         rampFails   — consecutive WRONG rounds at the current ramp bar-count (resets on
+                       any correct round or a ramp change). 2 in a row at the same step
+                       is one escalation trigger.
+         rampAt      — the ramp bar-count rampFails is counting at (detect a step change).
+         figMiss     — { figureId: consecutiveMisses } for the level's NEW figures; a new
+                       figure missed twice running is one escalation trigger. */
+    function freshTeach() { return { seenQuick: false, skipped: false, escalated: false, rampFails: 0, rampAt: 0, figMiss: {} }; }
     function key() { return 'beatquest-guided-' + (S.mode || 'dictation'); }
     function core() { return window.LevelCore || null; }
     function avail() { return !!(core() && core().ladder && core().mastery); }
@@ -296,6 +311,7 @@
         idx: (typeof d.idx === 'number' && d.idx >= 0) ? d.idx : 0,
         items: (d.items && typeof d.items === 'object') ? d.items : {},
         mastered: Array.isArray(d.mastered) ? d.mastered : [],
+        teach: (d.teach && typeof d.teach === 'object') ? d.teach : {},
         // One stable session start per browser session for the Mastered spacing gate.
         sessionStart: Date.now()
       };
@@ -308,7 +324,7 @@
     function persist() {
       try {
         localStorage.setItem(key(), JSON.stringify({
-          idx: data.idx, items: data.items, mastered: data.mastered
+          idx: data.idx, items: data.items, mastered: data.mastered, teach: data.teach
         }));
       } catch (e) {}
     }
@@ -318,6 +334,18 @@
     function itemFor(levelId) {
       if (!data.items[levelId]) data.items[levelId] = core().mastery.createItemState();
       return data.items[levelId];
+    }
+    function teachFor(levelId) {
+      if (!data.teach[levelId]) data.teach[levelId] = freshTeach();
+      var t = data.teach[levelId];
+      // Back-compat / shape guard for older persisted blobs.
+      if (typeof t.seenQuick !== 'boolean') t.seenQuick = false;
+      if (typeof t.skipped !== 'boolean') t.skipped = false;
+      if (typeof t.escalated !== 'boolean') t.escalated = false;
+      if (typeof t.rampFails !== 'number') t.rampFails = 0;
+      if (typeof t.rampAt !== 'number') t.rampAt = 0;
+      if (!t.figMiss || typeof t.figMiss !== 'object') t.figMiss = {};
+      return t;
     }
 
     // Is a ladder level playable with TODAY's generator+bank? (buildStatus 'ready'
@@ -386,14 +414,32 @@
     // decide ramp/advance. `correct` = the round was answered correctly at all;
     // `clean` = correct with no mistakes/hints (a first-try clean run). `groovePct`
     // = the per-beat groove/accuracy (0..100) the game computed for this answer.
+    // `meta` (optional) = { wrongFigures:[figureId,…] } — the NEW-figure ids the
+    // student got wrong this round, used to detect a repeatedly-missed new figure.
     // Returns { advanced, leveledUp, mastery } for the caller to surface.
-    function recordRound(correct, clean, groovePct) {
+    function recordRound(correct, clean, groovePct, meta) {
       if (!avail()) return { advanced: false, leveledUp: false };
       var level = curLevel();
       var now = Date.now();
       var item = itemFor(level.id);
       // Mastery: a round counts "correct" for the meter when it was answered correctly.
       data.items[level.id] = core().mastery.recordAnswer(item, !!correct, { now: now, sessionStart: data.sessionStart });
+
+      // ---- STRUGGLE BOOKKEEPING (feeds the escalation trigger; never gates play) ----
+      var tch = teachFor(level.id);
+      // 1) Consecutive wrong rounds at the SAME ramp bar-count. A ramp change (or any
+      //    correct round) resets the streak; two running fails at one step escalates.
+      if (tch.rampAt !== S.ramp) { tch.rampAt = S.ramp; tch.rampFails = 0; }
+      if (correct) { tch.rampFails = 0; }
+      else { tch.rampFails += 1; }
+      // 2) Per-NEW-figure consecutive misses. Only the figures THIS level introduces
+      //    matter (the new principle); a new figure missed twice running escalates.
+      var newFigs = (level.newSkills || []).filter(function (id) { return (level.figures || []).indexOf(id) !== -1; });
+      var wrongFigs = (meta && Array.isArray(meta.wrongFigures)) ? meta.wrongFigures : [];
+      newFigs.forEach(function (id) {
+        if (correct) { tch.figMiss[id] = 0; }
+        else if (wrongFigs.indexOf(id) !== -1) { tch.figMiss[id] = (tch.figMiss[id] || 0) + 1; }
+      });
 
       var leveledUp = false, advanced = false, rampedFrom = S.ramp, rampedTo = S.ramp;
       // CAPSTONE GATE: pass the level with ONE clean capstone example —
@@ -421,12 +467,71 @@
                rampedUp: rampedTo > rampedFrom && !capstonePassed, rampBars: rampedTo };
     }
 
-    // SEAM (teach): show a teach/demo screen before a new level. window.TEACH_CONTENT
-    // is authored by a separate agent; until then this is a no-op. Wire the overlay here.
+    /* TEACH DECISION (functional core of the adaptive teach system) — decides what,
+       if anything, to show before the current level's next round. Returns
+         { mode: 'quick' | 'escalation' | null, level, content, struggle }
+       Rule (per TEACH_SCREENS_PLAN.md):
+         - QUICK warm-up is the DEFAULT the FIRST time at a new level (not yet seen,
+           not skipped). ~10–15s, always skippable.
+         - ESCALATION (the fuller I-do/we-do/you-do lesson) fires ONLY when the student
+           is struggling with the principle AND it has not already fired for this level
+           (back off after firing — no nagging). Struggle = ANY of:
+             • two consecutive WRONG rounds at the same ramp step, OR
+             • mastery still below the Attempted band (score < 50) after ≥3 attempts, OR
+             • a NEW figure missed twice in a row.
+         - Otherwise: nothing (replays / already-seen levels just play).
+       Escalation OUTRANKS the quick warm-up (a struggling student gets the fuller help
+       even if they skipped the quick one). PURE w.r.t. the DOM — the overlay shell reads
+       this and renders; it never decides policy itself. */
+    function ATTEMPTED() { return core().mastery.LEVELS.ATTEMPTED; }
+    function teachContentFor(levelId) {
+      return (window.TEACH_CONTENT && window.TEACH_CONTENT[levelId]) || null;
+    }
+    function isStruggling(level, tch) {
+      if (tch.rampFails >= 2) return 'ramp';   // failed the same ramp step twice running
+      var view = core().mastery.viewItemAsOf(itemFor(level.id), Date.now());
+      if (view.attempts >= 3 && view.level === ATTEMPTED()) return 'mastery';  // stuck below Attempted
+      for (var id in tch.figMiss) { if (tch.figMiss[id] >= 2) return 'figure'; }  // a new figure missed repeatedly
+      return null;
+    }
+    function teachDecision() {
+      if (!avail() || !window.TEACH_CONTENT) return { mode: null };
+      var level = curLevel();
+      if (!level || !playable(level)) return { mode: null };
+      var content = teachContentFor(level.id);
+      if (!content) return { mode: null };
+      var tch = teachFor(level.id);
+      var struggle = isStruggling(level, tch);
+      if (struggle && !tch.escalated) {
+        return { mode: 'escalation', level: level, content: content, struggle: struggle };
+      }
+      if (!tch.seenQuick && !tch.skipped) {
+        return { mode: 'quick', level: level, content: content, struggle: null };
+      }
+      return { mode: null, level: level, content: content };
+    }
+    // ---- teach-state mutators the overlay shell calls ----
+    function markQuickShown() { var t = teachFor(curLevel().id); t.seenQuick = true; persist(); }
+    function markSkipped() { var t = teachFor(curLevel().id); t.seenQuick = true; t.skipped = true; persist(); }
+    function markEscalated() {
+      // The fuller lesson has fired — back off. Also clear the struggle counters so the
+      // SAME level doesn't immediately re-trigger on the next round (no nagging).
+      var t = teachFor(curLevel().id);
+      t.escalated = true; t.rampFails = 0; t.figMiss = {};
+      persist();
+    }
+
+    /* maybeTeach() — the single seam newRound() calls. The OVERLAY (imperative shell)
+       registers a renderer via GUIDE.registerTeacher(fn); maybeTeach hands it the
+       decision and returns true iff a screen was shown (so the caller can defer the
+       round behind the overlay's Start/Skip). No renderer registered (or nothing to
+       show) -> returns false and the round proceeds immediately. */
+    var teacher = null;
+    function registerTeacher(fn) { teacher = fn; }
     function maybeTeach() {
-      if (!window.TEACH_CONTENT) return false;
-      /* A sibling agent owns the teach overlay; the hook is intentionally empty. */
-      return false;
+      var d = teachDecision();
+      if (!d || !d.mode || !teacher) return false;
+      return teacher(d) === true;
     }
 
     // ---- mastery-meter VIEW (per-theme, NO emoji) ----
@@ -450,6 +555,9 @@
       applyLevel: applyLevel, playable: playable,
       rampBars: rampBars, atCapstone: atCapstone,
       recordRound: recordRound, masteryView: masteryView, maybeTeach: maybeTeach,
+      // teach system
+      teachDecision: teachDecision, registerTeacher: registerTeacher,
+      markQuickShown: markQuickShown, markSkipped: markSkipped, markEscalated: markEscalated,
       // for the picker UI
       data: function () { return data; },
       gotoIndex: function (i) {
@@ -1851,6 +1959,21 @@
   function targetItems() {
     var a = []; S.target.forEach(function (meas, mi) { meas.forEach(function (it) { a.push({ mi: mi, startBeat: it.startBeat, patternId: it.patternId, beats: it.beats }); }); }); return a;
   }
+  /* The distinct TARGET figure ids that occupy the given wrong beats ([{m,b}], 1-based).
+     Used to feed the escalation trigger "a new figure was missed": a beat is wrong, so the
+     figure the target placed across that beat is one the student didn't reproduce. */
+  function wrongFiguresFor(wrongBeats) {
+    if (!S.target || !wrongBeats || !wrongBeats.length) return [];
+    var out = {};
+    wrongBeats.forEach(function (w) {
+      var meas = S.target[w.m - 1]; if (!meas) return;
+      meas.forEach(function (it) {
+        var end = it.startBeat + (it.beats || 1) - 1;
+        if (w.b >= it.startBeat && w.b <= end) out[it.patternId] = 1;
+      });
+    });
+    return Object.keys(out);
+  }
   function answerItems() {
     var a = [], mi, bi, mb = mBeats();
     for (mi = 0; mi < mb.length; mi++) {
@@ -1903,11 +2026,19 @@
     var tbBtn = document.getElementById('soloTapBack'); if (tbBtn) tbBtn.style.display = 'none';
     document.getElementById('soloSubmit').style.display = '';
     render();
-    if (S.mode === 'tapping') { newTappingRound(); return; }
+    if (S.mode === 'tapping') { newTappingRound(); maybeTeachThisRound(); return; }
     if (rs) rs.onAnswerChanged = updateSubmitBtn;   // re-evaluate Submit on each placement
     updateSubmitBtn();
     // No auto-play — the rhythm only sounds when the student presses Play.
     msg('Press ▶ Play rhythm to hear it.');
+    maybeTeachThisRound();
+  }
+  /* TEACH gate for the round we just built. The round is already laid out underneath;
+     the teach overlay (quick warm-up or escalation) mounts on TOP and reveals it on
+     Start/Skip. Guided-only, and only when the decision says to show one. */
+  function maybeTeachThisRound() {
+    if (!(S.guided && GUIDE.avail())) return;
+    GUIDE.maybeTeach();   // no-op unless teachDecision() returns a screen to show
   }
 
   /* ---- DEFERRED tapping features (v1 is single-line beat+rhythm). Clean seams:
@@ -1998,8 +2129,10 @@
     } else {
       S.streak = 0; revealCorrect();
       // GUIDED: a terminal wrong answer (no fix-it) counts as wrong for the mastery
-      // meter (-30). It never passes the capstone (correct=false), so no advance.
-      guidedRecord(false, false, 0);
+      // meter (-30). It never passes the capstone (correct=false), so no advance. Pass
+      // the wrong target figures so the escalation trigger can spot a repeatedly-missed
+      // new figure.
+      guidedRecord(false, false, 0, { wrongFigures: wrongFiguresFor(r.wrong) });
       msg('Not quite — here’s the correct rhythm.');
       document.getElementById('soloSubmit').style.display = 'none';
       document.getElementById('soloNext').style.display = '';
@@ -2025,16 +2158,18 @@
      string for the round message. No-op (returns null) in free play. Shared by the
      dictation submit() and the tapping showResults() so BOTH games drive the SAME
      matched ladder identically. */
-  function guidedRecord(correct, clean, groovePct) {
+  function guidedRecord(correct, clean, groovePct, meta) {
     if (!(S.guided && GUIDE.avail())) return null;
     var before = GUIDE.curLevel();
-    var res = GUIDE.recordRound(correct, clean, groovePct);
+    var res = GUIDE.recordRound(correct, clean, groovePct, meta);
     var advText = null;
     if (res.capstonePassed) {
       if (res.leveledUp) {
         var now = GUIDE.curLevel();
         advText = 'Level passed! → Ch ' + now.hallChapter + ' · ' + now.title;
-        GUIDE.maybeTeach();   // SEAM: teach screen before the newly-unlocked level
+        // The newly-unlocked level's warm-up is shown by newRound() (on Next) once that
+        // level's round is actually built — NOT here, where the passed level is still on
+        // screen. newRound() is the single teach trigger for both games.
       } else {
         advText = 'Level passed! (end of the available ladder)';
       }
@@ -2161,6 +2296,455 @@
         : ('Capstone ramp: ' + S.measures + ' bars' + (GUIDE.atCapstone() ? ' · pass a clean 8-bar example to advance' : ' → climb to 8'));
     }
   }
+
+  /* ==========================================================================
+     TEACH SCREENS — the adaptive, hear→see→do warm-up / escalation overlay.
+     --------------------------------------------------------------------------
+     The imperative SHELL for the teach system whose POLICY lives in GUIDE
+     (teachDecision / mark*). Registered via GUIDE.registerTeacher; newRound()
+     calls GUIDE.maybeTeach() which routes the decision here. Everything is REUSE:
+       - notation:  rs.renderPatternArt (the exact placement art the staff uses),
+       - audio:     rhythmHit + metroTick on the single ctx() clock,
+       - beat-guide:the .solo-beat-on highlight class, animated on the beat,
+       - tap engine:a 1-bar call-and-response capture scored with TAP_TOLERANCE,
+       - themes:    per-theme via --tb-accent + the shared .tapback-ov surface, NO
+                    emoji, inline IC.* SVG icons.
+     Per-game framed: dictation shows dictationTip ("what to listen for"); tapping
+     shows tappingTip (the coordination cue). Always SKIPPABLE.
+     ========================================================================== */
+  var TEACH = (function () {
+    // Runtime state for the open overlay (no persistence here — GUIDE owns memory).
+    var T = { open: false, el: null, decision: null, demoItems: null, demoBeats: 0,
+              capture: null, timers: [], onProceed: null };
+
+    function clearTimers() { T.timers.forEach(function (t) { clearTimeout(t); }); T.timers = []; }
+    function later(fn, ms) { var id = setTimeout(fn, ms); T.timers.push(id); return id; }
+
+    // A 1-beat figure id from the level's bank to PAD the demo bar around the new
+    // figure (so the bar is a complete measure). Prefer the simplest single-onset
+    // figure (the family's base note); fall back to the first 1-beat figure.
+    function padFigure(level) {
+      var famKey = bankKeyForLevel(level);
+      var bank = (rs.rhythmPatterns && rs.rhythmPatterns[famKey]) || [];
+      var oneBeat = bank.filter(function (p) { return (p.beats || 1) === 1 && (level.figures || []).indexOf(p.id) !== -1; });
+      // a "base" note = a single non-rest note (e.g. quarter / dotted-quarter / half).
+      var base = oneBeat.filter(function (p) { return p.vexflow && p.vexflow.length === 1 && p.vexflow[0].duration.indexOf('r') === -1; })[0];
+      return (base || oneBeat[0] || bank[0] || null);
+    }
+    // Resolve the app FAMILIES key for a level via its beat unit (mirrors GUIDE's map).
+    function bankKeyForLevel(level) {
+      switch (level.beatUnit) {
+        case 'quarter': return 'medium';
+        case 'half': return 'halfbeat';
+        case 'dotted-quarter': return 'compound';
+        case 'dotted-half': return 'dottedhalf';
+        case 'dotted-eighth': return 'dotted16';
+        default: return 'medium';
+      }
+    }
+    // The NEW figures this level introduces that are actually generatable (in figures).
+    function newFigureIds(level) {
+      var figs = level.figures || [];
+      var nf = (level.newSkills || []).filter(function (id) { return figs.indexOf(id) !== -1; });
+      // Chapters that add no new figure (e.g. a new meter on the same figures) demo the
+      // level's first couple of figures so there is always something to hear + see.
+      if (!nf.length) nf = figs.slice(0, 2);
+      return nf.slice(0, 2);   // at most two, to keep the bar (and the warm-up) short
+    }
+
+    /* Build a single demo BAR (one measure) that contains the new figure(s), padded to
+       the meter's beat count. Returns { items:[{patternId,startBeat,beats}], beats } in
+       the SAME shape targetItems()/gridFromItems consume, so the demo plays + animates
+       exactly like a real round. */
+    function buildDemoBar(level) {
+      var beats = bpm();
+      var newIds = newFigureIds(level);
+      var pad = padFigure(level);
+      var items = [], beat = 1, i = 0;
+      // Lay the new figure(s) first (each occupies its own beats), then pad.
+      while (beat <= beats && i < newIds.length) {
+        var p = findPattern(newIds[i]); var nb = (p && p.beats) || 1;
+        if (beat + nb - 1 > beats) break;
+        items.push({ patternId: newIds[i], startBeat: beat, beats: nb }); beat += nb; i++;
+      }
+      while (beat <= beats && pad) {
+        items.push({ patternId: pad.id, startBeat: beat, beats: (pad.beats || 1) }); beat += (pad.beats || 1);
+      }
+      return { items: items, beats: beats };
+    }
+
+    // --- mini read-only staff (one bar), built from the SHARED renderer + .tb-staff CSS.
+    function renderDemoStaff(host, demo, tsLabel) {
+      host.innerHTML = '';
+      var row = document.createElement('div'); row.className = 'tb-row';
+      var line = document.createElement('div'); line.className = 'tb-line';
+      var cells = document.createElement('div'); cells.className = 'tb-cells';
+      // time-signature glyph (top/bottom), like the real staff
+      if (tsLabel) {
+        var p = String(tsLabel).split('/');
+        var ts = document.createElement('div'); ts.className = 'tb-ts';
+        ts.innerHTML = '<span>' + (p[0] || '') + '</span><span>' + (p[1] || '') + '</span>';
+        cells.appendChild(ts);
+      }
+      var byBeat = {};
+      demo.items.forEach(function (it) { byBeat[it.startBeat] = it; });
+      for (var b = 1; b <= demo.beats; b++) {
+        var cell = document.createElement('div');
+        cell.className = 'tb-cell teach-cell' + (b === demo.beats ? ' tb-final' : '');
+        cell.setAttribute('data-beat', String(b));
+        var num = document.createElement('span'); num.className = 'tb-bnum'; num.textContent = b; cell.appendChild(num);
+        var na = document.createElement('div'); na.className = 'beat-notation'; cell.appendChild(na);
+        var it = byBeat[b];
+        if (it) { try { rs.renderPatternArt(na, it.patternId, it.beats); } catch (e) {} }
+        cells.appendChild(cell);
+      }
+      row.appendChild(line); row.appendChild(cells); host.appendChild(row);
+    }
+    function teachCellByBeat(host, b) { return host.querySelector('.teach-cell[data-beat="' + b + '"]'); }
+    function clearTeachHl(host) {
+      host.querySelectorAll('.teach-cell.solo-beat-on').forEach(function (z) { z.classList.remove('solo-beat-on'); });
+    }
+
+    /* PLAY + ANIMATE the demo bar: count-in (one bar), then the rhythm, with the beat
+       cell lighting up on each beat (the beat-guide) and rhythmHit on each onset. `tempo`
+       lets the escalation lesson run slower. Returns the audio-clock time the bar ends. */
+    function playDemo(host, demo, tempo, withCountIn, onDone) {
+      var c = ctx(); if (!c) { if (onDone) onDone(); return; }
+      unlockAudio();
+      stopAllAudio();
+      clearTeachHl(host);
+      var beatDur = 60 / (tempo || S.tempo);
+      var t0 = c.currentTime + 0.18;
+      var countBeats = withCountIn ? demo.beats : 0;
+      var rhythmStart = t0 + countBeats * beatDur;
+      // count-in clicks (loud) + then example metronome accents on the downbeat
+      var k;
+      for (k = 0; k < countBeats; k++) metroTick(t0 + k * beatDur, true);
+      // onsets (reuse the exact onset walk used by the real game)
+      var onsets = demoOnsets(demo);
+      onsets.forEach(function (o) { rhythmHit(rhythmStart + o.beat * beatDur); });
+      // beat-guide highlight, one cell per beat, anchored to the same clock
+      for (k = 0; k < demo.beats; k++) {
+        (function (b, when) {
+          later(function () {
+            if (!T.open) return;
+            clearTeachHl(host);
+            var z = teachCellByBeat(host, b + 1); if (z) z.classList.add('solo-beat-on');
+          }, Math.max(0, (when - c.currentTime) * 1000));
+        })(k, rhythmStart + k * beatDur);
+      }
+      var endT = rhythmStart + demo.beats * beatDur;
+      later(function () { if (T.open) clearTeachHl(host); if (onDone) onDone(); }, Math.max(0, (endT - c.currentTime + 0.25) * 1000));
+      return endT;
+    }
+    // Onset walk for the demo bar (same math as targetOnsets, on one bar of items).
+    function demoOnsets(demo) {
+      var onsets = [], beat = 0;
+      demo.items.forEach(function (it) {
+        var pat = findPattern(it.patternId);
+        if (!pat || !pat.vexflow) { beat += (it.beats || 1); return; }
+        var raw = pat.vexflow.map(noteBeats);
+        var sum = raw.reduce(function (a, x) { return a + x; }, 0) || 1;
+        var scale = (it.beats || 1) / sum;
+        pat.vexflow.forEach(function (nn, i) {
+          if (nn.duration.indexOf('r') === -1) onsets.push({ beat: beat });
+          beat += raw[i] * scale;
+        });
+      });
+      return onsets;
+    }
+
+    /* ONE call-and-response: count-in, then the player taps the rhythm back on the tap
+       pad for one bar. Scored leniently with TAP_TOLERANCE (per-beat, all-or-nothing —
+       the same grading idea as the full tap-back, kept self-contained for the warm-up).
+       Encourages, never hard-gates: any result lets the student proceed. `tempo` slows
+       it for the escalation we-do. `playAlong` (we-do): the app SOUNDS the rhythm during
+       the capture window so the student taps WITH it. onResult(passedBeats,totalBeats). */
+    function runCallResponse(host, demo, tempo, padEl, coEl, onResult, playAlong) {
+      var c = ctx(); if (!c) { onResult(0, demo.beats); return; }
+      unlockAudio(); stopAllAudio(); clearTeachHl(host);
+      var beatDur = 60 / (tempo || S.tempo);
+      var t0 = c.currentTime + 0.2;
+      var countBeats = demo.beats;
+      var captureStart = t0 + countBeats * beatDur;
+      var captureEnd = captureStart + demo.beats * beatDur;
+      var onsets = demoOnsets(demo);
+      // we-do: schedule the rhythm to SOUND across the capture bar (tap along with it)
+      if (playAlong) onsets.forEach(function (o) { rhythmHit(captureStart + o.beat * beatDur); });
+      // count-off display + clicks
+      for (var k = 0; k < countBeats; k++) {
+        (function (b, when) {
+          metroTick(when, true);
+          later(function () { if (coEl && T.open) { coEl.textContent = String(b + 1); coEl.classList.add('show'); } },
+            Math.max(0, (when - c.currentTime) * 1000));
+        })(k, t0 + k * beatDur);
+      }
+      // GO + your-turn beat-guide highlight across the capture bar (NO sound — the
+      // player provides the rhythm). Capture taps in [captureStart, captureEnd+tol].
+      T.capture = { active: false, taps: [], start: captureStart, end: captureEnd, beatDur: beatDur, onsets: onsets, beats: demo.beats };
+      later(function () {
+        if (!T.open) return;
+        if (coEl) { coEl.textContent = 'GO'; coEl.classList.add('show', 'tb-pop'); later(function () { if (coEl) coEl.classList.remove('show'); }, 520); }
+        T.capture.active = true;
+        tbPadMsg('Your turn — tap the rhythm');
+      }, Math.max(0, (captureStart - c.currentTime) * 1000));
+      for (var j = 0; j < demo.beats; j++) {
+        (function (b, when) {
+          later(function () { if (!T.open) return; clearTeachHl(host); var z = teachCellByBeat(host, b + 1); if (z) z.classList.add('solo-beat-on'); },
+            Math.max(0, (when - c.currentTime) * 1000));
+        })(j, captureStart + j * beatDur);
+      }
+      // finish one beat after the bar, then score
+      later(function () {
+        if (!T.open) return;
+        T.capture.active = false; clearTeachHl(host);
+        var r = scoreCR(T.capture);
+        onResult(r.passed, r.beats);
+      }, Math.max(0, (captureEnd + beatDur - c.currentTime + 0.05) * 1000));
+    }
+    // Record a rhythm tap during the call-and-response capture window.
+    function crTap() {
+      if (!T.capture || !T.capture.active) return;
+      var c = ctx(); if (!c) return;
+      T.capture.taps.push(c.currentTime);
+    }
+    /* Per-beat all-or-nothing scoring (mirrors scoreTapBack's idea, on one bar): a beat
+       is correct iff its taps match its onsets in count, each within ±TAP_TOLERANCE. */
+    function scoreCR(cap) {
+      var beatDur = cap.beatDur, tol = TAP_TOLERANCE, tb = cap.beats;
+      // group target onset absolute times by beat
+      var want = []; for (var b = 0; b < tb; b++) want[b] = [];
+      cap.onsets.forEach(function (o) { var bi = Math.min(tb - 1, Math.floor(o.beat + 1e-6)); want[bi].push(cap.start + o.beat * beatDur); });
+      // group taps by nearest beat (pull a slightly-early tap into the downbeat it aims at)
+      var got = []; for (b = 0; b < tb; b++) got[b] = [];
+      cap.taps.forEach(function (t) {
+        var rel = (t - cap.start) / beatDur; var bi = Math.floor(rel + tol / beatDur);
+        if (bi < 0) bi = 0; if (bi > tb - 1) bi = tb - 1; got[bi].push(t);
+      });
+      var passed = 0;
+      for (b = 0; b < tb; b++) {
+        var w = want[b], g = got[b].slice();
+        if (w.length !== g.length) continue;
+        var ok = true;
+        for (var i = 0; i < w.length; i++) {
+          var bestIdx = -1, bestD = Infinity;
+          for (var jj = 0; jj < g.length; jj++) { var d = Math.abs(g[jj] - w[i]); if (d < bestD) { bestD = d; bestIdx = jj; } }
+          if (bestIdx === -1 || bestD > tol) { ok = false; break; }
+          g.splice(bestIdx, 1);
+        }
+        if (ok) passed++;
+      }
+      return { passed: passed, beats: tb };
+    }
+    function tbPadMsg(t) { var el = document.getElementById('teachPadMsg'); if (el) el.textContent = t; }
+
+    /* --------------------------------------------------------- the overlay DOM */
+    function ensureEl() {
+      if (T.el) return T.el;
+      var ov = document.createElement('div');
+      ov.id = 'teachOv'; ov.className = 'tapback-ov teach-ov';
+      ov.innerHTML =
+        '<div class="tb-card teach-card">' +
+          '<button class="tb-close" id="teachClose" aria-label="Skip">' + IC.close + '</button>' +
+          '<div class="teach-head">' +
+            '<div class="teach-chap" id="teachChap"></div>' +
+            '<div class="teach-title" id="teachTitle"></div>' +
+            '<div class="teach-new" id="teachNew"></div>' +
+          '</div>' +
+          '<div class="teach-body" id="teachBody"></div>' +
+          '<div class="teach-foot" id="teachFoot"></div>' +
+        '</div>';
+      document.body.appendChild(ov);
+      T.el = ov;
+      document.getElementById('teachClose').onclick = function () { skip(); };
+      return ov;
+    }
+
+    // PUBLIC entry: GUIDE.maybeTeach() routes a decision here. Returns true if shown.
+    function show(decision) {
+      if (!decision || !decision.content || T.open) return false;
+      var c = decision.content;
+      ensureEl();
+      T.open = true; T.decision = decision; clearTimers();
+      var lvl = decision.level;
+      var demo = buildDemoBar(lvl);
+      T.demoItems = demo;
+      var perGameTip = (S.mode === 'tapping') ? c.tappingTip : c.dictationTip;
+      var tipLabel = (S.mode === 'tapping') ? 'Coordination cue' : 'What to listen for';
+      document.getElementById('teachChap').textContent =
+        'Chapter ' + lvl.hallChapter + (decision.mode === 'escalation' ? ' · Let’s slow this down' : ' · Warm-up');
+      document.getElementById('teachTitle').textContent = c.title;
+      document.getElementById('teachNew').textContent = c.whatsNew;
+      T.el.classList.add('show'); document.body.classList.add('teach-open');
+      if (decision.mode === 'escalation') renderEscalation(lvl, c, demo, perGameTip, tipLabel);
+      else renderQuick(lvl, c, demo, perGameTip, tipLabel);
+      return true;
+    }
+
+    // Key figures list (from content) — one <li> per figure name.
+    function keyFiguresHTML(c) {
+      if (!c.keyFigures || !c.keyFigures.length) return '';
+      return '<ul class="teach-figs">' + c.keyFigures.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul>';
+    }
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+    /* QUICK warm-up (the default) — title + whatsNew (in the head), the new figure SHOWN
+       + a "Hear & see" that PLAYS it animating on the beat, ONE call-and-response, then
+       "Got it → Start". ~10–15s. Always skippable. */
+    function renderQuick(lvl, c, demo, tip, tipLabel) {
+      var body = document.getElementById('teachBody');
+      body.innerHTML =
+        keyFiguresHTML(c) +
+        '<div class="tb-staff teach-staff" id="teachStaff"></div>' +
+        '<div class="teach-tip"><span class="teach-tip-label">' + tipLabel + '</span>' + esc(tip) + '</div>' +
+        '<div class="teach-pad-wrap" id="teachPadWrap" style="display:none">' +
+          '<div class="teach-pad" id="teachPad"><span class="teach-pad-co" id="teachPadCo"></span>' +
+            '<span class="teach-pad-hint">Tap here</span></div>' +
+          '<div class="teach-pad-msg" id="teachPadMsg">Listen, then tap it back.</div>' +
+        '</div>';
+      var staff = document.getElementById('teachStaff');
+      renderDemoStaff(staff, demo, S.ts);
+      var foot = document.getElementById('teachFoot');
+      // "Got it → Start" is ENABLED from the start — the warm-up never hard-gates the
+      // level; Hear & see + Tap-it-back are encouraged, not required. Skip and Got it both
+      // proceed (Skip remembers a skip; Got it marks the warm-up seen as a completion).
+      foot.innerHTML =
+        '<button class="teach-btn teach-skip" id="teachSkipBtn">Skip</button>' +
+        '<button class="teach-btn teach-hear" id="teachHearBtn">' + IC.play + 'Hear &amp; see</button>' +
+        '<button class="teach-btn teach-go" id="teachGoBtn">Got it → Start</button>';
+      document.getElementById('teachSkipBtn').onclick = function () { skip(); };
+      bindPad();
+      var goBtn = document.getElementById('teachGoBtn');
+      document.getElementById('teachHearBtn').onclick = function () {
+        playDemo(staff, demo, S.tempo, true, function () {
+          // reveal the call-and-response after the first hearing
+          var pw = document.getElementById('teachPadWrap'); if (pw) pw.style.display = '';
+          tbPadMsg('Now tap it back once (press Tap, then count-in plays).');
+          ensureCRButton();
+        });
+        tbPadMsg('Listen…');
+      };
+      // The call-and-response is triggered by a dedicated button injected into the pad area.
+      function ensureCRButton() {
+        if (document.getElementById('teachCRBtn')) return;
+        var wrap = document.getElementById('teachPadWrap');
+        var b = document.createElement('button'); b.className = 'teach-btn teach-cr'; b.id = 'teachCRBtn';
+        b.innerHTML = IC.tap + 'Tap it back';
+        b.onclick = function () {
+          b.disabled = true;
+          runCallResponse(staff, demo, S.tempo, document.getElementById('teachPad'), document.getElementById('teachPadCo'),
+            function (passed, total) {
+              b.disabled = false;
+              tbPadMsg(passed === total ? 'Nice — that’s it!' : passed > 0 ? 'Close — ' + passed + '/' + total + ' beats. Try again or start.' : 'Give it another go, or just start.');
+            });
+        };
+        wrap.insertBefore(b, wrap.firstChild);
+      }
+      goBtn.onclick = function () { proceed(); };
+    }
+
+    /* ESCALATION — the fuller, slower I-do / we-do / you-do mini-lesson. Fired only when
+       struggling; still skippable; backs off after firing (GUIDE.markEscalated). */
+    var SLOW_FACTOR = 0.68;   // slower tempo for the isolated lesson
+    function renderEscalation(lvl, c, demo, tip, tipLabel) {
+      var slow = Math.max(48, Math.round((S.tempo || 100) * SLOW_FACTOR));
+      var body = document.getElementById('teachBody');
+      body.innerHTML =
+        '<div class="teach-stage" id="teachStage">Step 1 of 3 · I do — listen &amp; watch (slower)</div>' +
+        keyFiguresHTML(c) +
+        '<div class="teach-syll" id="teachSyll">' + esc(c.demo) + '</div>' +
+        '<div class="tb-staff teach-staff" id="teachStaff"></div>' +
+        '<div class="teach-tip"><span class="teach-tip-label">' + tipLabel + '</span>' + esc(tip) + '</div>' +
+        '<div class="teach-pad-wrap" id="teachPadWrap" style="display:none">' +
+          '<div class="teach-pad" id="teachPad"><span class="teach-pad-co" id="teachPadCo"></span>' +
+            '<span class="teach-pad-hint">Tap here</span></div>' +
+          '<div class="teach-pad-msg" id="teachPadMsg"></div>' +
+        '</div>';
+      var staff = document.getElementById('teachStaff');
+      renderDemoStaff(staff, demo, S.ts);
+      var foot = document.getElementById('teachFoot');
+      foot.innerHTML =
+        '<button class="teach-btn teach-skip" id="teachSkipBtn">Skip</button>' +
+        '<button class="teach-btn teach-go" id="teachStepBtn">' + IC.play + 'I do — play it slow</button>';
+      document.getElementById('teachSkipBtn').onclick = function () { GUIDE.markEscalated(); skip(); };
+      bindPad();
+      var stageEl = document.getElementById('teachStage');
+      var btn = document.getElementById('teachStepBtn');
+      var step = 1;
+      btn.onclick = function () {
+        if (step === 1) {
+          // I-DO: slow, animated + counted. Contrast cue spoken in the syllable line.
+          btn.disabled = true;
+          tbPadMsg('');
+          playDemo(staff, demo, slow, true, function () {
+            step = 2;
+            stageEl.textContent = 'Step 2 of 3 · We do — count-in, then tap along with me';
+            btn.disabled = false; btn.innerHTML = IC.tap + 'We do — tap along';
+            var pw = document.getElementById('teachPadWrap'); if (pw) pw.style.display = '';
+            tbPadMsg('I’ll play it; tap along on the pad.');
+          });
+        } else if (step === 2) {
+          // WE-DO: app plays the rhythm AND the student taps along (count-in + sound +
+          // capture together) at the slow tempo.
+          btn.disabled = true;
+          // we-do: app SOUNDS the rhythm across the capture bar; the student taps WITH it
+          runCallResponse(staff, demo, slow, document.getElementById('teachPad'), document.getElementById('teachPadCo'),
+            function (passed, total) {
+              step = 3;
+              stageEl.textContent = 'Step 3 of 3 · You do — your turn, one time';
+              btn.disabled = false; btn.innerHTML = IC.tap + 'You do — your turn';
+              tbPadMsg(passed === total ? 'Together: perfect. Now solo.' : 'Good — now try it on your own.');
+            }, true);
+        } else if (step === 3) {
+          // YOU-DO: one guided isolated rep at the slow tempo, then into the level.
+          btn.disabled = true;
+          runCallResponse(staff, demo, slow, document.getElementById('teachPad'), document.getElementById('teachPadCo'),
+            function (passed, total) {
+              GUIDE.markEscalated();   // fired + backs off
+              stageEl.textContent = passed === total ? 'You’ve got it — back to the level.' : 'Nice work — back to the level at full tempo.';
+              btn.disabled = false; btn.innerHTML = 'Start the level';
+              btn.onclick = function () { proceed(); };
+            });
+        }
+      };
+    }
+
+    // Bind the tap pad (touch + pointer, deduped like the real zones) to crTap.
+    function bindPad() {
+      var pad = document.getElementById('teachPad'); if (!pad) return;
+      var lastAt = 0;
+      var handler = function (e) {
+        if (e.cancelable) e.preventDefault();
+        var now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        if (now - lastAt < TAP_DEDUP_MS) return; lastAt = now;
+        crTap();
+        pad.classList.add('teach-pad-flash'); setTimeout(function () { pad.classList.remove('teach-pad-flash'); }, 100);
+      };
+      pad.addEventListener('touchstart', handler, { passive: false });
+      pad.addEventListener('pointerdown', handler);
+    }
+
+    // Close the overlay + tear down audio/timers. `proceeded` = student is starting play.
+    function teardown() {
+      T.open = false; T.capture = null; clearTimers(); stopAllAudio();
+      if (T.el) T.el.classList.remove('show');
+      document.body.classList.remove('teach-open');
+    }
+    // GOT IT → start the level (the round is already laid out underneath).
+    function proceed() {
+      if (T.decision && T.decision.mode === 'quick') GUIDE.markQuickShown();
+      teardown();
+      msg(S.mode === 'tapping' ? 'Press Start metronome, then tap the rhythm.' : 'Press ▶ Play rhythm to hear it.');
+    }
+    // SKIP → straight to the level; remember the skip (quick) so it isn't re-shown.
+    function skip() {
+      if (T.decision && T.decision.mode === 'quick') GUIDE.markSkipped();
+      else if (T.decision && T.decision.mode === 'escalation') GUIDE.markEscalated();
+      teardown();
+    }
+
+    return { register: function () { if (GUIDE && GUIDE.registerTeacher) GUIDE.registerTeacher(show); } };
+  })();
 
   function injectStyle() {
     if (document.getElementById('soloStyle')) return;
@@ -2409,7 +2993,54 @@
         'body.tb-perform-scroll #measureContainer .answer-staff{padding:4px 8px}' +
         // give the zones a touch more room now the staff is compact
         'body.tb-perform-scroll .tb-inline-panel .tb-zones{height:32vh}' +
-      '}';
+      '}' +
+      /* ============================ TEACH SCREENS ============================
+         Reuse the shared .tapback-ov dark surface + --tb-accent theme var; NO
+         emoji (inline IC.* icons), per-theme colors. The mini-staff reuses the
+         .tb-staff/.tb-cell/.placed-note rules above (white "paper" notation). */
+      '.teach-ov{align-items:flex-start;overflow-y:auto}' +
+      '.teach-card{max-width:620px;margin:auto;padding-top:max(env(safe-area-inset-top,0px),18px)}' +
+      '.teach-head{text-align:center;margin:2px 8px 10px}' +
+      '.teach-chap{font-size:.64rem;letter-spacing:.16em;text-transform:uppercase;font-weight:800;opacity:.6;margin-bottom:5px}' +
+      '.teach-title{font-size:1.4rem;font-weight:800;letter-spacing:.01em;line-height:1.15}' +
+      '.teach-new{font-size:.95rem;opacity:.85;margin-top:8px;line-height:1.45}' +
+      '.teach-body{display:flex;flex-direction:column;gap:12px}' +
+      '.teach-figs{margin:0;padding:0 0 0 2px;list-style:none;display:flex;flex-direction:column;gap:5px}' +
+      '.teach-figs li{position:relative;padding-left:18px;font-size:.86rem;opacity:.9;line-height:1.4}' +
+      '.teach-figs li::before{content:"";position:absolute;left:2px;top:.5em;width:7px;height:7px;border-radius:50%;background:var(--tb-accent,#7c5cff)}' +
+      '.teach-staff{margin:2px 0!important;max-height:none!important}' +
+      '.teach-stage{font-size:.72rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--tb-accent,#7c5cff);text-align:center}' +
+      '.teach-syll{font-size:.9rem;font-style:italic;opacity:.85;text-align:center;line-height:1.5;background:rgba(255,255,255,.05);border-radius:10px;padding:9px 12px}' +
+      // per-game framing line (dictation: listen-for; tapping: coordination cue)
+      '.teach-tip{font-size:.9rem;line-height:1.45;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:11px;padding:11px 13px}' +
+      '.teach-tip-label{display:block;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;font-weight:800;opacity:.55;margin-bottom:4px}' +
+      // call-and-response tap pad
+      '.teach-pad-wrap{display:flex;flex-direction:column;align-items:center;gap:9px}' +
+      '.teach-pad{position:relative;width:100%;max-width:360px;height:118px;border-radius:16px;border:2px dashed rgba(255,255,255,.28);background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;transition:background .1s,transform .06s}' +
+      '.teach-pad:active{transform:scale(.99)}' +
+      '.teach-pad.teach-pad-flash{background:var(--tb-accent,#7c5cff);box-shadow:0 0 0 3px rgba(124,92,255,.35)}' +
+      '.teach-pad-hint{font-size:.95rem;font-weight:700;opacity:.6;letter-spacing:.03em}' +
+      '.teach-pad-co{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:3.4rem;font-weight:900;color:var(--tb-accent,#7c5cff);opacity:0;pointer-events:none}' +
+      '.teach-pad-co.show{opacity:1}' +
+      '.teach-pad-co.tb-pop{animation:tbPop .42s ease-out}' +
+      '.teach-pad-msg{font-size:.85rem;opacity:.8;min-height:1.2em;text-align:center}' +
+      // footer action row
+      '.teach-foot{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.12)}' +
+      '.teach-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-family:inherit;font-weight:800;font-size:.92rem;border:none;border-radius:12px;padding:12px 20px;min-height:48px;cursor:pointer;transition:.12s}' +
+      '.teach-btn .ic{margin:0;width:1.15em;height:1.15em;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}' +
+      '.teach-btn .ic-fill{fill:currentColor;stroke:none}' +
+      '.teach-btn:active{transform:translateY(2px)}' +
+      '.teach-skip{background:transparent;color:#cfd3e0;font-weight:600;margin-right:auto;padding-left:4px}' +
+      '.teach-skip:hover{color:#fff}' +
+      '.teach-hear,.teach-cr{background:rgba(255,255,255,.12);color:#fff}' +
+      '.teach-hear:hover,.teach-cr:hover{background:rgba(255,255,255,.2)}' +
+      '.teach-cr{margin-bottom:2px}' +
+      '.teach-go{background:var(--tb-accent,#7c5cff);color:#fff}' +
+      '.teach-go:hover{filter:brightness(1.08)}' +
+      '.teach-go:disabled{opacity:.4;cursor:default;transform:none;filter:none}' +
+      // moving beat guide on the teach mini-staff (same blue as the main beat guide)
+      '.teach-staff .teach-cell.solo-beat-on{background:rgba(33,150,243,.18)!important;box-shadow:inset 0 0 0 2px rgba(33,150,243,.7);border-radius:4px}' +
+      '@media (max-width:480px){.teach-title{font-size:1.2rem}.teach-card{padding-left:12px;padding-right:12px}.teach-pad{height:104px}}';
     document.head.appendChild(st);
   }
 
@@ -2461,6 +3092,7 @@
   function buildHud() {
     if (document.getElementById('soloHud')) return;
     injectStyle();
+    TEACH.register();   // wire the teach overlay into GUIDE.maybeTeach()
     // METER selector — grouped simple/compound; each option's value is the time sig.
     var meterOpts = '<optgroup label="Simple">', g = 'simple';
     METERS.forEach(function (m) {
@@ -2750,7 +3382,9 @@
     buildHud();
     applyModeChrome();
     S.groove = 100;
-    GUIDE.maybeTeach();   // SEAM: show a teach/demo screen before the first level (no-op until TEACH_CONTENT)
+    // The teach screen for the FIRST level is shown by newRound() once that level's
+    // round is actually built (newRound -> maybeTeachThisRound), so the warm-up mounts
+    // ON TOP of the laid-out round. No premature call here.
     newRound();
   }
 
