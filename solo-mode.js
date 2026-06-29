@@ -673,7 +673,10 @@
        REAL main-staff cells. Only the render target differs; every timing/scoring
        path (tbStartMetro / lock-in / scheduleCountoff / startCapture / scoreTapBack /
        the zones / TAP_TOLERANCE / hand-switch / groove) is the one shared code. */
-    inline: false, inlineEl: null
+    inline: false, inlineEl: null,
+    // iPhone compact perform-scroll: the main staff flattened to a single horizontal
+    // auto-scroll lane while performing (set in enterPerformLayout). null = full view.
+    scrollLane: null
   };
   // One physical tap can dispatch BOTH touchstart and a synthetic pointerdown on some
   // touch devices. Collapse any second event within this window to one logical tap.
@@ -939,11 +942,107 @@
       if (!TB.open) return;
       if (tbLastHl) tbLastHl.classList.remove('solo-beat-on');
       var z = TB.cells[absBeat];
-      if (z) { z.classList.add('solo-beat-on'); tbLastHl = z; }
+      if (z) { z.classList.add('solo-beat-on'); tbLastHl = z; autoScrollToCell(z); }
       else tbLastHl = null;
     }, Math.max(0, (when - c.currentTime) * 1000));
   }
   function tbClearBeat() { if (tbLastHl) { tbLastHl.classList.remove('solo-beat-on'); tbLastHl = null; } }
+
+  /* ===== iPhone COMPACT PERFORM SCROLL (tapping game, long rhythms) =====
+     On a small screen a multi-row (>2-bar) staff plus the two tap zones can't both
+     fit. So: the PREVIEW (before Start metronome) keeps the full stacked staff —
+     the player sees the whole rhythm. The instant Start metronome is pressed we
+     flatten the staff into a SINGLE horizontal lane that auto-scrolls to follow the
+     beat-guide highlight, shrinking the staff's vertical footprint so the lane AND
+     both zones fit at once. We reuse the existing beat-guide cells (TB.cells) — the
+     highlight mechanics and timing are untouched; we only scroll the lane to keep
+     the active cell in view.
+
+     Eligibility: inline (tapping) + a coarse-pointer small screen + the staff
+     actually has more than one stacked row (i.e. >2 bars on mobile) OR overflows
+     its area. iPad/desktop, and the single-row 2-bar case, are never compacted. */
+  function compactScrollEligible() {
+    if (!TB.inline) return false;
+    var coarse = false;
+    try { coarse = window.matchMedia('(pointer: coarse) and (max-width: 1400px)').matches; } catch (e) {}
+    if (!coarse) return false;
+    var staff = document.querySelector('#measureContainer .answer-staff');
+    if (!staff) return false;
+    var rows = staff.querySelectorAll('.staff-container');
+    if (rows.length > 1) return true;                 // multi-row -> would stack tall
+    // single row but wider than the viewport would still overflow horizontally; the
+    // lane scroll helps there too. (2-bar fits, so this is effectively >2-bar only.)
+    return staff.scrollWidth > (window.innerWidth + 8);
+  }
+  // Per-row pixel width for the compact lane: each row sized to its own cell count so
+  // every beat cell is the same width across the continuous lane.
+  var PERFORM_CELL_PX = 64;     // compact beat-cell width in the scroll lane
+  var PERFORM_LEAD_PX = 56;     // leading space (time-sig / left margin) on the lane
+  function enterPerformLayout() {
+    if (!compactScrollEligible()) return;
+    var staff = document.querySelector('#measureContainer .answer-staff');
+    if (!staff) return;
+    // Lay the stacked rows out side-by-side into one horizontal lane. Each row gets a
+    // fixed width so EVERY beat cell across the whole lane is the same width (so the
+    // bar lines / notes stay correctly proportioned). Row 0 carries a left LEAD for
+    // the leading time signature; we set the beat-divisions left margin per row to
+    // match (overriding the inline 70px), so cells start after the lead on row 0 and
+    // flush on the rest, keeping cell width uniform.
+    var rows = staff.querySelectorAll('.staff-container');
+    for (var i = 0; i < rows.length; i++) {
+      var nCells = rows[i].querySelectorAll('.beat-drop-zone').length || 1;
+      var lead = (i === 0) ? PERFORM_LEAD_PX : 0;
+      var w = nCells * PERFORM_CELL_PX + lead;
+      rows[i].style.width = w + 'px';
+      rows[i].style.flex = '0 0 ' + w + 'px';
+      var bd = rows[i].querySelector('.beat-divisions');
+      if (bd) {
+        // Remember the renderer's original inline margins so we can restore them on
+        // exit (they differ between normal 70px and changing-meter layouts).
+        if (bd.dataset.origMl == null) bd.dataset.origMl = bd.style.marginLeft || '';
+        if (bd.dataset.origMr == null) bd.dataset.origMr = bd.style.marginRight || '';
+        bd.style.marginLeft = lead + 'px'; bd.style.marginRight = '0';
+      }
+    }
+    document.body.classList.add('tb-perform-scroll');
+    TB.scrollLane = staff;
+    // Start the lane at the very beginning so the first beat is in view.
+    try { staff.scrollLeft = 0; } catch (e) {}
+  }
+  function exitPerformLayout() {
+    document.body.classList.remove('tb-perform-scroll');
+    var staff = TB.scrollLane || document.querySelector('#measureContainer .answer-staff');
+    if (staff) {
+      var rows = staff.querySelectorAll('.staff-container');
+      for (var i = 0; i < rows.length; i++) {
+        rows[i].style.width = ''; rows[i].style.flex = '';
+        var bd = rows[i].querySelector('.beat-divisions');
+        // Restore the renderer's original inline margins captured on enter.
+        if (bd) {
+          if (bd.dataset.origMl != null) { bd.style.marginLeft = bd.dataset.origMl; delete bd.dataset.origMl; }
+          if (bd.dataset.origMr != null) { bd.style.marginRight = bd.dataset.origMr; delete bd.dataset.origMr; }
+        }
+      }
+      try { staff.scrollLeft = 0; } catch (e) {}
+    }
+    TB.scrollLane = null;
+  }
+  // Auto-scroll the compact lane so the active highlighted cell stays in view — keep
+  // it slightly leading (a bit left of centre) so the player sees what's coming.
+  function autoScrollToCell(z) {
+    if (!document.body.classList.contains('tb-perform-scroll')) return;
+    var lane = TB.scrollLane; if (!lane || !z) return;
+    // Cell offset within the lane's scroll content.
+    var laneRect = lane.getBoundingClientRect();
+    var zRect = z.getBoundingClientRect();
+    var cellLeftInContent = (zRect.left - laneRect.left) + lane.scrollLeft;
+    // Position the cell ~35% from the left edge (centred-ish, slightly leading).
+    var target = cellLeftInContent - lane.clientWidth * 0.35;
+    var max = lane.scrollWidth - lane.clientWidth;
+    target = Math.max(0, Math.min(max, target));
+    try { lane.scrollTo({ left: target, behavior: 'smooth' }); }
+    catch (e) { lane.scrollLeft = target; }
+  }
 
   // Dedicated lookahead metronome for tap-back. Starts ONLY when the player presses
   // "Start metronome" (TB.metroOn). Records each beat's scheduled time in TB.beatTimes
@@ -1070,6 +1169,7 @@
     var wasInline = TB.inline;
     TB.open = false; TB.phase = 'idle';
     tbStopMetro(); stopAllAudio(); tbClearBeat();
+    exitPerformLayout();   // restore the full staff before teardown
     clearTbTimers();
     if (TB.el) TB.el.classList.remove('show');
     document.body.classList.remove('tapback-open');
@@ -1096,6 +1196,7 @@
     TB.metroOn = false; TB.lockStreak = 0; TB.lastBeatTapIdx = -1;
     TB.captureStart = 0; TB.captureEnd = 0; TB.captureStartIdx = -1; TB.beatTaps = []; TB.rhythmTaps = [];
     tbStopMetro(); tbClearBeat(); clearTbTimers();
+    exitPerformLayout();   // back to the full preview staff (Try again / fresh round)
     var co = document.getElementById('tbCountoff'); if (co) { co.classList.remove('show'); co.textContent = ''; }
     var setup = document.getElementById('tbSetup'); if (setup) setup.style.display = '';
     var start = document.getElementById('tbStart'); if (start) { start.disabled = false; start.classList.remove('tb-on'); }
@@ -1117,6 +1218,10 @@
     TB.lockStreak = 0; TB.lastBeatTapIdx = -1;
     var start = document.getElementById('tbStart'); if (start) { start.disabled = true; start.classList.add('tb-on'); }
     document.getElementById('tbBeat').classList.add('tb-armed');
+    // iPhone long-rhythm: collapse the full preview staff into the compact auto-scroll
+    // lane the instant performing begins, so the lane + both tap zones fit at once.
+    // No-op on iPad/desktop and on the single-row (≤2-bar) case.
+    enterPerformLayout();
     tbStartMetro();
     tbMsg('Tap the BEAT in time — ' + bpm() + ' in a row to lock in.');
     updateLockHint();
@@ -1426,6 +1531,7 @@
 
   function showResults(res) {
     document.getElementById('tbZones').style.display = 'none';
+    exitPerformLayout();   // performance over -> restore the full rhythm view for review
     S.bonus += res.bonus; S.score += res.bonus;     // bonus folds into the running score too
     save(); render();
     var rows = res.measures.map(function (m) {
@@ -1944,6 +2050,34 @@
         '.tb-inline-panel{gap:4px;padding:8px 10px calc(env(safe-area-inset-bottom,0px) + 8px);border-radius:12px}' +
         '.tb-inline-panel .tb-zones{height:30vh}' +
         '.tb-countoff-inline{font-size:3.4rem}' +
+      '}' +
+      /* ===== iPhone COMPACT PERFORM SCROLL — single horizontal auto-scroll lane =====
+         Active only while performing (body.tb-perform-scroll, set on Start metronome,
+         and only when compactScrollEligible()). Flattens the stacked multi-row staff
+         into ONE short horizontal lane: the rows are laid side-by-side (their widths
+         set by JS to keep equal cell widths), the lane scrolls horizontally, and the
+         vertical footprint shrinks so the lane + both tap zones fit on an iPhone. The
+         white "paper" staff and per-cell notation are untouched — only layout. */
+      'body.tb-perform-scroll #measureContainer{position:relative}' +
+      'body.tb-perform-scroll #measureContainer .answer-staff{' +
+        'display:flex;flex-wrap:nowrap;align-items:flex-start;' +
+        'width:100%!important;max-width:100%!important;' +
+        'overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;' +
+        'padding:8px 10px;scroll-behavior:smooth}' +
+      // each former row is now a fixed-width lane segment, side by side, no stacking
+      'body.tb-perform-scroll #measureContainer .staff-container{' +
+        'flex:0 0 auto;margin-top:0!important;height:clamp(78px,11vh,108px)}' +
+      'body.tb-perform-scroll #measureContainer .staff-container + .staff-container{margin-top:0!important}' +
+      // the "Perform this rhythm" pill would float oddly over the lane — hide it here
+      'body.tb-perform-scroll #measureContainer .answer-staff-label{display:none}' +
+      // the count-off number stays centered over the (now short) lane
+      'body.tb-perform-scroll .tb-countoff-inline{top:50%}' +
+      // landscape phone: keep the lane SHORT so both zones stay on screen together
+      '@media (pointer: coarse) and (max-height: 500px){' +
+        'body.tb-perform-scroll #measureContainer .staff-container{height:clamp(64px,20vh,96px)}' +
+        'body.tb-perform-scroll #measureContainer .answer-staff{padding:4px 8px}' +
+        // give the zones a touch more room now the staff is compact
+        'body.tb-perform-scroll .tb-inline-panel .tb-zones{height:32vh}' +
       '}';
     document.head.appendChild(st);
   }
