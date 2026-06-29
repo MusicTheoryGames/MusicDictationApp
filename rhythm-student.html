@@ -1130,6 +1130,9 @@
          grading) over HTTP and exposes window.LevelCore. Must precede solo-mode.js,
          which waits for it (window.LevelCore / the levelcore-ready event). -->
     <script type="module" src="core-bridge.js?v=20260628-levelcore"></script>
-    <script src="solo-mode.js?v=20260628-levelcore"></script>
+    <!-- TEACH content (window.TEACH_CONTENT): per-level intro copy the teach
+         screens read. DATA only; classic global, must precede solo-mode.js. -->
+    <script src="teach-content.js?v=20260629-teach"></script>
+    <script src="solo-mode.js?v=20260629-teach"></script>
 </body>
 </html>
