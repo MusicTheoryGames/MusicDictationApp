@@ -395,7 +395,7 @@
       // Mastery: a round counts "correct" for the meter when it was answered correctly.
       data.items[level.id] = core().mastery.recordAnswer(item, !!correct, { now: now, sessionStart: data.sessionStart });
 
-      var leveledUp = false, advanced = false;
+      var leveledUp = false, advanced = false, rampedFrom = S.ramp, rampedTo = S.ramp;
       // CAPSTONE GATE: pass the level with ONE clean capstone example —
       //   at the capstone bar count (8), answered correctly, at/above the groove
       //   threshold. 16 bars are a bonus (never required) so >=8 qualifies.
@@ -410,12 +410,15 @@
         if (next !== data.idx) { data.idx = next; S.guidedIdx = next; leveledUp = true; }
         advanced = true;
         applyLevel();   // re-point vocabulary/meter at the (new) current level, ramp->2
+        rampedTo = S.ramp;
       } else if (clean && correct) {
         // Clean but not yet at capstone bars -> climb the 2->4->8 ramp.
         advanceRamp();
+        rampedTo = S.ramp;
       }
       persist();
-      return { advanced: advanced, leveledUp: leveledUp, capstonePassed: capstonePassed };
+      return { advanced: advanced, leveledUp: leveledUp, capstonePassed: capstonePassed,
+               rampedUp: rampedTo > rampedFrom && !capstonePassed, rampBars: rampedTo };
     }
 
     // SEAM (teach): show a teach/demo screen before a new level. window.TEACH_CONTENT
@@ -2035,9 +2038,9 @@
       } else {
         advText = 'Level passed! (end of the available ladder)';
       }
-    } else if (clean && correct && GUIDE.rampBars() > S.measures) {
+    } else if (res.rampedUp) {
       // ramp advanced this round (e.g. 2 -> 4); reflected on the next newRound().
-      advText = 'Clean! Next: ' + GUIDE.rampBars() + ' bars';
+      advText = 'Clean! Next: ' + res.rampBars + ' bars';
     }
     fillLevelOptions();   // mastered/now tags + frontier may have moved
     render();             // mastery meter + ramp readout
