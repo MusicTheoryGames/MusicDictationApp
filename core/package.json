@@ -1,0 +1,10 @@
+{
+  "name": "@beatquest/core",
+  "version": "0.1.0",
+  "description": "Pure, framework-agnostic Functional Core modules (no I/O, no DOM, no Firebase). Time is injected. Scopes core/ as native ES modules without forcing the repo root (legacy CommonJS scripts) to ESM.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test"
+  }
+}
