@@ -1033,14 +1033,23 @@
      Everything after the mount is the SAME shared path. */
   function openTapBack(inline) {
     if (!S.solved || !S.target) return;   // gated strictly behind a shown rhythm
-    var c = ctx(); if (!c) { msg('Tap a button to enable sound first.'); return; }
-    unlockAudio();
-    stopPlayback();                        // silence any example playback first
     TB.inline = !!inline;
+    // Audio: the INLINE (tapping) perform UI renders perform-READY on round load —
+    // before any user gesture — so it must NOT require an AudioContext yet (the
+    // metronome only needs sound, and "Start metronome" unlocks it via onStartMetro).
+    // The MODAL (dictation) path is always opened by a button gesture, so there we
+    // still require + unlock audio up front, as before.
+    var c = ctx();
+    if (!TB.inline) {
+      if (!c) { msg('Tap a button to enable sound first.'); return; }
+      unlockAudio();
+    } else if (c) {
+      unlockAudio();   // best-effort if a gesture already unlocked it (e.g. Start button)
+    }
+    stopPlayback();                        // silence any example playback first
     if (TB.inline) {
       buildTapBackInline();                // mount the panel under the main staff
       document.body.classList.add('tapback-inline');
-      var tbMain = document.getElementById('soloTapBack'); if (tbMain) tbMain.style.display = 'none';  // it launched us
     } else {
       buildTapBackOverlay();
       document.body.classList.add('tapback-open');
@@ -1068,13 +1077,11 @@
     if (wasInline) {
       destroyTapBackInline();
       TB.inline = false;
-      // Return the tapping screen to its pre-perform state: re-show "Perform it"
-      // so the player can run the same rhythm again (Next still gives a new one).
-      if (S.mode === 'tapping') {
-        var tb = document.getElementById('soloTapBack');
-        if (tb) tb.style.display = '';
-        msg('Press ▶ Play to hear it again, or Perform it to tap it back.');
-      }
+      // No "Perform it" button to restore — the inline perform UI is auto-rendered on
+      // round load. closeTapBack is reached either from "Next" (newRound, which then
+      // re-renders a fresh perform-ready round) or from the page tearing down; in
+      // neither case do we leave a launcher behind. The button stays hidden.
+      var tb = document.getElementById('soloTapBack'); if (tb) tb.style.display = 'none';
     }
   }
   function clearTbTimers() {
@@ -1438,12 +1445,21 @@
         '<div class="tb-acc tb-bonus"><b>+' + res.bonus + '</b><span>bonus</span></div>' +
       '</div>' +
       '<div class="tb-mlist">' + rows + '</div>' +
+      // Tapping (inline): the right-hand button is "Next" — a NEW perform-ready
+      // rhythm. Dictation (modal): it is "Done" — close the overlay (unchanged).
+      // Both modes keep "Try again" (re-arm the SAME rhythm).
       '<div class="tb-rbtns solo-ctl">' +
         '<button class="hint" id="tbRetry">' + IC.redo + 'Try again</button>' +
-        '<button class="go" id="tbDone">' + IC.check + 'Done</button>' +
+        (TB.inline
+          ? '<button class="go" id="tbNextRound">' + IC.next + 'Next</button>'
+          : '<button class="go" id="tbDone">' + IC.check + 'Done</button>') +
       '</div>';
     el.style.display = '';
-    document.getElementById('tbDone').onclick = closeTapBack;
+    if (TB.inline) {
+      document.getElementById('tbNextRound').onclick = newRound;   // fresh perform-ready round
+    } else {
+      document.getElementById('tbDone').onclick = closeTapBack;
+    }
     document.getElementById('tbRetry').onclick = function () {
       document.getElementById('tbResults').style.display = 'none';
       document.getElementById('tbZones').style.display = '';
@@ -1560,25 +1576,31 @@
      time signature), then DIFFERS only in what happens after the rhythm exists:
      instead of asking the player to dictate it, we SHOW it on the staff right
      away (revealCorrect places the exact target tiles, identical glyphs to the
-     dictation game) and route straight to the Tap-it-back performance overlay.
-     The player can Play to hear it, then "Perform it" to tap it back. */
+     dictation game) and IMMEDIATELY render the inline perform-ready state — the
+     rhythm + the two tap zones + the Start-metronome button — with no intermediate
+     "Perform it" click. "Start metronome" is the only thing the player presses to
+     begin (it unlocks audio on its own gesture). */
   function newTappingRound() {
     // Pre-fill the staff with the generated rhythm (same note glyphs as dictation).
     revealCorrect();
-    // S.solved=true so the shared tap-back overlay (openTapBack) is allowed to open.
-    // It is gated behind S.solved by construction; the tapping game's whole point is
-    // that the rhythm is already revealed, so that gate is satisfied immediately.
+    // S.solved=true so the shared perform path (openTapBack) is allowed to run. It is
+    // gated behind S.solved by construction; the tapping game's whole point is that
+    // the rhythm is already revealed, so that gate is satisfied immediately.
     S.solved = true;
     if (rs) rs.onAnswerChanged = null;                 // no answer-editing in tapping mode
     document.getElementById('soloSubmit').style.display = 'none';
     document.getElementById('soloNext').style.display = '';
-    var tbBtn = document.getElementById('soloTapBack'); if (tbBtn) { tbBtn.style.display = ''; tbBtn.classList.add('tb-perform'); }
+    var tbBtn = document.getElementById('soloTapBack'); if (tbBtn) tbBtn.style.display = 'none';  // no launcher button
     // Relabel the staff pill: this isn't the player's answer, it's the rhythm to perform.
     var lbl = document.querySelector('#measureContainer .answer-staff-label');
     if (lbl) lbl.textContent = 'Perform this rhythm (' + S.measures + ' bar' + (S.measures === 1 ? '' : 's') + ')';
-    syncBankPad();
     save(); render();
-    msg('Here’s the rhythm — press ▶ Play to hear it, then Perform it to tap it back.');
+    // Render the inline perform interaction RIGHT NOW (no click). openTapBack(true)
+    // mounts the panel under the main staff and drops into 'ready' (metronome off);
+    // the player just presses Start metronome. The main staff already shows the rhythm.
+    openTapBack(true);
+    syncBankPad();
+    msg('Press Start metronome, then tap the BEAT (left) to lock in.');
   }
 
   // On small screens, save space: only show Submit once every beat is filled.
@@ -2198,12 +2220,11 @@
     var submit = document.getElementById('soloSubmit'); if (submit) submit.style.display = 'none';
     var h1 = document.querySelector('.header h1'); if (h1) h1.textContent = 'Tapping — Perform the Rhythm';
     try { document.title = 'Tapping — Music Dictation'; } catch (e) {}
-    // Relabel the tap-back entry button: in tapping it IS the game, not a bonus.
+    // No entry BUTTON in tapping: the perform-ready state (zones + Start metronome)
+    // renders inline on round load (newTappingRound -> openTapBack(true)), so the
+    // "Perform it" launcher is redundant. Keep it permanently hidden in this mode.
     var tb = document.getElementById('soloTapBack');
-    if (tb) {
-      tb.innerHTML = IC.tap + 'Perform it';
-      tb.classList.add('tb-perform');
-    }
+    if (tb) { tb.style.display = 'none'; tb.classList.remove('tb-perform'); }
   }
 
   function wireEntry() {
