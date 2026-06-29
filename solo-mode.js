@@ -2828,6 +2828,17 @@
         // dictation: place the exact target so checkAnswer() is allCorrect.
         if (S.mode !== 'tapping') revealCorrect();
         return S.measures;
+      },
+      // TAPPING capstone: build an 8-bar perform round, then feed showResults a
+      // synthetic ALL-BARS-CLEAN result (the timing pipeline itself is covered by the
+      // tbtest seam). Exercises the SAME guided gate the real perform path uses.
+      tappingCapstonePass: function () {
+        S.ramp = 8; S.measures = 8; newRound();   // newTappingRound -> reveals + openTapBack(inline)
+        var nMeas = S.measures;
+        var measures = [];
+        for (var m = 0; m < nMeas; m++) measures.push({ m: m + 1, pass: true, rhythmSlip: false, beatSlip: false, onsets: 0, hits: 0, extra: 0, beatsOk: 0, beats: 0, beatBeats: 0, beatHits: 0 });
+        showResults({ measures: measures, accuracy: 100, passed: nMeas, total: nMeas, beatsOk: 0, totalBeatsScored: 0, bonus: 0 });
+        return nMeas;
       }
     };
   }
