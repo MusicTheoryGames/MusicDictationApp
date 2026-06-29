@@ -664,7 +664,16 @@
     lockStreak: 0, lastBeatTapIdx: -1,  // consecutive on-beat taps + the beat index of the last counted tap
     captureStart: 0, captureEnd: 0, captureStartIdx: -1,  // capture anchor = an EXACT TB.beatTimes entry
     beatTaps: [], rhythmTaps: [],   // captured tap times (audio clock, latency-corrected)
-    cells: [], el: null             // cloned per-beat highlight cells (absolute-beat ordered)
+    cells: [], el: null,            // per-beat highlight cells (absolute-beat ordered)
+    /* RENDER TARGET. The dictation game runs tap-back in a MODAL (inline:false) —
+       a cloned read-only staff inside #tbStaff — which is correct there: the rhythm
+       isn't on screen until you've notated it. The standalone TAPPING game runs the
+       SAME logic INLINE (inline:true): the rhythm is already shown on the main staff,
+       so the perform panel mounts right under it and the beat-guide highlights the
+       REAL main-staff cells. Only the render target differs; every timing/scoring
+       path (tbStartMetro / lock-in / scheduleCountoff / startCapture / scoreTapBack /
+       the zones / TAP_TOLERANCE / hand-switch / groove) is the one shared code. */
+    inline: false, inlineEl: null
   };
   // One physical tap can dispatch BOTH touchstart and a synthetic pointerdown on some
   // touch devices. Collapse any second event within this window to one logical tap.
@@ -672,41 +681,36 @@
   var TB_BONUS_PER_MEASURE = 25;    // bonus points per passed measure (added to S.bonus)
   var TB_BONUS_HINT = '+' + TB_BONUS_PER_MEASURE + '/bar';   // advertised on the entry button badge
 
-  function buildTapBackOverlay() {
-    if (TB.el) return TB.el;
-    var ov = document.createElement('div');
-    ov.id = 'tapBack'; ov.className = 'tapback-ov';
-    ov.innerHTML =
-      '<div class="tb-card">' +
-        '<button class="tb-close" id="tbClose" aria-label="Close">' + IC.close + '</button>' +
-        '<div class="tb-head">' +
-          '<div class="tb-title">Tap it back</div>' +
-          '<div class="tb-meta" id="tbMeta"></div>' +
+  /* The PERFORM PANEL inner DOM — the setup row, count-off, instruction line, the
+     two tap zones, and the results slot. IDENTICAL in both render targets (modal +
+     inline), so the shared logic addresses one stable set of IDs no matter where the
+     panel is mounted. The modal additionally wraps this with a title + a cloned
+     staff; the inline host mounts ONLY this panel (the rhythm is already on the main
+     staff above it). `withCountoff` controls whether the big count-off overlay lives
+     inside the panel (modal) or is mounted over the MAIN staff (inline). */
+  function performPanelHTML(opts) {
+    opts = opts || {};
+    return (
+      (opts.withCountoff ? '<div class="tb-countoff" id="tbCountoff" aria-hidden="true"></div>' : '') +
+      '<div class="tb-setup" id="tbSetup">' +
+        '<button class="tb-start" id="tbStart">' + IC.metro + 'Start metronome</button>' +
+        '<div class="tb-tempo"><span class="tb-tlabel">TEMPO</span>' +
+          '<button class="tb-tstep" id="tbTempoDown" aria-label="Slower">&minus;</button>' +
+          '<b id="tbTempoVal">' + S.tempo + '</b>' +
+          '<button class="tb-tstep" id="tbTempoUp" aria-label="Faster">+</button>' +
+          '<span class="tb-tunit">bpm</span>' +
         '</div>' +
-        // Read-only CLONE of the live answer staff (pixel-identical note spacing).
-        '<div class="tb-staff" id="tbStaff"></div>' +
-        // Big on-screen count-off overlay (hidden until lock-in).
-        '<div class="tb-countoff" id="tbCountoff" aria-hidden="true"></div>' +
-        // Metronome setup row: Start button + the app's tempo control (bound to S.tempo).
-        '<div class="tb-setup" id="tbSetup">' +
-          '<button class="tb-start" id="tbStart">' + IC.metro + 'Start metronome</button>' +
-          '<div class="tb-tempo"><span class="tb-tlabel">TEMPO</span>' +
-            '<button class="tb-tstep" id="tbTempoDown" aria-label="Slower">&minus;</button>' +
-            '<b id="tbTempoVal">' + S.tempo + '</b>' +
-            '<button class="tb-tstep" id="tbTempoUp" aria-label="Faster">+</button>' +
-            '<span class="tb-tunit">bpm</span>' +
-          '</div>' +
-        '</div>' +
-        '<div class="tb-instruct" id="tbInstruct"></div>' +
-        '<div class="tb-zones" id="tbZones">' +
-          '<button class="tb-zone tb-beat" id="tbBeat"><span class="tb-zlabel">Beat</span><span class="tb-zhint" id="tbBeatHint">left hand</span></button>' +
-          '<button class="tb-zone tb-rhythm" id="tbRhythm"><span class="tb-zlabel">Rhythm</span><span class="tb-zhint">right hand</span></button>' +
-        '</div>' +
-        '<div class="tb-results" id="tbResults" style="display:none"></div>' +
-      '</div>';
-    document.body.appendChild(ov);
-    TB.el = ov;
-    document.getElementById('tbClose').onclick = closeTapBack;
+      '</div>' +
+      '<div class="tb-instruct" id="tbInstruct"></div>' +
+      '<div class="tb-zones" id="tbZones">' +
+        '<button class="tb-zone tb-beat" id="tbBeat"><span class="tb-zlabel">Beat</span><span class="tb-zhint" id="tbBeatHint">left hand</span></button>' +
+        '<button class="tb-zone tb-rhythm" id="tbRhythm"><span class="tb-zlabel">Rhythm</span><span class="tb-zhint">right hand</span></button>' +
+      '</div>' +
+      '<div class="tb-results" id="tbResults" style="display:none"></div>'
+    );
+  }
+  // Wire the perform panel's controls — same handlers regardless of mount point.
+  function wirePerformPanel() {
     document.getElementById('tbStart').onclick = onStartMetro;
     // Tempo stepper: reuses S.tempo (the app's speed control state). Changing it
     // LIVE re-rates the running click without resetting the scheduler.
@@ -734,7 +738,65 @@
     }
     bindZone('tbBeat', onBeatTap);
     bindZone('tbRhythm', onRhythmTap);
+  }
+
+  // MODAL host (dictation game — UNCHANGED behavior): full-screen overlay with a
+  // title, a cloned read-only staff, and the perform panel below it.
+  function buildTapBackOverlay() {
+    if (TB.el) return TB.el;
+    var ov = document.createElement('div');
+    ov.id = 'tapBack'; ov.className = 'tapback-ov';
+    ov.innerHTML =
+      '<div class="tb-card">' +
+        '<button class="tb-close" id="tbClose" aria-label="Close">' + IC.close + '</button>' +
+        '<div class="tb-head">' +
+          '<div class="tb-title">Tap it back</div>' +
+          '<div class="tb-meta" id="tbMeta"></div>' +
+        '</div>' +
+        // Read-only CLONE of the live answer staff (pixel-identical note spacing).
+        '<div class="tb-staff" id="tbStaff"></div>' +
+        performPanelHTML({ withCountoff: true }) +
+      '</div>';
+    document.body.appendChild(ov);
+    TB.el = ov;
+    document.getElementById('tbClose').onclick = closeTapBack;
+    wirePerformPanel();
     return ov;
+  }
+
+  /* INLINE host (standalone TAPPING game): the perform panel mounts directly under
+     the MAIN answer staff, which already shows the rhythm. No modal, no cloned staff
+     — the beat-guide highlights the real main-staff cells in place. A count-off
+     overlay is mounted over the main staff so "1·2·3·4 → GO" reads on the notation
+     the player is about to perform. The panel is wrapped in a dark surface so the
+     shared light-on-dark .tb-* styles read correctly on the themed page. */
+  function buildTapBackInline() {
+    if (TB.inlineEl && document.body.contains(TB.inlineEl)) return TB.inlineEl;
+    var host = document.createElement('div');
+    host.id = 'tbInline'; host.className = 'tb-inline';
+    host.innerHTML = '<div class="tb-inline-panel">' + performPanelHTML({ withCountoff: false }) + '</div>';
+    // Insert right after the answer area (the staff), before the (hidden) bank.
+    var ans = document.querySelector('#gameArea .answer-area');
+    if (ans && ans.parentNode) ans.parentNode.insertBefore(host, ans.nextSibling);
+    else (document.getElementById('gameArea') || document.body).appendChild(host);
+    TB.inlineEl = host;
+    // Count-off overlay lives OVER the main staff (positioned by CSS on the staff).
+    var staffWrap = document.querySelector('#measureContainer');
+    if (staffWrap && !document.getElementById('tbCountoff')) {
+      var co = document.createElement('div');
+      co.id = 'tbCountoff'; co.className = 'tb-countoff tb-countoff-inline'; co.setAttribute('aria-hidden', 'true');
+      staffWrap.style.position = staffWrap.style.position || 'relative';
+      staffWrap.appendChild(co);
+    }
+    wirePerformPanel();
+    return host;
+  }
+  // Remove the inline panel + its count-off overlay (tapping mode teardown).
+  function destroyTapBackInline() {
+    if (TB.inlineEl && TB.inlineEl.parentNode) TB.inlineEl.parentNode.removeChild(TB.inlineEl);
+    TB.inlineEl = null;
+    var co = document.getElementById('tbCountoff');
+    if (co && co.classList.contains('tb-countoff-inline') && co.parentNode) co.parentNode.removeChild(co);
   }
   // Live tempo change: clamp, update S.tempo (so it persists like the speed control)
   // and the readout. The lookahead scheduler reads 60/S.tempo each beat, so the next
@@ -764,6 +826,20 @@
      beat-guide highlight targets. We collect them in absolute-beat order into
      TB.cells so the clock-anchored highlight can index them directly. */
   function buildTapBackStaff() {
+    // INLINE (tapping) target: no clone — the rhythm is already on the MAIN staff,
+    // so the beat-guide highlights its real cells in place. Collect them into
+    // TB.cells (the single index the clock-anchored highlight reads) and return.
+    if (TB.inline) {
+      TB.cells = [];
+      var mbI = mBeats();
+      for (var mI = 0; mI < mbI.length; mI++) {
+        for (var bI = 1; bI <= mbI[mI]; bI++) {
+          var zI = document.querySelector('#measureContainer .answer-staff .beat-drop-zone[data-measure="' + (mI + 1) + '"][data-beat="' + bI + '"]');
+          TB.cells.push(zI || null);
+        }
+      }
+      return;   // no fit/scale needed — the main staff is already laid out
+    }
     var host = document.getElementById('tbStaff'); if (!host) return;
     host.innerHTML = ''; TB.cells = [];
     var live = document.querySelector('#measureContainer .answer-staff');
@@ -951,31 +1027,55 @@
     return anchorBeat.t + (idx - anchorBeat.idx) * (60 / S.tempo);
   }
 
-  function openTapBack() {
-    if (!S.solved || !S.target) return;   // gated strictly behind a correct answer
+  /* Open the perform interaction. `inline` selects the render target:
+       false (default) — MODAL (dictation game, unchanged).
+       true            — INLINE on the main staff (standalone TAPPING game).
+     Everything after the mount is the SAME shared path. */
+  function openTapBack(inline) {
+    if (!S.solved || !S.target) return;   // gated strictly behind a shown rhythm
     var c = ctx(); if (!c) { msg('Tap a button to enable sound first.'); return; }
     unlockAudio();
     stopPlayback();                        // silence any example playback first
-    buildTapBackOverlay();
+    TB.inline = !!inline;
+    if (TB.inline) {
+      buildTapBackInline();                // mount the panel under the main staff
+      document.body.classList.add('tapback-inline');
+      var tbMain = document.getElementById('soloTapBack'); if (tbMain) tbMain.style.display = 'none';  // it launched us
+    } else {
+      buildTapBackOverlay();
+      document.body.classList.add('tapback-open');
+      TB.el.classList.add('show');
+      var meta = document.getElementById('tbMeta');
+      if (meta) meta.textContent = (S.changing ? 'changing meter' : S.ts) + ' · ' + S.measures + ' bar' + (S.measures === 1 ? '' : 's') + ' · ' + S.tempo + ' bpm';
+      var st = document.getElementById('tbStaff'); if (st) st.style.display = '';
+    }
     TB.open = true;
-    document.body.classList.add('tapback-open');
-    TB.el.classList.add('show');
-    var meta = document.getElementById('tbMeta');
-    if (meta) meta.textContent = (S.changing ? 'changing meter' : S.ts) + ' · ' + S.measures + ' bar' + (S.measures === 1 ? '' : 's') + ' · ' + S.tempo + ' bpm';
     document.getElementById('tbResults').style.display = 'none';
     document.getElementById('tbZones').style.display = '';
-    document.getElementById('tbStaff').style.display = '';
     document.getElementById('tbSetup').style.display = '';
     var tv = document.getElementById('tbTempoVal'); if (tv) tv.textContent = S.tempo;
-    buildTapBackStaff();                       // clone the answer staff (read-only)
+    buildTapBackStaff();                       // modal: clone staff · inline: index real cells
     enterReady();
   }
   function closeTapBack() {
+    var wasInline = TB.inline;
     TB.open = false; TB.phase = 'idle';
     tbStopMetro(); stopAllAudio(); tbClearBeat();
     clearTbTimers();
     if (TB.el) TB.el.classList.remove('show');
     document.body.classList.remove('tapback-open');
+    document.body.classList.remove('tapback-inline');
+    if (wasInline) {
+      destroyTapBackInline();
+      TB.inline = false;
+      // Return the tapping screen to its pre-perform state: re-show "Perform it"
+      // so the player can run the same rhythm again (Next still gives a new one).
+      if (S.mode === 'tapping') {
+        var tb = document.getElementById('soloTapBack');
+        if (tb) tb.style.display = '';
+        msg('Press ▶ Play to hear it again, or Perform it to tap it back.');
+      }
+    }
   }
   function clearTbTimers() {
     ['_goTimer', '_endTimer'].forEach(function (k) { if (TB[k]) { clearTimeout(TB[k]); TB[k] = null; } });
@@ -1347,7 +1447,7 @@
     document.getElementById('tbRetry').onclick = function () {
       document.getElementById('tbResults').style.display = 'none';
       document.getElementById('tbZones').style.display = '';
-      document.getElementById('tbStaff').style.display = '';
+      var st = document.getElementById('tbStaff'); if (st) st.style.display = '';   // modal only
       // Full reset back to 'ready' (metronome off): the player re-starts + re-locks.
       enterReady();
     };
@@ -1800,6 +1900,28 @@
         '.tb-zone .tb-zhint{font-size:.62rem}' +
         // count-off overlays the centre (already absolute) — keep it from pushing layout
         '.tb-countoff{top:38%;font-size:3.6rem}' +
+      '}' +
+      /* ===== INLINE PERFORM PANEL (standalone TAPPING game) =====
+         The same .tb-* panel, mounted UNDER the main staff instead of in a modal.
+         It is wrapped in a dark "console" surface so the shared light-on-dark panel
+         styles read correctly on the themed page, and given a fixed-height zone row
+         (the global .tb-zones flex:1 is for the modal's flex column). The count-off
+         number is mounted OVER the main staff (#measureContainer is position:relative)
+         so "1·2·3·4 → GO" reads on the very notation being performed. */
+      '.tb-inline{margin:14px auto 0;max-width:1500px;width:100%}' +
+      '.tb-inline-panel{display:flex;flex-direction:column;gap:6px;background:rgba(12,12,18,.92);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 14px);color:#eef1fb;font-family:system-ui,sans-serif;-webkit-tap-highlight-color:transparent;box-shadow:0 10px 30px rgba(0,0,0,.35)}' +
+      // zone row: fixed, comfortable height for two-hand tapping (no modal flex:1 here)
+      '.tb-inline-panel .tb-zones{flex:0 0 auto;min-height:0;height:150px}' +
+      '.tb-inline-panel .tb-results{flex:0 0 auto;overflow:visible}' +
+      // count-off big number centered over the main staff
+      '.tb-countoff-inline{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);font-size:5rem;z-index:8}' +
+      '.tb-countoff-inline.show{display:flex}' +
+      // phone landscape: shrink the inline panel chrome like the modal does
+      '@media (pointer: coarse) and (max-height: 500px){' +
+        '.tb-inline{margin:8px auto 0}' +
+        '.tb-inline-panel{gap:4px;padding:8px 10px calc(env(safe-area-inset-bottom,0px) + 8px);border-radius:12px}' +
+        '.tb-inline-panel .tb-zones{height:30vh}' +
+        '.tb-countoff-inline{font-size:3.4rem}' +
       '}';
     document.head.appendChild(st);
   }
@@ -1964,7 +2086,10 @@
     });
     document.getElementById('soloSubmit').onclick = submit;
     document.getElementById('soloNext').onclick = newRound;
-    document.getElementById('soloTapBack').onclick = openTapBack;
+    // Dictation game -> MODAL overlay (the rhythm isn't shown until notated).
+    // Tapping game   -> INLINE on the main staff (the rhythm is already shown).
+    // Same openTapBack logic path; only the render target differs.
+    document.getElementById('soloTapBack').onclick = function () { openTapBack(S.mode === 'tapping'); };
     document.getElementById('soloReveal').onclick = function () {
       if (S.solved) return;
       S.solved = true; S.streak = 0; S.wrongThisRound = true;

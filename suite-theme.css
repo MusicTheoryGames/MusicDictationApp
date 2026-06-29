@@ -268,10 +268,12 @@ body.theme-brutalist #soloHud button.play:hover{background:#000}
    armed zone outline, the "Go!" highlight, the bonus number and the Done button.
    The entry button (#soloTapBack) takes each theme's accent too.
    ========================================================================== */
-body.theme-mpc .tapback-ov{--tb-accent:#39ff8b}
-body.theme-manuscript .tapback-ov{--tb-accent:#5c7a4a}
-body.theme-arcade .tapback-ov{--tb-accent:#16f0ff}
-body.theme-brutalist .tapback-ov{--tb-accent:#e3231b}
+/* Both render targets get the per-theme accent: the dictation game's MODAL
+   (.tapback-ov) and the tapping game's INLINE panel (.tb-inline-panel). */
+body.theme-mpc .tapback-ov, body.theme-mpc .tb-inline-panel, body.theme-mpc .tb-countoff-inline{--tb-accent:#39ff8b}
+body.theme-manuscript .tapback-ov, body.theme-manuscript .tb-inline-panel, body.theme-manuscript .tb-countoff-inline{--tb-accent:#5c7a4a}
+body.theme-arcade .tapback-ov, body.theme-arcade .tb-inline-panel, body.theme-arcade .tb-countoff-inline{--tb-accent:#16f0ff}
+body.theme-brutalist .tapback-ov, body.theme-brutalist .tb-inline-panel, body.theme-brutalist .tb-countoff-inline{--tb-accent:#e3231b}
 
 body.theme-mpc #soloTapBack{background:linear-gradient(180deg,#39ff8b,#19c46a);color:#06210f;font-family:'Saira Condensed',sans-serif;text-transform:uppercase;letter-spacing:.06em;box-shadow:0 3px 0 #0e7a3f}
 body.theme-manuscript #soloTapBack{background:#5c7a4a;color:#f3ead4;font-family:'Cormorant Garamond',serif;font-style:italic;border-radius:4px}
