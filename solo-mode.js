@@ -25,7 +25,16 @@
        but skips the dictation step: the rhythm is shown on the staff straight
        away and the player performs it with the tap-back mechanic. Set from the
        URL (?mode=tapping) in wireEntry. */
-    mode: 'dictation'
+    mode: 'dictation',
+    /* ---- GUIDED-LEVEL SPINE (wired to the core/ engine via window.LevelCore) ----
+       guided: are we walking the matched 31-level ladder (default) vs free play.
+       guidedIdx: 0-based position in ladderForMode(mode) (same ladder both games).
+       guidedFigures: the active ladder level's figure-bank ids (Level.figures) —
+         the figure allowlist levelIds() returns in guided mode.
+       capstone: within a level the student ramps 2->4->8 measures; a clean
+         8-measure example at the groove threshold passes the level. ramp is the
+         current required bar count for the *next* pass step. */
+    guided: true, guidedIdx: 0, guidedFigures: null, ramp: 2
   };
   var GROOVE_PER_WRONG = 12, GROOVE_HINT_MISTAKES = 8, GROOVE_HINT_COUNT = 5, GROOVE_HINT_NARROW = 10, GROOVE_HINT_PLAY = 6, GROOVE_GAIN_CLEAN = 15;
   var SPEEDS = { slow: 72, medium: 100, fast: 132 };   // beat BPM (dotted-quarter in compound)
@@ -227,11 +236,232 @@
   }
 
   function levelIds() {
+    // GUIDED mode: the figure vocabulary comes from the ladder level (core/curriculum
+    // Level.figures), NOT the free-play tier system. This is the one seam where the
+    // guided spine overrides the figure pool; everything downstream (patternsFor,
+    // filterBank) reads levelIds() so it flows through unchanged.
+    if (S.guided && S.guidedFigures) return S.guidedFigures.slice();
     if (S.level === 'all') return null;                       // every figure in the family
     var steps = curFamily().steps, acc = [], i;
     for (i = 0; i < S.level && i < steps.length; i++) acc = acc.concat(steps[i]);
     return acc;
   }
+
+  /* ==========================================================================
+     GUIDED-LEVEL SPINE
+     --------------------------------------------------------------------------
+     Wires the tested core/ engine (window.LevelCore) into the live game:
+       - PROGRESSION is the matched 31-level ladder (ladderForMode), one position
+         per Hall chapter, the SAME ladder for dictation and tapping.
+       - Within a level the student ramps 2 -> 4 -> 8 measures; passing a level is
+         ONE clean 8-measure example at the groove threshold (the per-beat groove
+         the game already computes). core/grading.js is the all-or-nothing
+         reference; here the live game's own beat-accurate check IS that grade.
+       - MASTERY uses core/mastery.js (recordAnswer +20/-30, 50/80/95 bands, the
+         Mastered gate). Per level + per game, persisted in localStorage.
+       - On pass -> advance to the next ladder level.
+     This block owns NONE of the gameplay (generateTarget, scoring, the staff) —
+     it only chooses WHICH level's vocabulary/meter to play and records mastery.
+
+     CLEAN SEAMS deliberately left for sibling agents (NOT built here):
+       - TEACH/DEMO screen before a new level: GUIDE.maybeTeach() is the single
+         hook; it reads window.TEACH_CONTENT (authored elsewhere) and is a no-op
+         until that exists. Wire a teach overlay there.
+       - PLACEMENT quiz (core/placement.js): GUIDE could seed guidedIdx from a
+         placement result instead of always starting at ch1 — call site noted in
+         GUIDE.load().
+       - SPACED REVIEW (core/review.js): the mastery items persisted here are the
+         exact inputs core/review.js consumes; a review session would schedule
+         across levels. Not scheduled now.
+     ========================================================================== */
+  var GUIDE = (function () {
+    var GROOVE_PASS = 80;          // groove threshold for a capstone pass (matches mastery ADVANCE_CAPSTONE_PASS 0.8)
+    var CAPSTONE_BARS = 8;         // a clean 8-measure example passes the level
+    var RAMP = [2, 4, 8];          // the within-level measure ramp
+    // Per-game persisted progress: ladder index, per-level mastery item state, the
+    // set of mastered level ids, and the current session start (for the Mastered
+    // spacing gate). Keyed by mode so dictation and tapping progress independently
+    // while walking the SAME matched ladder.
+    var data = null;               // { idx, items:{levelId:ItemState}, mastered:[], sessionStart }
+    function key() { return 'beatquest-guided-' + (S.mode || 'dictation'); }
+    function core() { return window.LevelCore || null; }
+    function avail() { return !!(core() && core().ladder && core().mastery); }
+    function ladder() { return core().ladder.ladderForMode(S.mode === 'tapping' ? 'tapping' : 'dictation'); }
+
+    function load() {
+      var d = null;
+      try { d = JSON.parse(localStorage.getItem(key()) || 'null'); } catch (e) { d = null; }
+      if (!d || typeof d !== 'object') d = {};
+      data = {
+        idx: (typeof d.idx === 'number' && d.idx >= 0) ? d.idx : 0,
+        items: (d.items && typeof d.items === 'object') ? d.items : {},
+        mastered: Array.isArray(d.mastered) ? d.mastered : [],
+        // One stable session start per browser session for the Mastered spacing gate.
+        sessionStart: Date.now()
+      };
+      // SEAM (placement): a placement-quiz result would set data.idx here instead of
+      // defaulting to 0. core/placement.js produces exactly the profile this reads.
+      var lad = ladder();
+      if (data.idx >= lad.length) data.idx = lad.length - 1;
+      S.guidedIdx = data.idx;
+    }
+    function persist() {
+      try {
+        localStorage.setItem(key(), JSON.stringify({
+          idx: data.idx, items: data.items, mastered: data.mastered
+        }));
+      } catch (e) {}
+    }
+
+    function curLevel() { return ladder()[data.idx]; }
+    function levelCount() { return ladder().length; }
+    function itemFor(levelId) {
+      if (!data.items[levelId]) data.items[levelId] = core().mastery.createItemState();
+      return data.items[levelId];
+    }
+
+    // Is a ladder level playable with TODAY's generator+bank? (buildStatus 'ready'
+    // AND it has generatable figures). Non-playable chapters still occupy the matched
+    // spine (so both ladders stay 31 long, in lock-step) but can't be generated yet —
+    // they are the teach/engine seams for sibling agents.
+    function playable(level) {
+      return level && level.buildStatus === 'ready' && level.figures && level.figures.length > 0;
+    }
+
+    // Map a ladder Level's beat unit -> the app's FAMILIES key + a representative
+    // time signature its generator/bank understand.
+    function familyForBeatUnit(bu) {
+      switch (bu) {
+        case 'quarter': return 'quarter';
+        case 'half': return 'half';
+        case 'dotted-quarter': return 'dotted-quarter';
+        case 'dotted-half': return 'dotted-half';
+        case 'dotted-eighth': return 'dotted-eighth';
+        default: return null;   // eighth / mixed / none -> not yet playable here
+      }
+    }
+
+    // Apply the current ladder level to the live game state: meter, family, the
+    // figure allowlist, and reset the ramp. Returns false if the level isn't
+    // playable today (caller shows the teach/locked state instead).
+    function applyLevel() {
+      var level = curLevel();
+      if (!playable(level)) return false;
+      var fam = familyForBeatUnit(level.beatUnit);
+      if (!fam || !FAMILIES[fam]) return false;
+      // Pick a representative time signature the app supports for this family.
+      var ts = (level.meter.timeSignatures || []).filter(function (t) { return METER_BY_TS[t]; })[0];
+      if (!ts) {
+        // Fall back to the family's first registered meter (e.g. 9/8/12/8 -> 6/8 bank).
+        var fm = METERS.filter(function (m) { return m.family === fam; })[0];
+        ts = fm ? fm.ts : '4/4';
+      }
+      S.changing = false;
+      setMeter(ts);                          // sets S.ts / S.family / S.meter / beats
+      S.family = fam; S.ts = ts;
+      var mt = METER_BY_TS[ts];
+      if (mt) { S.meter = mt.meter; S.beatsPerMeasure = mt.beats; }
+      // The ladder level's figure-bank ids are the active vocabulary. Intersect with
+      // what the family's bank actually registers, so a stray id can't empty the pool.
+      var bankIds = ((rs && rs.rhythmPatterns && rs.rhythmPatterns[FAMILIES[fam].key]) || []).map(function (p) { return p.id; });
+      var figs = level.figures.filter(function (id) { return bankIds.indexOf(id) !== -1; });
+      S.guidedFigures = figs.length ? figs : null;   // null -> family's full set (safety)
+      S.level = 'all';                        // free-play tier is bypassed in guided mode
+      // Ramp restart for this level: start at 2 bars.
+      S.ramp = RAMP[0]; S.measures = RAMP[0];
+      return true;
+    }
+
+    // The current ramp step's measure count for this level. Once the student is at
+    // the capstone bar count (8), they stay there until they pass.
+    function rampBars() { return S.ramp; }
+    function advanceRamp() {
+      var i = RAMP.indexOf(S.ramp);
+      if (i >= 0 && i < RAMP.length - 1) { S.ramp = RAMP[i + 1]; }
+      S.measures = S.ramp;
+    }
+    function atCapstone() { return S.ramp >= CAPSTONE_BARS; }
+
+    // Record one graded answer against the current level's mastery item, then
+    // decide ramp/advance. `correct` = the round was answered correctly at all;
+    // `clean` = correct with no mistakes/hints (a first-try clean run). `groovePct`
+    // = the per-beat groove/accuracy (0..100) the game computed for this answer.
+    // Returns { advanced, leveledUp, mastery } for the caller to surface.
+    function recordRound(correct, clean, groovePct) {
+      if (!avail()) return { advanced: false, leveledUp: false };
+      var level = curLevel();
+      var now = Date.now();
+      var item = itemFor(level.id);
+      // Mastery: a round counts "correct" for the meter when it was answered correctly.
+      data.items[level.id] = core().mastery.recordAnswer(item, !!correct, { now: now, sessionStart: data.sessionStart });
+
+      var leveledUp = false, advanced = false;
+      // CAPSTONE GATE: pass the level with ONE clean capstone example —
+      //   at the capstone bar count (8), answered correctly, at/above the groove
+      //   threshold. 16 bars are a bonus (never required) so >=8 qualifies.
+      var capstonePassed = correct && atCapstone() && S.measures >= CAPSTONE_BARS && groovePct >= GROOVE_PASS;
+      if (capstonePassed) {
+        if (data.mastered.indexOf(level.id) === -1) data.mastered.push(level.id);
+        // Advance to the next PLAYABLE level (skip not-yet-built chapters but keep the
+        // matched index so dictation/tapping stay on the same chapter sequence).
+        var lad = ladder();
+        var next = data.idx;
+        for (var n = data.idx + 1; n < lad.length; n++) { next = n; if (playable(lad[n])) break; }
+        if (next !== data.idx) { data.idx = next; S.guidedIdx = next; leveledUp = true; }
+        advanced = true;
+        applyLevel();   // re-point vocabulary/meter at the (new) current level, ramp->2
+      } else if (clean && correct) {
+        // Clean but not yet at capstone bars -> climb the 2->4->8 ramp.
+        advanceRamp();
+      }
+      persist();
+      return { advanced: advanced, leveledUp: leveledUp, capstonePassed: capstonePassed };
+    }
+
+    // SEAM (teach): show a teach/demo screen before a new level. window.TEACH_CONTENT
+    // is authored by a separate agent; until then this is a no-op. Wire the overlay here.
+    function maybeTeach() {
+      if (!window.TEACH_CONTENT) return false;
+      /* A sibling agent owns the teach overlay; the hook is intentionally empty. */
+      return false;
+    }
+
+    // ---- mastery-meter VIEW (per-theme, NO emoji) ----
+    // A small labelled bar showing the current level's mastery band + score. Colors
+    // are per-theme via CSS vars with neutral fallbacks (see injectStyle additions).
+    function masteryView() {
+      if (!avail()) return null;
+      var level = curLevel();
+      var item = data.items[level.id] || core().mastery.createItemState();
+      var view = core().mastery.viewItemAsOf(item, Date.now());   // decay-applied snapshot
+      var band = view.level;                                       // attempted|familiar|proficient|mastered
+      var score = Math.round(view.score);
+      return { levelId: level.id, hallChapter: level.hallChapter, title: level.title,
+               band: band, score: score, idx: data.idx, count: levelCount(),
+               mastered: data.mastered.indexOf(level.id) !== -1 };
+    }
+
+    return {
+      avail: avail, load: load, persist: persist,
+      curLevel: curLevel, levelCount: levelCount, ladder: ladder,
+      applyLevel: applyLevel, playable: playable,
+      rampBars: rampBars, atCapstone: atCapstone,
+      recordRound: recordRound, masteryView: masteryView, maybeTeach: maybeTeach,
+      // for the picker UI
+      data: function () { return data; },
+      gotoIndex: function (i) {
+        var lad = ladder();
+        if (i < 0 || i >= lad.length) return false;
+        if (!playable(lad[i])) return false;
+        // Replay/review is allowed for any PASSED (mastered) level, plus the current
+        // frontier. Don't let the player skip ahead past unmastered levels.
+        var frontier = data.idx;
+        var isMastered = data.mastered.indexOf(lad[i].id) !== -1;
+        if (i > frontier && !isMastered) return false;
+        data.idx = i; S.guidedIdx = i; applyLevel(); persist(); return true;
+      }
+    };
+  })();
 
   /* Inline SVG icons — stroke/fill use currentColor so they inherit each
      theme's text color automatically (no emojis, ever). */
@@ -1533,6 +1763,17 @@
     document.getElementById('tbZones').style.display = 'none';
     exitPerformLayout();   // performance over -> restore the full rhythm view for review
     S.bonus += res.bonus; S.score += res.bonus;     // bonus folds into the running score too
+    // GUIDED (tapping game): a PERFORM result drives the same matched ladder as
+    // dictation. Only the standalone tapping game's INLINE perform counts toward the
+    // ladder — the optional tap-back bonus offered after a DICTATION answer must NOT
+    // (that round was already recorded by submit()). correct/clean = every bar clean;
+    // groovePct = the per-beat accuracy the scorer computed.
+    var tapAdvText = null;
+    if (S.mode === 'tapping' && TB.inline) {
+      var allClean = (res.total > 0 && res.passed === res.total);
+      var adv = guidedRecord(allClean, allClean, res.accuracy);
+      if (adv) tapAdvText = adv.advText;
+    }
     save(); render();
     var rows = res.measures.map(function (m) {
       var status = m.pass ? 'pass' : 'fail';
@@ -1550,6 +1791,7 @@
         '<div class="tb-acc"><b>' + res.passed + '/' + res.total + '</b><span>bars clean</span></div>' +
         '<div class="tb-acc tb-bonus"><b>+' + res.bonus + '</b><span>bonus</span></div>' +
       '</div>' +
+      (tapAdvText ? '<div class="tb-advance">' + tapAdvText + '</div>' : '') +
       '<div class="tb-mlist">' + rows + '</div>' +
       // Tapping (inline): the right-hand button is "Next" — a NEW perform-ready
       // rhythm. Dictation (modal): it is "Done" — close the overlay (unchanged).
@@ -1731,8 +1973,14 @@
       else { S.streak = 0; }
       var pts = 100 + (clean ? S.streak * 20 : 0);
       S.score += pts;
-      msg(clean ? 'Nailed it first try! +' + pts + '  ·  Groove +' + GROOVE_GAIN_CLEAN + '  ·  streak ×' + S.streak
-                : 'Correct! +' + pts);
+      var baseMsg = clean ? 'Nailed it first try! +' + pts + '  ·  Groove +' + GROOVE_GAIN_CLEAN + '  ·  streak ×' + S.streak
+                          : 'Correct! +' + pts;
+      // GUIDED: record mastery + run the capstone/ramp gate. A fully-correct answer is
+      // 100% beats correct (every beat matched), so the per-beat groove for THIS round
+      // is 100; the gate also requires the capstone bar count (8). bonus points for the
+      // 16-bar extra are handled by the existing scoring (more bars = more points).
+      var adv = guidedRecord(true, clean, 100);
+      msg(adv && adv.advText ? baseMsg + '  ·  ' + adv.advText : baseMsg);
       document.getElementById('soloSubmit').style.display = 'none';
       document.getElementById('soloNext').style.display = '';
       showTapBackBtn();   // OPTIONAL bonus — only ever offered after a correct answer
@@ -1746,6 +1994,9 @@
       msg(r.wrong.length + ' beat(s) off — fix the red beats, then submit again.');
     } else {
       S.streak = 0; revealCorrect();
+      // GUIDED: a terminal wrong answer (no fix-it) counts as wrong for the mastery
+      // meter (-30). It never passes the capstone (correct=false), so no advance.
+      guidedRecord(false, false, 0);
       msg('Not quite — here’s the correct rhythm.');
       document.getElementById('soloSubmit').style.display = 'none';
       document.getElementById('soloNext').style.display = '';
@@ -1765,6 +2016,33 @@
     });
   }
   function grooveBroken() { msg('You lost the groove! Score ' + S.score + '. Restarting the set…'); S.groove = 100; S.streak = 0; setTimeout(newRound, 1600); }
+
+  /* Bridge a graded round into the guided spine: record mastery, run the capstone/
+     ramp gate, refresh the level picker + mastery meter, and return a short status
+     string for the round message. No-op (returns null) in free play. Shared by the
+     dictation submit() and the tapping showResults() so BOTH games drive the SAME
+     matched ladder identically. */
+  function guidedRecord(correct, clean, groovePct) {
+    if (!(S.guided && GUIDE.avail())) return null;
+    var before = GUIDE.curLevel();
+    var res = GUIDE.recordRound(correct, clean, groovePct);
+    var advText = null;
+    if (res.capstonePassed) {
+      if (res.leveledUp) {
+        var now = GUIDE.curLevel();
+        advText = 'Level passed! → Ch ' + now.hallChapter + ' · ' + now.title;
+        GUIDE.maybeTeach();   // SEAM: teach screen before the newly-unlocked level
+      } else {
+        advText = 'Level passed! (end of the available ladder)';
+      }
+    } else if (clean && correct && GUIDE.rampBars() > S.measures) {
+      // ramp advanced this round (e.g. 2 -> 4); reflected on the next newRound().
+      advText = 'Clean! Next: ' + GUIDE.rampBars() + ' bars';
+    }
+    fillLevelOptions();   // mastered/now tags + frontier may have moved
+    render();             // mastery meter + ramp readout
+    return { res: res, advText: advText };
+  }
 
   /* ------------------------------------------------------------------ hints */
   function hintMistakes() {
@@ -1839,6 +2117,8 @@
 
   /* -------------------------------------------------------------------- UI */
   function msg(t) { var el = document.getElementById('soloMsg'); if (el) el.textContent = t; }
+  // Human label per mastery band (from core/mastery LEVELS). No emoji.
+  var BAND_LABEL = { attempted: 'Attempted', familiar: 'Familiar', proficient: 'Proficient', mastered: 'Mastered' };
   function render() {
     var f = document.getElementById('soloGrooveFill');
     if (f) { f.style.width = S.groove + '%'; f.style.background = S.groove > 50 ? 'var(--groove-ok,#19e07a)' : S.groove > 25 ? 'var(--groove-warn,#ffd24a)' : 'var(--groove-low,#ff5a4d)'; }
@@ -1846,6 +2126,37 @@
     var sc = document.getElementById('soloScore'); if (sc) sc.textContent = S.score;
     var st = document.getElementById('soloStreak'); if (st) st.textContent = S.streak;
     var bn = document.getElementById('soloBonus'); if (bn) bn.textContent = S.bonus;
+    renderMastery();
+  }
+
+  // GUIDED mastery meter: the current level title + a per-theme bar showing the
+  // current level's mastery score/band, plus the 2->4->8 ramp readout. Hidden in
+  // free play. Colors come from per-theme CSS vars (neutral fallbacks); no emoji.
+  function renderMastery() {
+    var wrap = document.getElementById('soloMastery'); if (!wrap) return;
+    if (!(S.guided && GUIDE.avail())) { wrap.style.display = 'none'; return; }
+    var mv = GUIDE.masteryView(); if (!mv) { wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+    var chap = document.getElementById('smChap'); if (chap) chap.textContent = 'Ch ' + mv.hallChapter + ' · ' + (mv.idx + 1) + '/' + mv.count;
+    var title = document.getElementById('smTitle'); if (title) title.textContent = mv.title;
+    var fill = document.getElementById('smFill');
+    if (fill) {
+      fill.style.width = mv.score + '%';
+      // band color: per-theme vars, neutral fallbacks (attempted=low ... mastered=accent)
+      var col = mv.band === 'mastered' ? 'var(--mastery-mastered,#6ad1ff)'
+              : mv.band === 'proficient' ? 'var(--mastery-proficient,#19e07a)'
+              : mv.band === 'familiar' ? 'var(--mastery-familiar,#ffd24a)'
+              : 'var(--mastery-attempted,#9aa0b4)';
+      fill.style.background = col;
+    }
+    var band = document.getElementById('smBand');
+    if (band) band.textContent = (BAND_LABEL[mv.band] || mv.band) + ' · ' + mv.score;
+    var ramp = document.getElementById('smRamp');
+    if (ramp) {
+      ramp.textContent = mv.mastered
+        ? 'Passed — replaying for practice'
+        : ('Capstone ramp: ' + S.measures + ' bars' + (GUIDE.atCapstone() ? ' · pass a clean 8-bar example to advance' : ' → climb to 8'));
+    }
   }
 
   function injectStyle() {
@@ -1887,6 +2198,21 @@
       '.solo-ctl button.hint.on{background:rgba(255,255,255,.22);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.4)}' +
       '#soloHud .solo-toggle{display:flex;align-items:center;gap:6px;font-size:.8rem;opacity:.85;margin-left:auto;cursor:pointer}' +
       '#soloHud #soloMsg{margin-top:10px;font-size:.95rem;min-height:1.3em;font-weight:600}' +
+      /* ---- GUIDED mastery meter (per-theme; NO emoji) ---- */
+      '.solo-mastery{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:2px 0 10px;padding:9px 12px;border-radius:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)}' +
+      '.solo-mastery .sm-level{display:flex;flex-direction:column;min-width:140px}' +
+      '.solo-mastery .sm-chap{font-size:.62rem;letter-spacing:.12em;opacity:.6;font-weight:800}' +
+      '.solo-mastery .sm-title{font-size:.92rem;font-weight:700}' +
+      '.solo-mastery .sm-meterwrap{display:flex;align-items:center;gap:10px;flex:1;min-width:200px}' +
+      '.solo-mastery .sm-meter{position:relative;flex:1;height:12px;border-radius:7px;background:rgba(255,255,255,.14);overflow:hidden}' +
+      '.solo-mastery .sm-meter i{display:block;height:100%;width:0;border-radius:7px;transition:width .4s,background .4s}' +
+      // band threshold ticks at 50/80/95 (Familiar/Proficient/Mastered). overflow:visible
+      // on the wrapper so ticks show above the clipped fill.
+      '.solo-mastery .sm-meter{overflow:visible}' +
+      '.solo-mastery .sm-meter i{overflow:hidden}' +
+      '.solo-mastery .sm-tick{position:absolute;top:-2px;bottom:-2px;width:2px;background:rgba(255,255,255,.4);transform:translateX(-1px);pointer-events:none}' +
+      '.solo-mastery .sm-band{font-size:.8rem;font-weight:800;white-space:nowrap;min-width:7.5em}' +
+      '.solo-mastery .sm-ramp{font-size:.72rem;opacity:.7;letter-spacing:.02em;flex-basis:100%}' +
       '.beat-drop-zone.solo-wrong{outline:2px solid #ff5a4d;outline-offset:-2px;background:rgba(255,90,77,.13)!important}' +
       '.beat-drop-zone.solo-right{background:rgba(25,224,122,.16)!important}' +
       '.beat-drop-zone.solo-beat-on{background:rgba(33,150,243,.22)!important;box-shadow:inset 0 0 0 2px rgba(33,150,243,.7)}' +
@@ -1976,6 +2302,8 @@
       '.tb-acc b{font-size:1.8rem;font-weight:800;line-height:1}' +
       '.tb-acc span{font-size:.66rem;opacity:.6;letter-spacing:.1em;text-transform:uppercase;margin-top:4px}' +
       '.tb-acc.tb-bonus b{color:var(--tb-accent,#7c5cff)}' +
+      // guided level-advance banner in the tapping results (per-theme accent)
+      '.tb-advance{text-align:center;font-weight:800;font-size:1rem;margin:10px 0 2px;color:var(--tb-accent,#7c5cff)}' +
       '.tb-mlist{display:flex;flex-direction:column;gap:6px}' +
       '.tb-mrow{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.05);font-size:.85rem}' +
       '.tb-mrow.tb-pass{box-shadow:inset 0 0 0 1px rgba(25,224,122,.5)}' +
@@ -2082,14 +2410,49 @@
     document.head.appendChild(st);
   }
 
-  // Populate the LEVEL dropdown with the CURRENT family's tiers + "all figures".
+  // Populate the LEVEL dropdown.
+  //   GUIDED mode -> the matched 31-level ladder (one option per Hall chapter):
+  //     passed (mastered) and the current frontier are selectable (replay/review);
+  //     not-yet-built chapters and levels beyond the frontier are disabled.
+  //   FREE PLAY -> the current family's tiers + "all figures" (the original picker).
   function fillLevelOptions() {
-    var fam = curFamily(), sel = document.getElementById('soloLevel'); if (!sel) return;
-    var html = '', t;
-    for (t = 1; t <= fam.steps.length; t++) html += '<option value="' + t + '">Lvl ' + t + ' · ' + (fam.labels[t] || ('Tier ' + t)) + '</option>';
-    html += '<option value="all">' + (fam.classic || 'All figures') + '</option>';
-    sel.innerHTML = html;
+    var sel = document.getElementById('soloLevel'); if (!sel) return;
+    if (S.guided && GUIDE.avail()) {
+      var lad = GUIDE.ladder(), gd = GUIDE.data(), html = '';
+      for (var i = 0; i < lad.length; i++) {
+        var L = lad[i];
+        var isMastered = gd.mastered.indexOf(L.id) !== -1;
+        var isCurrent = (i === gd.idx);
+        var canBuild = GUIDE.playable(L);
+        // Selectable: a playable level that is mastered, current, or earlier-than-frontier.
+        var selectable = canBuild && (isMastered || i <= gd.idx);
+        var tag = isCurrent ? ' • now' : (isMastered ? ' • passed' : (!canBuild ? ' • locked' : (i > gd.idx ? ' • locked' : '')));
+        html += '<option value="' + i + '"' + (selectable ? '' : ' disabled') + '>' +
+          'Ch ' + L.hallChapter + ' · ' + L.title + tag + '</option>';
+      }
+      sel.innerHTML = html;
+      sel.value = String(gd.idx);
+      return;
+    }
+    var fam = curFamily(), html2 = '', t;
+    for (t = 1; t <= fam.steps.length; t++) html2 += '<option value="' + t + '">Lvl ' + t + ' · ' + (fam.labels[t] || ('Tier ' + t)) + '</option>';
+    html2 += '<option value="all">' + (fam.classic || 'All figures') + '</option>';
+    sel.innerHTML = html2;
     sel.value = (S.level === 'all') ? 'all' : String(S.level);
+  }
+
+  // In GUIDED mode the level dictates the meter and the ramp drives the bar count,
+  // so hide the free-play METER + BARS pickers (they reappear in Free play).
+  function syncMeterPicker() {
+    var guided = !!(S.guided && GUIDE.avail());
+    var ms = document.querySelector('#soloHud .solo-metersel'); if (ms) ms.style.display = guided ? 'none' : '';
+    var mt = document.getElementById('soloMeter');
+    if (mt && !guided) mt.value = S.changing ? ('change:' + (S.changeKind || 'simple')) : S.ts;
+  }
+  function syncBarsPicker() {
+    var guided = !!(S.guided && GUIDE.avail());
+    var bs = document.querySelector('#soloHud .solo-barsel'); if (bs) bs.style.display = guided ? 'none' : '';
+    var br = document.getElementById('soloBars'); if (br && !guided) br.value = String(S.measures);
   }
 
   function buildHud() {
@@ -2110,12 +2473,23 @@
     var hud = document.createElement('div'); hud.id = 'soloHud'; hud.className = 'solo-ctl';
     hud.innerHTML =
       '<div class="solo-stats">' +
-        '<div class="solo-stat"><span>METER</span><select id="soloMeter">' + meterOpts + '</select></div>' +
+        '<div class="solo-stat solo-modesel"><span>PATH</span><select id="soloPath"><option value="guided">Guided</option><option value="free">Free play</option></select></div>' +
+        '<div class="solo-stat solo-metersel"><span>METER</span><select id="soloMeter">' + meterOpts + '</select></div>' +
         '<div class="solo-stat"><span>LEVEL</span><select id="soloLevel"></select></div>' +
-        '<div class="solo-stat"><span>BARS</span><select id="soloBars"><option value="2">2</option><option value="4">4</option><option value="8">8</option><option value="16">16</option></select></div>' +
+        '<div class="solo-stat solo-barsel"><span>BARS</span><select id="soloBars"><option value="2">2</option><option value="4">4</option><option value="8">8</option><option value="16">16</option></select></div>' +
         '<div class="solo-stat"><span>SCORE</span><b id="soloScore">0</b></div>' +
         '<div class="solo-stat"><span>STREAK</span><b id="soloStreak">0</b>' + IC.flame + '</div>' +
         '<div class="solo-stat"><span>BONUS</span><b id="soloBonus">0</b></div>' +
+      '</div>' +
+      // GUIDED MASTERY METER — the current ladder level + a per-theme mastery bar
+      // (NO emoji). Hidden in free play. Populated by render() via GUIDE.masteryView().
+      '<div id="soloMastery" class="solo-mastery" style="display:none">' +
+        '<div class="sm-level"><span class="sm-chap" id="smChap"></span><span class="sm-title" id="smTitle"></span></div>' +
+        '<div class="sm-meterwrap"><div class="sm-meter"><i id="smFill"></i>' +
+          // band threshold ticks at 50 / 80 / 95 (Familiar / Proficient / Mastered)
+          '<u class="sm-tick" style="left:50%"></u><u class="sm-tick" style="left:80%"></u><u class="sm-tick" style="left:95%"></u>' +
+        '</div><b id="smBand" class="sm-band"></b></div>' +
+        '<div class="sm-ramp" id="smRamp"></div>' +
       '</div>' +
       '<div class="solo-actions">' +
         '<button id="soloPlay" class="primary play">' + IC.play + 'Play rhythm</button>' +
@@ -2250,14 +2624,31 @@
       if (S.solved) return;
       S.solved = true; S.streak = 0; S.wrongThisRound = true;
       stopPulse(); clearMarks(); revealCorrect();
+      // GUIDED: revealing the answer ends the round unsolved -> counts as wrong (-30),
+      // never passes the capstone.
+      guidedRecord(false, false, 0);
       msg('Here’s the correct rhythm. (No points — hit Next for a new one.)');
       document.getElementById('soloSubmit').style.display = 'none';
       document.getElementById('soloNext').style.display = '';
       syncBankPad();
       save(); render();
     };
+    // PATH toggle: Guided (the matched ladder spine) vs Free play (the original
+    // free meter/level pickers). Switching re-points the level vocabulary and meter.
+    var pathSel = document.getElementById('soloPath');
+    if (pathSel) {
+      pathSel.value = (S.guided && GUIDE.avail()) ? 'guided' : 'free';
+      if (!GUIDE.avail()) pathSel.disabled = true;   // engine missing -> free play only
+      pathSel.onchange = function () {
+        S.guided = (pathSel.value === 'guided');
+        if (S.guided && GUIDE.avail()) { GUIDE.applyLevel(); }
+        fillLevelOptions(); syncMeterPicker(); syncBarsPicker();
+        save(); newRound();
+      };
+    }
     var lv = document.getElementById('soloLevel');
-    fillLevelOptions();                          // populate LEVEL for the current family
+    fillLevelOptions();                          // populate LEVEL for the current family/ladder
+    syncMeterPicker(); syncBarsPicker();
     var mt = document.getElementById('soloMeter');
     mt.value = S.changing ? ('change:' + (S.changeKind || 'simple')) : S.ts;
     mt.onchange = function () {
@@ -2275,6 +2666,13 @@
     };
     lv.onchange = function () {
       var v = lv.value;
+      if (S.guided && GUIDE.avail()) {
+        // Guided: pick a ladder position (replay a passed level or the frontier).
+        var i = parseInt(v, 10);
+        if (GUIDE.gotoIndex(i)) { fillLevelOptions(); syncMeterPicker(); save(); newRound(); }
+        else { fillLevelOptions(); }   // rejected (locked) -> snap the select back
+        return;
+      }
       S.level = (v === 'all') ? 'all' : parseInt(v, 10);
       save(); newRound();
     };
@@ -2321,6 +2719,25 @@
       rs.rhythmPatterns.mixedSC = (rs.rhythmPatterns.medium || []).concat(COMPOUND_FIGS);
     }
     load();
+    // GUIDED SPINE init — needs window.LevelCore (the core/ engine bridge). The bridge
+    // is a deferred module, so it may land a tick after start() first runs; we wait a
+    // short, bounded time for it. If it truly never arrives, we degrade gracefully to
+    // FREE PLAY (S.guided=false) so the game always boots.
+    if (S.guided && !window.LevelCore) {
+      if (!start._lcWaits) start._lcWaits = 0;
+      if (start._lcWaits < 25) { start._lcWaits++; setTimeout(start, 120); return; }
+      S.guided = false;   // engine never loaded -> free play only (still fully playable)
+    }
+    if (S.guided && GUIDE.avail()) {
+      GUIDE.load();
+      if (!GUIDE.applyLevel()) {
+        // The persisted ladder position isn't playable today (shouldn't happen — load()
+        // advances to a playable level) — fall back to free play rather than a dead round.
+        S.guided = false;
+      }
+    } else {
+      S.guided = false;
+    }
     document.getElementById('loginForm').classList.add('hidden');
     document.getElementById('gameArea').classList.add('active');
     document.body.classList.remove('login-mode');
@@ -2330,6 +2747,7 @@
     buildHud();
     applyModeChrome();
     S.groove = 100;
+    GUIDE.maybeTeach();   // SEAM: show a teach/demo screen before the first level (no-op until TEACH_CONTENT)
     newRound();
   }
 
@@ -2391,6 +2809,26 @@
       fillCorrect: revealCorrect, submit: submit, setMeasures: function (n) { S.measures = n; save(); newRound(); },
       tapLatency: function () { return TAP_LATENCY; },
       tapTolerance: function () { return TAP_TOLERANCE; }
+    };
+  }
+  // Guided-spine test seam — ONLY active with ?levtest=1. Exposes the guided internals
+  // so the ladder progression + capstone gate + mastery meter can be driven and asserted
+  // deterministically (no audio/timing needed). Zero effect in production.
+  if (/[?&]levtest=1/.test(location.search)) {
+    window.__levTest = {
+      S: S, GUIDE: GUIDE,
+      newRound: newRound, fillCorrect: revealCorrect, submit: submit,
+      guidedRecord: guidedRecord, render: render, fillLevelOptions: fillLevelOptions,
+      masteryView: function () { return GUIDE.masteryView(); },
+      // Force the within-level ramp to the capstone bar count, regenerate at that size,
+      // and place the exact correct answer — so submit() can pass the capstone gate
+      // without a human notating 8 bars. Returns the new measure count.
+      forceCapstoneRound: function () {
+        S.ramp = 8; S.measures = 8; newRound();
+        // dictation: place the exact target so checkAnswer() is allCorrect.
+        if (S.mode !== 'tapping') revealCorrect();
+        return S.measures;
+      }
     };
   }
 })();
