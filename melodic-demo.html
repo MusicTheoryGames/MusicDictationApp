@@ -1,0 +1,78 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Melodic generator — v1 vs v2</title>
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+<style>
+ body{font-family:-apple-system,system-ui,sans-serif;margin:0;padding:16px;background:#faf9f7;color:#1a1a1a}
+ h1{font-size:20px;margin:0 0 4px} .sub{color:#666;font-size:13px;margin:0 0 20px}
+ .case{background:#fff;border:1px solid #e6e3de;border-radius:12px;padding:14px;margin-bottom:18px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+ .case h2{font-size:15px;margin:0 0 10px}
+ .row{display:flex;gap:12px;flex-wrap:wrap}
+ .ver{flex:1;min-width:300px;border:1px solid #eee;border-radius:8px;padding:10px}
+ .tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;margin-bottom:8px}
+ .t1{background:#fde8e8;color:#a33} .t2{background:#e3f2e9;color:#2a7}
+ .staff{overflow-x:auto} button{font:inherit;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;background:#2a6df0;color:#fff;font-weight:600}
+ button.p2{background:#1f9d55} .hint{font-size:12px;color:#888;margin-top:6px}
+</style></head><body>
+<h1>Melodic generator — before / after</h1>
+<p class="sub">Left = v1 (random-but-valid). Right = v2 (harmony-first + motif). Both pass the classical validators; the difference is whether it sounds like a <em>tune</em>. Tap ▶ to hear. In v2 4-bar examples, <b>bar 3 restates bar 1</b> (a parallel period).</p>
+<div id="app"></div>
+<script>
+const DATA = [{"label":"C major · 2/4 · 2 bars (beginner)","meter":"2/4","v1":{"timeSignature":"2/4","_scaleId":"C_major","_bars":2,"_seed":707,"measure1":[{"keys":["g/5"],"duration":"h"}],"measure2":[{"keys":["c/5"],"duration":"h"}]},"v2":{"timeSignature":"2/4","_scaleId":"C_major","_bars":2,"_seed":707,"measure1":[{"keys":["c/4"],"duration":"8"},{"keys":["d/4"],"duration":"8"},{"keys":["e/4"],"duration":"q"}],"measure2":[{"keys":["d/4"],"duration":"8"},{"keys":["d/4"],"duration":"8"},{"keys":["c/4"],"duration":"q"}]}},{"label":"C major · 4/4 · 4 bars (parallel period)","meter":"4/4","v1":{"timeSignature":"4/4","_scaleId":"C_major","_bars":4,"_seed":733,"measure1":[{"keys":["c/4"],"duration":"8"},{"keys":["d/4"],"duration":"8"},{"keys":["e/4"],"duration":"q"},{"keys":["g/4"],"duration":"8"},{"keys":["a/4"],"duration":"8"},{"keys":["g/4"],"duration":"q"}],"measure2":[{"keys":["a/4"],"duration":"h"},{"keys":["f/4"],"duration":"q"},{"keys":["g/4"],"duration":"8"},{"keys":["f/4"],"duration":"8"}],"measure3":[{"keys":["g/4"],"duration":"q"},{"keys":["b/4"],"duration":"8"},{"keys":["c/5"],"duration":"8"},{"keys":["d/5"],"duration":"q"},{"keys":["e/5"],"duration":"8"},{"keys":["d/5"],"duration":"8"}],"measure4":[{"keys":["b/4"],"duration":"8"},{"keys":["a/4"],"duration":"8"},{"keys":["b/4"],"duration":"q"},{"keys":["c/5"],"duration":"h"}]},"v2":{"timeSignature":"4/4","_scaleId":"C_major","_bars":4,"_seed":733,"measure1":[{"keys":["g/4"],"duration":"8"},{"keys":["a/4"],"duration":"8"},{"keys":["b/4"],"duration":"q"},{"keys":["c/5"],"duration":"8"},{"keys":["d/5"],"duration":"8"},{"keys":["c/5"],"duration":"q"}],"measure2":[{"keys":["d/5"],"duration":"q"},{"keys":["e/5"],"duration":"8"},{"keys":["e/5"],"duration":"8"},{"keys":["g/5"],"duration":"8"},{"keys":["f/5"],"duration":"8"},{"keys":["g/5"],"duration":"q"}],"measure3":[{"keys":["g/4"],"duration":"8"},{"keys":["a/4"],"duration":"8"},{"keys":["b/4"],"duration":"q"},{"keys":["c/5"],"duration":"8"},{"keys":["d/5"],"duration":"8"},{"keys":["c/5"],"duration":"q"}],"measure4":[{"keys":["b/4"],"duration":"q"},{"keys":["b/4"],"duration":"q"},{"keys":["c/5"],"duration":"h"}]}},{"label":"C major · 3/4 · 4 bars","meter":"3/4","v1":{"timeSignature":"3/4","_scaleId":"C_major","_bars":4,"_seed":401,"measure1":[{"keys":["g/5"],"duration":"8"},{"keys":["e/5"],"duration":"8"},{"keys":["f/5"],"duration":"q"},{"keys":["g/5"],"duration":"8"},{"keys":["f/5"],"duration":"8"}],"measure2":[{"keys":["f/4"],"duration":"h"},{"keys":["g/4"],"duration":"8"},{"keys":["a/4"],"duration":"8"}],"measure3":[{"keys":["g/4"],"duration":"h"},{"keys":["a/4"],"duration":"8"},{"keys":["g/4"],"duration":"8"}],"measure4":[{"keys":["b/4"],"duration":"h"},{"keys":["c/5"],"duration":"q"}]},"v2":{"timeSignature":"3/4","_scaleId":"C_major","_bars":4,"_seed":401,"measure1":[{"keys":["g/5"],"duration":"8"},{"keys":["f/5"],"duration":"8"},{"keys":["e/5"],"duration":"q"},{"keys":["f/5"],"duration":"q"}],"measure2":[{"keys":["d/5"],"duration":"q"},{"keys":["e/5"],"duration":"8"},{"keys":["f/5"],"duration":"8"},{"keys":["g/5"],"duration":"q"}],"measure3":[{"keys":["g/5"],"duration":"8"},{"keys":["f/5"],"duration":"8"},{"keys":["e/5"],"duration":"q"},{"keys":["f/5"],"duration":"q"}],"measure4":[{"keys":["g/5"],"duration":"8"},{"keys":["d/5"],"duration":"8"},{"keys":["c/5"],"duration":"h"}]}},{"label":"A minor (harmonic) · 3/4 · 4 bars","meter":"3/4","v1":{"timeSignature":"3/4","_scaleId":"A_minor_harmonic","_bars":4,"_seed":655,"measure1":[{"keys":["e/5"],"duration":"q"},{"keys":["f/5"],"duration":"h"}],"measure2":[{"keys":["d/5"],"duration":"q"},{"keys":["c/5"],"duration":"q"},{"keys":["d/5"],"duration":"8"},{"keys":["e/5"],"duration":"8"}],"measure3":[{"keys":["e/5"],"duration":"q"},{"keys":["d/5"],"duration":"8"},{"keys":["c/5"],"duration":"8"},{"keys":["b/4"],"duration":"q"}],"measure4":[{"keys":["g#/4"],"duration":"8"},{"keys":["g#/4"],"duration":"8"},{"keys":["a/4"],"duration":"h"}]},"v2":{"timeSignature":"3/4","_scaleId":"A_minor_harmonic","_bars":4,"_seed":655,"measure1":[{"keys":["e/5"],"duration":"8"},{"keys":["d/5"],"duration":"8"},{"keys":["e/5"],"duration":"8"},{"keys":["d/5"],"duration":"8"},{"keys":["e/5"],"duration":"8"},{"keys":["f/5"],"duration":"8"}],"measure2":[{"keys":["e/5"],"duration":"q"},{"keys":["d/5"],"duration":"8"},{"keys":["e/5"],"duration":"8"},{"keys":["e/5"],"duration":"q"}],"measure3":[{"keys":["e/5"],"duration":"8"},{"keys":["d/5"],"duration":"8"},{"keys":["e/5"],"duration":"8"},{"keys":["d/5"],"duration":"8"},{"keys":["e/5"],"duration":"8"},{"keys":["f/5"],"duration":"8"}],"measure4":[{"keys":["e/5"],"duration":"8"},{"keys":["b/4"],"duration":"8"},{"keys":["a/4"],"duration":"h"}]}},{"label":"A minor (natural) · 4/4 · 4 bars","meter":"4/4","v1":{"timeSignature":"4/4","_scaleId":"A_minor_natural","_bars":4,"_seed":922,"measure1":[{"keys":["c/5"],"duration":"q"},{"keys":["b/4"],"duration":"8"},{"keys":["c/5"],"duration":"8"},{"keys":["a/4"],"duration":"q"},{"keys":["g/4"],"duration":"8"},{"keys":["a/4"],"duration":"8"}],"measure2":[{"keys":["b/4"],"duration":"q"},{"keys":["c/5"],"duration":"8"},{"keys":["b/4"],"duration":"8"},{"keys":["b/4"],"duration":"h"}],"measure3":[{"keys":["b/4"],"duration":"8"},{"keys":["c/5"],"duration":"8"},{"keys":["d/5"],"duration":"q"},{"keys":["e/4"],"duration":"q"},{"keys":["d/4"],"duration":"q"}],"measure4":[{"keys":["g/4"],"duration":"h"},{"keys":["a/4"],"duration":"h"}]},"v2":{"timeSignature":"4/4","_scaleId":"A_minor_natural","_bars":4,"_seed":922,"measure1":[{"keys":["a/4"],"duration":"q"},{"keys":["g/4"],"duration":"8"},{"keys":["f/4"],"duration":"8"},{"keys":["a/4"],"duration":"q"},{"keys":["b/4"],"duration":"8"},{"keys":["a/4"],"duration":"8"}],"measure2":[{"keys":["b/4"],"duration":"q"},{"keys":["b/4"],"duration":"8"},{"keys":["a/4"],"duration":"8"},{"keys":["b/4"],"duration":"q"},{"keys":["c/5"],"duration":"8"},{"keys":["e/5"],"duration":"8"}],"measure3":[{"keys":["a/4"],"duration":"q"},{"keys":["g/4"],"duration":"8"},{"keys":["f/4"],"duration":"8"},{"keys":["a/4"],"duration":"q"},{"keys":["b/4"],"duration":"8"},{"keys":["a/4"],"duration":"8"}],"measure4":[{"keys":["g/4"],"duration":"q"},{"keys":["g/4"],"duration":"q"},{"keys":["a/4"],"duration":"h"}]}},{"label":"C major · 4/4 · 4 bars","meter":"4/4","v1":{"timeSignature":"4/4","_scaleId":"C_major","_bars":4,"_seed":811,"measure1":[{"keys":["g/5"],"duration":"8"},{"keys":["f/5"],"duration":"8"},{"keys":["e/5"],"duration":"h"},{"keys":["f/5"],"duration":"8"},{"keys":["e/5"],"duration":"8"}],"measure2":[{"keys":["f/5"],"duration":"q"},{"keys":["g/5"],"duration":"q"},{"keys":["f/5"],"duration":"h"}],"measure3":[{"keys":["g/5"],"duration":"h"},{"keys":["g/5"],"duration":"h"}],"measure4":[{"keys":["d/5"],"duration":"8"},{"keys":["e/5"],"duration":"8"},{"keys":["g/4"],"duration":"8"},{"keys":["b/4"],"duration":"8"},{"keys":["c/5"],"duration":"h"}]},"v2":{"timeSignature":"4/4","_scaleId":"C_major","_bars":4,"_seed":811,"measure1":[{"keys":["g/5"],"duration":"8"},{"keys":["f/5"],"duration":"8"},{"keys":["g/5"],"duration":"q"},{"keys":["e/5"],"duration":"8"},{"keys":["d/5"],"duration":"8"},{"keys":["e/5"],"duration":"q"}],"measure2":[{"keys":["d/5"],"duration":"8"},{"keys":["e/5"],"duration":"8"},{"keys":["f/5"],"duration":"8"},{"keys":["g/5"],"duration":"8"},{"keys":["d/5"],"duration":"8"},{"keys":["e/5"],"duration":"8"},{"keys":["f/5"],"duration":"8"},{"keys":["g/5"],"duration":"8"}],"measure3":[{"keys":["g/5"],"duration":"8"},{"keys":["f/5"],"duration":"8"},{"keys":["g/5"],"duration":"q"},{"keys":["e/5"],"duration":"8"},{"keys":["d/5"],"duration":"8"},{"keys":["e/5"],"duration":"q"}],"measure4":[{"keys":["g/5"],"duration":"8"},{"keys":["f/5"],"duration":"8"},{"keys":["d/5"],"duration":"q"},{"keys":["c/5"],"duration":"h"}]}}];
+const VF = Vex.Flow;
+const DUR = { 'w':4,'h':2,'q':1,'8':0.5,'16':0.25,'hd':3,'qd':1.5 };
+function measures(mel){ return Object.keys(mel).filter(k=>k.startsWith('measure')).sort().map(k=>mel[k]); }
+function vexToTone(k){ const [l,o]=k.split('/'); return l.toUpperCase()+o; }
+
+function render(host, mel){
+  host.innerHTML='';
+  const ms = measures(mel);
+  const per = 150, W = 40 + ms.length*per;
+  const r = new VF.Renderer(host, VF.Renderer.Backends.SVG); r.resize(W,140);
+  const ctx = r.getContext();
+  let x=10;
+  ms.forEach((m,i)=>{
+    const st = new VF.Stave(x, 10, i===0?per+30:per);
+    if(i===0){ st.addClef('treble'); st.addTimeSignature(mel.timeSignature); }
+    if(i===ms.length-1) st.setEndBarType(VF.Barline.type.END);
+    st.setContext(ctx).draw();
+    const notes = m.map(n=>new VF.StaveNote({keys:n.keys,duration:n.duration,auto_stem:true}));
+    const beams = VF.Beam.generateBeams(notes,{groups:VF.Beam.getDefaultBeamGroups(mel.timeSignature)});
+    const v = new VF.Voice({num_beats:parseInt(mel.timeSignature),beat_value:parseInt(mel.timeSignature.split('/')[1])}).setStrict(false).addTickables(notes);
+    new VF.Formatter().joinVoices([v]).formatToStave([v],st);
+    v.draw(ctx,st); beams.forEach(b=>b.setContext(ctx).draw());
+    x += (i===0?per+30:per);
+  });
+}
+
+let synth;
+async function play(mel, btn){
+  await Tone.start();
+  if(!synth) synth = new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:.01,decay:.1,sustain:.3,release:.2}}).toDestination();
+  const bpm=96, spb=60/bpm;
+  let t=Tone.now()+0.05;
+  measures(mel).forEach(m=>m.forEach(n=>{
+    const beats=DUR[n.duration]||1, dur=beats*spb;
+    synth.triggerAttackRelease(vexToTone(n.keys[0]), Math.max(.12,dur*.92), t);
+    t+=dur;
+  }));
+  btn.textContent='▶ playing…'; setTimeout(()=>btn.textContent=btn.dataset.lbl,(t-Tone.now())*1000+200);
+}
+
+const app=document.getElementById('app');
+DATA.forEach(c=>{
+  const el=document.createElement('div'); el.className='case';
+  el.innerHTML='<h2>'+c.label+'</h2><div class="row"></div>';
+  const row=el.querySelector('.row');
+  [['v1','t1','p1','v1 · random-valid'],['v2','t2','p2','v2 · harmony + motif']].forEach(([key,tc,pc,name])=>{
+    const ver=document.createElement('div'); ver.className='ver';
+    ver.innerHTML='<span class="tag '+tc+'">'+name+'</span><div class="staff"></div>';
+    const btn=document.createElement('button'); btn.className=(key==='v2'?'p2':''); btn.textContent='▶ play'; btn.dataset.lbl='▶ play';
+    btn.onclick=()=>play(c[key],btn); ver.appendChild(btn);
+    row.appendChild(ver);
+    render(ver.querySelector('.staff'), c[key]);
+  });
+  app.appendChild(el);
+});
+</script></body></html>

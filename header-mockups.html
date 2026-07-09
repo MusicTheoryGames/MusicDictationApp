@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>BeatQuest — Header Layout Mockups</title>
+<style>
+  :root{
+    --ink:#333a52; --muted:#8a90a8; --line:#e8ecf8;
+    --green1:#34d17f; --green2:#22b083; --grooveFill:#19e07a;
+    --tileDash:#b9c6ee; --accent:#5b6ee1;
+    --slot: 62px;   /* mock tile size (scaled to fit the page) */
+    --slotH: 58px;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; height:100%; font-family:ui-rounded,"SF Pro Rounded","Baloo 2","Nunito","Segoe UI",system-ui,sans-serif; color:var(--ink); }
+  body{ background:linear-gradient(160deg,#eef4ff,#f6eef7,#ffeef4); display:flex; flex-direction:column; }
+
+  /* ---- top chooser (NOT part of the mock) ---- */
+  .chooser{ flex:0 0 auto; display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(255,255,255,.7); border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .chooser b{ font-size:13px; letter-spacing:.02em; margin-right:4px; }
+  .chooser small{ color:var(--muted); font-size:11px; }
+  .tab{ border:1.5px solid var(--line); background:#fff; color:var(--ink); font-weight:800; font-size:12px; padding:7px 12px; border-radius:10px; cursor:pointer; font-family:inherit; }
+  .tab.on{ background:var(--accent); color:#fff; border-color:var(--accent); }
+
+  /* ---- the mock "device" viewport ---- */
+  .stage{ flex:1 1 auto; display:flex; align-items:center; justify-content:center; padding:12px; min-height:0; }
+  .device{ width:100%; max-width:1000px; aspect-ratio:16/10; background:linear-gradient(160deg,#eef4ff,#f6eef7,#ffeef4); border-radius:22px; box-shadow:0 12px 40px rgba(70,90,140,.22); overflow:hidden; position:relative; }
+
+  .opt{ display:none; width:100%; height:100%; }
+  .opt.show{ display:block; }
+
+  /* ===== shared game pieces ===== */
+  .answer{ background:#fff; border-radius:14px; padding:10px 14px; box-shadow:0 3px 12px rgba(90,110,170,.08); display:flex; flex-direction:column; gap:8px; justify-content:center; }
+  .arow{ display:flex; align-items:center; gap:2px; }
+  .tsig{ font-weight:900; font-size:19px; line-height:.9; color:var(--accent); display:flex; flex-direction:column; margin-right:8px; }
+  .bar{ display:flex; gap:2px; margin-right:8px; }
+  .cell{ width:var(--slot); height:var(--slotH); border:2px dashed var(--tileDash); border-radius:12px; background:#fbfcff; }
+  .cell.dot::after{ content:""; }
+
+  .bank{ display:flex; align-items:center; justify-content:center; gap:12px; padding:8px; }
+  .btile{ width:var(--slot); height:var(--slotH); background:#fff; border:2px solid var(--line); border-bottom:5px solid #d7deef; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:26px; color:var(--ink); }
+
+  .play{ background:linear-gradient(135deg,var(--green1),var(--green2)); color:#fff; border:none; border-radius:16px; font-weight:800; font-family:inherit; cursor:pointer; box-shadow:0 6px 16px rgba(34,176,131,.35); display:flex; align-items:center; justify-content:center; gap:8px; }
+  .play:active{ transform:translateY(1px); }
+  .play.big{ font-size:16px; padding:0 20px; height:54px; }
+  .play svg{ width:20px;height:20px;fill:#fff; }
+  .playing{ animation:pulse .6s ease-in-out infinite; }
+  @keyframes pulse{ 50%{ box-shadow:0 6px 26px rgba(34,176,131,.6);} }
+
+  .submit{ background:#fff; border:2px solid var(--green2); color:var(--green2); border-radius:14px; font-weight:800; font-family:inherit; cursor:pointer; padding:0 16px; height:46px; }
+  .pill{ background:#fff; border:1.5px solid var(--line); border-radius:22px; color:var(--ink); font-weight:700; font-size:13px; font-family:inherit; padding:9px 14px; cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
+  .pill svg{ width:16px;height:16px; }
+  .icon{ width:46px;height:46px; border-radius:12px; border:1.5px solid var(--line); background:#fff; display:flex;align-items:center;justify-content:center; color:var(--ink); font-weight:800; font-size:12px; cursor:pointer; }
+  .disc{ width:15px;height:15px; }
+
+  /* groove (horizontal + vertical) */
+  .gh{ display:flex; align-items:center; gap:8px; }
+  .gh .track{ flex:1; height:11px; border-radius:7px; background:#e7ecf8; overflow:hidden; min-width:120px; }
+  .gh .fill{ height:100%; width:78%; background:var(--grooveFill); transition:width .5s; }
+  .gh b{ font-size:14px; color:var(--green2); }
+  .gv{ display:flex; flex-direction:column; align-items:center; gap:5px; }
+  .gv .vtrack{ width:14px; height:120px; border-radius:9px; background:#e7ecf8; overflow:hidden; display:flex; align-items:flex-end; }
+  .gv .vfill{ width:100%; height:78%; background:var(--grooveFill); transition:height .5s; }
+  .gv small{ font-size:9px; letter-spacing:.08em; color:var(--muted); font-weight:800; }
+
+  .lbl{ font-size:9px; letter-spacing:.09em; color:var(--muted); font-weight:800; text-align:center; }
+  .stat{ font-size:11px; color:var(--muted); font-weight:800; }
+  .stat b{ color:var(--ink); font-size:15px; }
+
+  /* popover for the '...' more controls */
+  .more{ position:absolute; z-index:20; background:#fff; border:1.5px solid var(--line); border-radius:14px; box-shadow:0 12px 30px rgba(70,90,140,.25); padding:10px; display:none; flex-direction:column; gap:8px; }
+  .more.show{ display:flex; }
+  .more .row{ display:flex; gap:8px; flex-wrap:wrap; }
+
+  .float{ position:absolute; font-weight:900; font-size:18px; color:#ff5b5b; pointer-events:none; opacity:0; }
+  .float.go{ animation:flt 1s ease-out forwards; }
+  @keyframes flt{ 0%{opacity:0;transform:translateY(6px) scale(.7)} 18%{opacity:1;transform:translateY(-2px) scale(1.1)} 100%{opacity:0;transform:translateY(-40px)} }
+
+  /* ================= OPTION A — LEFT RAIL ================= */
+  #A .wrap{ display:flex; flex-direction:column; height:100%; padding:12px; gap:10px; }
+  #A .top{ display:flex; gap:10px; flex:1; min-height:0; }
+  #A .rail{ flex:0 0 84px; background:rgba(255,255,255,.75); border:1px solid var(--line); border-radius:16px; padding:10px 8px; display:flex; flex-direction:column; align-items:center; gap:12px; }
+  #A .rail .play.big{ height:64px; width:64px; padding:0; border-radius:18px; flex-direction:column; font-size:11px; }
+  #A .rail .submit{ height:44px; width:64px; padding:0; }
+  #A .answer{ flex:1; }
+
+  /* ================= OPTION B — TWIN RAILS ================= */
+  #B .wrap{ display:flex; height:100%; padding:12px; gap:10px; }
+  #B .rail{ flex:0 0 84px; background:rgba(255,255,255,.75); border:1px solid var(--line); border-radius:16px; padding:10px 8px; display:flex; flex-direction:column; align-items:center; gap:12px; }
+  #B .railR{ flex:0 0 64px; gap:8px; }
+  #B .center{ flex:1; display:flex; flex-direction:column; gap:10px; min-width:0; }
+  #B .answer{ flex:1; }
+  #B .rail .play.big{ height:64px; width:64px; padding:0; border-radius:18px; flex-direction:column; font-size:11px; }
+  #B .rail .submit{ height:44px; width:64px; padding:0; }
+  #B .railR .icon{ width:48px;height:48px; }
+
+  /* ================= OPTION C — UNIFIED BOTTOM ================= */
+  #C .wrap{ display:flex; flex-direction:column; height:100%; padding:12px; gap:10px; }
+  #C .answer{ flex:1; }
+  #C .dock{ flex:0 0 auto; display:flex; align-items:center; gap:12px; background:rgba(255,255,255,.8); border:1px solid var(--line); border-radius:16px; padding:8px 12px; }
+  #C .dock .left{ display:flex; flex-direction:column; gap:6px; }
+  #C .dock .bank{ flex:1; }
+  #C .dock .right{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+
+  /* ================= OPTION D — PUCK + FRAME ================= */
+  #D .wrap{ display:flex; flex-direction:column; height:100%; padding:12px; gap:10px; position:relative; }
+  #D .answer{ flex:1; border:5px solid var(--grooveFill); box-shadow:0 0 0 1px #d9f3e5, 0 0 22px rgba(25,224,122,.35); transition:border-color .5s, box-shadow .5s; position:relative; }
+  #D .frameLbl{ position:absolute; top:-11px; left:16px; background:#fff; padding:1px 8px; border-radius:8px; font-size:9px; letter-spacing:.08em; color:var(--green2); font-weight:800; border:1px solid #d9f3e5; }
+  #D .puck{ position:absolute; right:26px; top:44%; width:78px; height:78px; border-radius:50%; background:linear-gradient(135deg,var(--green1),var(--green2)); box-shadow:0 8px 24px rgba(34,176,131,.45); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; color:#fff; cursor:pointer; z-index:15; }
+  #D .puck svg{ width:26px;height:26px;fill:#fff; }
+  #D .puck small{ font-size:9px; font-weight:800; }
+  #D .puckMore{ position:absolute; right:30px; bottom:96px; }
+
+  /* ================= OPTION E — CONSOLIDATED (the agreed layout) ================= */
+  #E .wrap{ display:flex; flex-direction:column; height:100%; padding:12px; gap:10px; position:relative; }
+  #E .ctlrow{ display:flex; align-items:center; gap:8px; flex:0 0 auto; }
+  #E .ctlrow .play.big{ height:46px; }
+  #E .ico{ width:46px; height:46px; border-radius:12px; border:1.5px solid var(--line); background:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:11px; color:var(--muted); cursor:pointer; }
+  #E .frame{ flex:1; position:relative; border:5px solid var(--grooveFill); border-radius:16px; box-shadow:0 0 0 1px #d9f3e5, 0 0 20px rgba(25,224,122,.3); background:#fff; padding:16px 14px 10px; display:flex; }
+  #E .frametab{ position:absolute; top:-13px; left:14px; right:14px; display:flex; justify-content:space-between; align-items:center; pointer-events:none; }
+  #E .ftleft, #E .ftright{ background:#fff; padding:2px 10px; border-radius:9px; border:1px solid #e7ecf8; font-size:11px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:8px; }
+  #E .ftleft .lv{ color:var(--muted); letter-spacing:.06em; }
+  #E .ftright{ color:var(--muted); }
+  #E .ftright b{ color:var(--accent); }
+  #E .pips{ display:flex; gap:5px; }
+  #E .pip{ width:10px; height:10px; border-radius:50%; box-sizing:border-box; }
+  #E .pip.done{ background:#22b083; }
+  #E .pip.active{ background:#ffc23f; box-shadow:0 0 0 3px rgba(255,194,63,.3); }
+  #E .pip.up{ border:2px solid #b9c2dd; opacity:.5; }
+  #E .answer{ flex:1; box-shadow:none; padding:2px; }
+  /* the big count-in flash */
+  #E .flash{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; z-index:30; pointer-events:none; font-weight:900; font-size:120px; color:var(--accent); }
+  #E .flash.on{ display:flex; }
+  #E .flash.pop{ animation:cpop .3s ease-out; }
+  #E .flash.go{ color:var(--green2); }
+  @keyframes cpop{ 0%{transform:scale(.6);opacity:0} 45%{transform:scale(1.08);opacity:1} 100%{transform:scale(1);opacity:.95} }
+
+  .hint{ position:absolute; bottom:8px; left:50%; transform:translateX(-50%); font-size:11px; color:var(--muted); background:rgba(255,255,255,.7); padding:3px 10px; border-radius:10px; }
+</style>
+</head>
+<body>
+  <div class="chooser">
+    <b>Header mockups</b>
+    <button class="tab on" data-opt="A">A · Left rail</button>
+    <button class="tab" data-opt="B">B · Twin rails</button>
+    <button class="tab" data-opt="C">C · Unified bottom</button>
+    <button class="tab" data-opt="D">D · Puck + frame</button>
+    <button class="tab" data-opt="E">E · Consolidated</button>
+    <button class="tab" data-opt="F">F · Play-drawer ★</button>
+    <small>F: TAP Play to play (auto-collapses); DRAG Play down to reveal controls. Static mock.</small>
+  </div>
+
+  <div class="stage">
+    <div class="device">
+
+      <!-- ============ OPTION A ============ -->
+      <div class="opt show" id="A">
+        <div class="wrap">
+          <div class="top">
+            <div class="rail">
+              <div class="lbl">GROOVE</div>
+              <div class="gv"><div class="vtrack"><div class="vfill" data-g></div></div></div>
+              <button class="play big" data-play><svg viewBox="0 0 20 20"><path d="M6 4l11 6-11 6z"/></svg>PLAY</button>
+              <button class="submit" data-submit>Submit</button>
+              <button class="icon" data-more>⋯</button>
+            </div>
+            <div class="answer" data-answer></div>
+          </div>
+          <div class="bank" data-bank></div>
+        </div>
+        <div class="hint">Option A — controls stand up on the left rail; the whole top strip is gone.</div>
+      </div>
+
+      <!-- ============ OPTION B ============ -->
+      <div class="opt" id="B">
+        <div class="wrap">
+          <div class="rail">
+            <div class="lbl">GROOVE</div>
+            <div class="gv"><div class="vtrack"><div class="vfill" data-g></div></div></div>
+            <button class="play big" data-play><svg viewBox="0 0 20 20"><path d="M6 4l11 6-11 6z"/></svg>PLAY</button>
+            <button class="submit" data-submit>Submit</button>
+          </div>
+          <div class="center">
+            <div class="answer" data-answer></div>
+            <div class="bank" data-bank></div>
+          </div>
+          <div class="rail railR">
+            <div class="icon" title="Speed">SPD</div>
+            <div class="icon" title="Metronome">MET</div>
+            <div class="icon" title="Beat guide">GD</div>
+            <div class="icon" title="Hints">HINT</div>
+            <div class="icon" title="Settings">⚙</div>
+          </div>
+        </div>
+        <div class="hint">Option B — essentials left, set-and-forget tools right. Nothing hidden.</div>
+      </div>
+
+      <!-- ============ OPTION C ============ -->
+      <div class="opt" id="C">
+        <div class="wrap">
+          <div class="answer" data-answer></div>
+          <div class="dock">
+            <div class="left">
+              <button class="play big" data-play style="height:46px"><svg viewBox="0 0 20 20"><path d="M6 4l11 6-11 6z"/></svg>Play</button>
+              <button class="submit" data-submit style="height:40px">Submit</button>
+            </div>
+            <div class="bank" data-bank></div>
+            <div class="right">
+              <div class="gh" style="width:170px"><span class="lbl">GROOVE</span><div class="track"><div class="fill" data-g></div></div></div>
+              <button class="pill" data-more>⋯ More</button>
+            </div>
+          </div>
+        </div>
+        <div class="hint">Option C — the bank strip doubles as the control bar; answer owns the whole top.</div>
+      </div>
+
+      <!-- ============ OPTION D ============ -->
+      <div class="opt" id="D">
+        <div class="wrap">
+          <div class="answer" data-answer><span class="frameLbl" data-groovelbl>GROOVE 78%</span></div>
+          <div class="puck" data-play><svg viewBox="0 0 20 20"><path d="M6 4l11 6-11 6z"/></svg><small>PLAY</small></div>
+          <button class="pill puckMore" data-more>⋯</button>
+          <div class="bank" data-bank></div>
+        </div>
+        <div class="hint">Option D — groove is the glowing frame; Play/Submit float as a puck.</div>
+      </div>
+
+      <!-- ============ OPTION E — CONSOLIDATED ============ -->
+      <div class="opt" id="E">
+        <div class="wrap">
+          <div class="ctlrow">
+            <button class="play big" data-play data-flash><svg viewBox="0 0 20 20"><path d="M6 4l11 6-11 6z"/></svg>Play</button>
+            <button class="pill">Speed: Med ▾</button>
+            <div class="ico" title="Metronome (icon after first Play)">MET</div>
+            <div class="ico" title="Beat guide (icon after first Play)">GD</div>
+            <button class="pill" data-more><svg viewBox="0 0 20 20" style="width:15px;height:15px"><path d="M7 13.5a5 5 0 1 1 6 0c-.7.5-1 1.2-1 2H8c0-.8-.3-1.5-1-2z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Hints ▾</button>
+          </div>
+          <div class="frame">
+            <div class="frametab">
+              <span class="ftleft"><span class="lv">LEVEL 1</span><span class="pips"><i class="pip active"></i><i class="pip up"></i><i class="pip up"></i><i class="pip up"></i><i class="pip up"></i></span></span>
+              <span class="ftright">SCORE <b>340</b> · STREAK <b>3</b></span>
+            </div>
+            <div class="answer" data-answer></div>
+            <div class="flash" data-flashel>READY</div>
+          </div>
+          <div class="bank" data-bank></div>
+        </div>
+        <div class="hint">Option E — slim control row · groove = the frame · LEVEL + pips on the frame's top edge · tap Play for the count-in flash.</div>
+      </div>
+
+      <!-- shared 'more' popover (repositioned per option) -->
+      <div class="more" id="morePop">
+        <div class="row">
+          <button class="pill">Speed: Med</button>
+          <button class="pill">Metronome</button>
+          <button class="pill">Beat guide</button>
+        </div>
+        <div class="row">
+          <button class="pill">Narrow options <span style="color:#ff7a7a">−10</span></button>
+          <button class="pill">Hear a beat <span style="color:#ff7a7a">−6</span></button>
+          <button class="pill">Count sounds <span style="color:#ff7a7a">−5</span></button>
+          <button class="pill">Find mistakes <span style="color:#ff7a7a">−8</span></button>
+        </div>
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <span class="stat">SCORE <b>340</b></span>
+          <span class="stat">STREAK <b>3</b></span>
+          <span class="stat">LEVEL <b>1</b></span>
+          <button class="pill">Theme</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+  var NOTES = ['♩','♪','♫','♩.'];   // ♩ ♪ ♫ ♩.
+  // build a 16-bar (4 rows x 4 bars of 2/4) answer + a small bank into every option
+  function buildAnswer(el){
+    el.querySelectorAll('.arow').forEach(function(r){r.remove();});
+    for(var row=0; row<4; row++){
+      var ar=document.createElement('div'); ar.className='arow';
+      if(row===0){ var ts=document.createElement('div'); ts.className='tsig'; ts.innerHTML='<span>2</span><span>4</span>'; ar.appendChild(ts); }
+      else { var sp=document.createElement('div'); sp.className='tsig'; sp.style.visibility='hidden'; sp.innerHTML='<span>2</span><span>4</span>'; ar.appendChild(sp); }
+      for(var b=0;b<4;b++){ var bar=document.createElement('div'); bar.className='bar';
+        for(var c=0;c<2;c++){ var cell=document.createElement('div'); cell.className='cell'; bar.appendChild(cell); }
+        ar.appendChild(bar);
+      }
+      el.appendChild(ar);
+    }
+  }
+  function buildBank(el){ el.innerHTML=''; NOTES.forEach(function(n){ var t=document.createElement('div'); t.className='btile'; t.textContent=n; el.appendChild(t); }); }
+
+  document.querySelectorAll('[data-answer]').forEach(buildAnswer);
+  document.querySelectorAll('[data-bank]').forEach(buildBank);
+
+  // tabs
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.onclick=function(){
+      document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on');}); t.classList.add('on');
+      document.querySelectorAll('.opt').forEach(function(o){o.classList.remove('show');});
+      document.getElementById(t.dataset.opt).classList.add('show');
+      document.getElementById('morePop').classList.remove('show');
+    };
+  });
+
+  // Play pulse (+ count-in flash on Option E)
+  document.querySelectorAll('[data-play]').forEach(function(p){
+    p.onclick=function(){ p.classList.add('playing'); setTimeout(function(){p.classList.remove('playing');},1600);
+      if(p.hasAttribute('data-flash')) runFlash(['READY','GO']); };  // 2/4 count-in = READY · GO
+  });
+  function runFlash(words){
+    var host=document.querySelector('#E [data-flashel]'); if(!host) return;
+    var i=0;
+    (function step(){
+      if(i>=words.length){ host.classList.remove('on'); return; }
+      host.textContent=words[i]; host.classList.toggle('go', words[i]==='GO');
+      host.classList.add('on'); host.classList.remove('pop'); void host.offsetWidth; host.classList.add('pop');
+      i++; setTimeout(step, 580);
+    })();
+  }
+
+  // 'More' popover — position near the tapped button
+  document.querySelectorAll('[data-more]').forEach(function(m){
+    m.onclick=function(e){
+      var pop=document.getElementById('morePop'); var dev=document.querySelector('.device').getBoundingClientRect();
+      var r=m.getBoundingClientRect();
+      pop.classList.toggle('show');
+      if(pop.classList.contains('show')){
+        var left=r.left-dev.left; var top=r.top-dev.top;
+        pop.style.left=Math.min(left, dev.width-330)+'px';
+        pop.style.top=Math.max(8, top-190)+'px';
+      }
+    };
+  });
+
+  // simulate a hint: drop groove + float a -8 near the groove element
+  var groove=78;
+  document.getElementById('morePop').querySelectorAll('.pill').forEach(function(b){
+    if(/[−-]\d/.test(b.textContent)){
+      b.addEventListener('click',function(){
+        groove=Math.max(0,groove-8);
+        document.querySelectorAll('[data-g]').forEach(function(g){ if(g.classList.contains('vfill'))g.style.height=groove+'%'; else g.style.width=groove+'%'; });
+        var lbl=document.querySelector('[data-groovelbl]'); if(lbl)lbl.textContent='GROOVE '+groove+'%';
+        // float -8
+        var host=document.querySelector('.opt.show'); var f=document.createElement('div'); f.className='float'; f.textContent='−8';
+        var gEl=host.querySelector('[data-g]')||host; var gr=gEl.getBoundingClientRect(); var dr=document.querySelector('.device').getBoundingClientRect();
+        f.style.left=(gr.left-dr.left)+'px'; f.style.top=(gr.top-dr.top-6)+'px';
+        document.querySelector('.device').appendChild(f); f.classList.add('go'); setTimeout(function(){f.remove();},1000);
+      });
+    }
+  });
+</script>
+</body>
+</html>

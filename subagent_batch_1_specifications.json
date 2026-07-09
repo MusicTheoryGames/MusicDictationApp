@@ -1,0 +1,402 @@
+{
+  "batchNumber": 1,
+  "instructions": [
+    {
+      "assignment": {
+        "subagentID": "SUBAGENT_1",
+        "responsibility": "WORK WITH EXISTING FILE STRUCTURE - ADD MISSING QUESTIONS",
+        "scope": "ONLY this specific question range in existing file structure - NO other work allowed"
+      },
+      "mandatoryReading": {
+        "required": true,
+        "documents": [
+          "RHYTHM_RULES_SUMMARY.md",
+          "MASTER_QUESTION_PLAN.md",
+          "STYLE_GUIDELINES.md",
+          "SUBAGENT_INSTRUCTIONS.md"
+        ],
+        "verification": "Subagent MUST demonstrate understanding of rhythm rules, question structure, and style guidelines"
+      },
+      "fileRequirements": {
+        "fileName": "questions_4-4_2m_C-major_simple.js",
+        "questionRange": "Q1-Q10",
+        "currentStatus": {
+          "action": "ADD_MISSING_QUESTIONS",
+          "currentQuestions": 0,
+          "missingQuestions": 10,
+          "totalNeeded": 10
+        },
+        "exactParameters": {
+          "questionCount": 10,
+          "optionsPerQuestion": 6,
+          "timeSignature": "4/4",
+          "measures": 2,
+          "key": "C major",
+          "complexity": "simple"
+        },
+        "restrictions": [
+          "ONLY work on questions_4-4_2m_C-major_simple.js",
+          "ONLY fill questions 1-10",
+          "ONLY use 4/4 time signature",
+          "ONLY create 2 measure melodies",
+          "ONLY use C major key",
+          "ONLY use simple rhythms",
+          "WORK WITH EXISTING FILE_MAPPING structure",
+          "DO NOT modify app.js or FILE_MAPPING"
+        ]
+      },
+      "clefPattern": {
+        "rule": "ODD question numbers = TREBLE CLEF, EVEN question numbers = BASS CLEF",
+        "verification": "Q1 = TREBLE clef pattern"
+      },
+      "rhythmRequirements": {
+        "timeSignature": "4/4",
+        "complexity": "simple",
+        "measures": 2,
+        "allowedDurations": [
+          "w",
+          "h",
+          "hd",
+          "q"
+        ],
+        "restrictions": [
+          "ONLY whole, half, dotted half, quarter notes",
+          "NO whole notes allowed",
+          "Maximum 1 half note per measure"
+        ]
+      },
+      "similarityRequirements": {
+        "rule": "All 6 options must be 95% IDENTICAL with only tiny differences",
+        "allowedChanges": [
+          "Single note change by step only",
+          "Single rhythm change maintaining beat count",
+          "Single interval direction change",
+          "Single register shift",
+          "Single ornament addition/removal"
+        ]
+      },
+      "validationRequirements": {
+        "mustPass": [
+          "validate_structure.js",
+          "validate_beat_counts_enhanced.js",
+          "validate_classical_style_enhanced.js",
+          "validate_tonality_enhanced.js",
+          "validate_cadences_enhanced.js",
+          "validate_similarity.js",
+          "validate_audio_integration.js"
+        ],
+        "zeroTolerance": true,
+        "beforeSubmission": "ALL validation scripts must pass with ZERO errors"
+      },
+      "prohibitions": [
+        "NEVER modify beaming/grouping code",
+        "NEVER change FILE_MAPPING or app.js",
+        "NEVER create atonal melodies",
+        "NEVER use prohibited durations",
+        "NEVER submit without validation"
+      ]
+    },
+    {
+      "assignment": {
+        "subagentID": "SUBAGENT_2",
+        "responsibility": "WORK WITH EXISTING FILE STRUCTURE - ADD MISSING QUESTIONS",
+        "scope": "ONLY this specific question range in existing file structure - NO other work allowed"
+      },
+      "mandatoryReading": {
+        "required": true,
+        "documents": [
+          "RHYTHM_RULES_SUMMARY.md",
+          "MASTER_QUESTION_PLAN.md",
+          "STYLE_GUIDELINES.md",
+          "SUBAGENT_INSTRUCTIONS.md"
+        ],
+        "verification": "Subagent MUST demonstrate understanding of rhythm rules, question structure, and style guidelines"
+      },
+      "fileRequirements": {
+        "fileName": "questions_4-4_2m_C-major_complex.js",
+        "questionRange": "Q11-Q20",
+        "currentStatus": {
+          "action": "ADD_MISSING_QUESTIONS",
+          "currentQuestions": 0,
+          "missingQuestions": 10,
+          "totalNeeded": 10
+        },
+        "exactParameters": {
+          "questionCount": 10,
+          "optionsPerQuestion": 6,
+          "timeSignature": "4/4",
+          "measures": 2,
+          "key": "C major",
+          "complexity": "complex"
+        },
+        "restrictions": [
+          "ONLY work on questions_4-4_2m_C-major_complex.js",
+          "ONLY fill questions 11-20",
+          "ONLY use 4/4 time signature",
+          "ONLY create 2 measure melodies",
+          "ONLY use C major key",
+          "ONLY use complex rhythms",
+          "WORK WITH EXISTING FILE_MAPPING structure",
+          "DO NOT modify app.js or FILE_MAPPING"
+        ]
+      },
+      "clefPattern": {
+        "rule": "ODD question numbers = TREBLE CLEF, EVEN question numbers = BASS CLEF",
+        "verification": "Q11 = TREBLE clef pattern"
+      },
+      "rhythmRequirements": {
+        "timeSignature": "4/4",
+        "complexity": "complex",
+        "measures": 2,
+        "allowedDurations": [
+          "w",
+          "h",
+          "hd",
+          "q",
+          "qd",
+          "8"
+        ],
+        "restrictions": [
+          "Eighth notes must be PAIRED (no isolated eighths)",
+          "Maximum 4 consecutive eighth notes",
+          "NO whole notes allowed",
+          "Maximum 1 half note per measure"
+        ]
+      },
+      "similarityRequirements": {
+        "rule": "All 6 options must be 95% IDENTICAL with only tiny differences",
+        "allowedChanges": [
+          "Single note change by step only",
+          "Single rhythm change maintaining beat count",
+          "Single interval direction change",
+          "Single register shift",
+          "Single ornament addition/removal"
+        ]
+      },
+      "validationRequirements": {
+        "mustPass": [
+          "validate_structure.js",
+          "validate_beat_counts_enhanced.js",
+          "validate_classical_style_enhanced.js",
+          "validate_tonality_enhanced.js",
+          "validate_cadences_enhanced.js",
+          "validate_similarity.js",
+          "validate_audio_integration.js"
+        ],
+        "zeroTolerance": true,
+        "beforeSubmission": "ALL validation scripts must pass with ZERO errors"
+      },
+      "prohibitions": [
+        "NEVER modify beaming/grouping code",
+        "NEVER change FILE_MAPPING or app.js",
+        "NEVER create atonal melodies",
+        "NEVER use prohibited durations",
+        "NEVER submit without validation"
+      ]
+    },
+    {
+      "assignment": {
+        "subagentID": "SUBAGENT_3",
+        "responsibility": "WORK WITH EXISTING FILE STRUCTURE - ADD MISSING QUESTIONS",
+        "scope": "ONLY this specific question range in existing file structure - NO other work allowed"
+      },
+      "mandatoryReading": {
+        "required": true,
+        "documents": [
+          "RHYTHM_RULES_SUMMARY.md",
+          "MASTER_QUESTION_PLAN.md",
+          "STYLE_GUIDELINES.md",
+          "SUBAGENT_INSTRUCTIONS.md"
+        ],
+        "verification": "Subagent MUST demonstrate understanding of rhythm rules, question structure, and style guidelines"
+      },
+      "fileRequirements": {
+        "fileName": "questions_4-4_2m_A-minor_simple.js",
+        "questionRange": "Q21-Q30",
+        "currentStatus": {
+          "action": "ADD_MISSING_QUESTIONS",
+          "currentQuestions": 0,
+          "missingQuestions": 10,
+          "totalNeeded": 10
+        },
+        "exactParameters": {
+          "questionCount": 10,
+          "optionsPerQuestion": 6,
+          "timeSignature": "4/4",
+          "measures": 2,
+          "key": "A minor",
+          "complexity": "simple"
+        },
+        "restrictions": [
+          "ONLY work on questions_4-4_2m_A-minor_simple.js",
+          "ONLY fill questions 21-30",
+          "ONLY use 4/4 time signature",
+          "ONLY create 2 measure melodies",
+          "ONLY use A minor key",
+          "ONLY use simple rhythms",
+          "WORK WITH EXISTING FILE_MAPPING structure",
+          "DO NOT modify app.js or FILE_MAPPING"
+        ]
+      },
+      "clefPattern": {
+        "rule": "ODD question numbers = TREBLE CLEF, EVEN question numbers = BASS CLEF",
+        "verification": "Q21 = TREBLE clef pattern"
+      },
+      "rhythmRequirements": {
+        "timeSignature": "4/4",
+        "complexity": "simple",
+        "measures": 2,
+        "allowedDurations": [
+          "w",
+          "h",
+          "hd",
+          "q"
+        ],
+        "restrictions": [
+          "ONLY whole, half, dotted half, quarter notes",
+          "NO whole notes allowed",
+          "Maximum 1 half note per measure"
+        ]
+      },
+      "similarityRequirements": {
+        "rule": "All 6 options must be 95% IDENTICAL with only tiny differences",
+        "allowedChanges": [
+          "Single note change by step only",
+          "Single rhythm change maintaining beat count",
+          "Single interval direction change",
+          "Single register shift",
+          "Single ornament addition/removal"
+        ]
+      },
+      "validationRequirements": {
+        "mustPass": [
+          "validate_structure.js",
+          "validate_beat_counts_enhanced.js",
+          "validate_classical_style_enhanced.js",
+          "validate_tonality_enhanced.js",
+          "validate_cadences_enhanced.js",
+          "validate_similarity.js",
+          "validate_audio_integration.js"
+        ],
+        "zeroTolerance": true,
+        "beforeSubmission": "ALL validation scripts must pass with ZERO errors"
+      },
+      "prohibitions": [
+        "NEVER modify beaming/grouping code",
+        "NEVER change FILE_MAPPING or app.js",
+        "NEVER create atonal melodies",
+        "NEVER use prohibited durations",
+        "NEVER submit without validation"
+      ]
+    },
+    {
+      "assignment": {
+        "subagentID": "SUBAGENT_4",
+        "responsibility": "WORK WITH EXISTING FILE STRUCTURE - ADD MISSING QUESTIONS",
+        "scope": "ONLY this specific question range in existing file structure - NO other work allowed"
+      },
+      "mandatoryReading": {
+        "required": true,
+        "documents": [
+          "RHYTHM_RULES_SUMMARY.md",
+          "MASTER_QUESTION_PLAN.md",
+          "STYLE_GUIDELINES.md",
+          "SUBAGENT_INSTRUCTIONS.md"
+        ],
+        "verification": "Subagent MUST demonstrate understanding of rhythm rules, question structure, and style guidelines"
+      },
+      "fileRequirements": {
+        "fileName": "questions_4-4_2m_A-minor_complex.js",
+        "questionRange": "Q31-Q40",
+        "currentStatus": {
+          "action": "ADD_MISSING_QUESTIONS",
+          "currentQuestions": 0,
+          "missingQuestions": 10,
+          "totalNeeded": 10
+        },
+        "exactParameters": {
+          "questionCount": 10,
+          "optionsPerQuestion": 6,
+          "timeSignature": "4/4",
+          "measures": 2,
+          "key": "A minor",
+          "complexity": "complex"
+        },
+        "restrictions": [
+          "ONLY work on questions_4-4_2m_A-minor_complex.js",
+          "ONLY fill questions 31-40",
+          "ONLY use 4/4 time signature",
+          "ONLY create 2 measure melodies",
+          "ONLY use A minor key",
+          "ONLY use complex rhythms",
+          "WORK WITH EXISTING FILE_MAPPING structure",
+          "DO NOT modify app.js or FILE_MAPPING"
+        ]
+      },
+      "clefPattern": {
+        "rule": "ODD question numbers = TREBLE CLEF, EVEN question numbers = BASS CLEF",
+        "verification": "Q31 = TREBLE clef pattern"
+      },
+      "rhythmRequirements": {
+        "timeSignature": "4/4",
+        "complexity": "complex",
+        "measures": 2,
+        "allowedDurations": [
+          "w",
+          "h",
+          "hd",
+          "q",
+          "qd",
+          "8"
+        ],
+        "restrictions": [
+          "Eighth notes must be PAIRED (no isolated eighths)",
+          "Maximum 4 consecutive eighth notes",
+          "NO whole notes allowed",
+          "Maximum 1 half note per measure"
+        ]
+      },
+      "similarityRequirements": {
+        "rule": "All 6 options must be 95% IDENTICAL with only tiny differences",
+        "allowedChanges": [
+          "Single note change by step only",
+          "Single rhythm change maintaining beat count",
+          "Single interval direction change",
+          "Single register shift",
+          "Single ornament addition/removal"
+        ]
+      },
+      "validationRequirements": {
+        "mustPass": [
+          "validate_structure.js",
+          "validate_beat_counts_enhanced.js",
+          "validate_classical_style_enhanced.js",
+          "validate_tonality_enhanced.js",
+          "validate_cadences_enhanced.js",
+          "validate_similarity.js",
+          "validate_audio_integration.js"
+        ],
+        "zeroTolerance": true,
+        "beforeSubmission": "ALL validation scripts must pass with ZERO errors"
+      },
+      "prohibitions": [
+        "NEVER modify beaming/grouping code",
+        "NEVER change FILE_MAPPING or app.js",
+        "NEVER create atonal melodies",
+        "NEVER use prohibited durations",
+        "NEVER submit without validation"
+      ]
+    }
+  ],
+  "mandatoryValidation": [
+    "validate_structure.js",
+    "validate_beat_counts_enhanced.js",
+    "validate_classical_style_enhanced.js",
+    "validate_tonality_enhanced.js",
+    "validate_cadences_enhanced.js",
+    "validate_similarity.js",
+    "validate_audio_integration.js"
+  ],
+  "zeroTolerance": true,
+  "workingWithExistingStructure": true
+}

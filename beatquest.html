@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beat Quest - Rhythm Dictation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(140deg, #2d3436 0%, #636e72 100%);
+            height: 100vh;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 4rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+            background: linear-gradient(45deg, #74b9ff, #0984e3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.5rem;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+
+        .login-form {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 20px;
+            max-width: 400px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(116, 185, 255, 0.3);
+        }
+
+        .join-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #74b9ff, #0984e3);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .join-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(116, 185, 255, 0.4);
+        }
+
+        .teacher-link {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 15px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: white;
+            font-size: 0.9rem;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .teacher-link:hover {
+            opacity: 1;
+        }
+
+
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 3rem;
+            }
+            .subtitle {
+                font-size: 1.2rem;
+            }
+            .redirect-message {
+                font-size: 1rem;
+                margin: 0 20px 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="logo">🥁 Beat Quest</div>
+    <div class="subtitle">Rhythm Dictation Challenge</div>
+
+    <div class="login-form">
+        <div class="form-group">
+            <label for="studentName">Your Name:</label>
+            <input type="text" id="studentName" placeholder="Enter your name" autofocus>
+        </div>
+        <div class="form-group">
+            <label for="roomCode">Room Code:</label>
+            <input type="text" id="roomCode" placeholder="Enter room code" style="text-transform: uppercase;">
+        </div>
+        <button id="joinBtn" class="join-btn">Join Beat Quest</button>
+    </div>
+
+    <a href="rhythm-teacher.html" class="teacher-link">👩‍🏫 Teacher Entrance</a>
+
+    <script>
+        // Auto-uppercase room code as user types
+        document.getElementById('roomCode').addEventListener('input', (e) => {
+            e.target.value = e.target.value.toUpperCase();
+        });
+
+        // Handle Enter key in input fields
+        document.getElementById('studentName').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('roomCode').focus();
+        });
+
+        document.getElementById('roomCode').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') joinGame();
+        });
+
+        // Join button click
+        document.getElementById('joinBtn').addEventListener('click', joinGame);
+
+        function joinGame() {
+            const name = document.getElementById('studentName').value.trim();
+            const room = document.getElementById('roomCode').value.trim().toUpperCase();
+
+            if (!name || !room) {
+                alert('Please enter both your name and room code');
+                return;
+            }
+
+            // Store values and redirect to student interface
+            localStorage.setItem('beatquest_name', name);
+            localStorage.setItem('beatquest_room', room);
+            window.location.href = 'rhythm-student.html';
+        }
+    </script>
+</body>
+</html>

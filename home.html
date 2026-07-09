@@ -111,6 +111,14 @@
             background: linear-gradient(135deg, rgba(22, 194, 176, 0.2), rgba(14, 158, 142, 0.2));
         }
 
+        .sing-quest {
+            background: linear-gradient(135deg, rgba(91, 110, 225, 0.22), rgba(138, 110, 230, 0.22));
+        }
+
+        .beat-casual {
+            background: linear-gradient(135deg, rgba(52, 209, 127, 0.2), rgba(34, 176, 131, 0.2));
+        }
+
         /* Inline SVG card icon (no emoji): matches the .game-icon footprint. */
         .game-icon svg {
             width: 4rem; height: 4rem; fill: none; stroke: currentColor;
@@ -133,27 +141,27 @@
 </head>
 <body>
     <div class="header">
-        <div class="title">🎵 Music Dictation Games</div>
+        <div class="title">Music Dictation Games</div>
         <div class="subtitle">Choose your musical challenge</div>
     </div>
 
     <div class="games-container">
         <div class="game-card beat-quest" onclick="window.location.href='beatquest.html'">
-            <div class="game-icon">🥁</div>
-            <div class="game-title">Beat Quest</div>
+            <div class="game-icon"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 46V15l28-6v31"/><circle cx="15" cy="46" r="6.5"/><circle cx="43" cy="40" r="6.5"/></svg></div>
+            <div class="game-title">BeatQuest</div>
             <div class="game-description">
-                Test your rhythm skills! Listen to drum patterns and recreate them by dragging rhythm tiles onto the staff.
+                Rhythm dictation! Listen to rhythm patterns and recreate them by dragging rhythm tiles onto the staff.
             </div>
-            <a href="beatquest.html" class="game-link">Enter Beat Quest</a>
+            <a href="beatquest.html" class="game-link">Enter BeatQuest</a>
         </div>
 
-        <div class="game-card melodic-dictation" onclick="window.location.href='index.html'">
-            <div class="game-icon">🎼</div>
-            <div class="game-title">Melodic Dictation</div>
+        <div class="game-card melodic-dictation" onclick="window.location.href='melodic-game.html'">
+            <div class="game-icon"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 38h7l4-19 6 30 5-24 4 13h11"/><path d="M52 24v19"/><circle cx="47" cy="43" r="5.5"/></svg></div>
+            <div class="game-title">MelodyQuest</div>
             <div class="game-description">
-                Challenge your ear training! Listen to melodies and identify the correct musical intervals and patterns.
+                Melodic dictation! Hear a melody and write it back by ear — from first steps to full staff notation.
             </div>
-            <a href="index.html" class="game-link">Play Melodic Dictation</a>
+            <a href="melodic-game.html" class="game-link">Play MelodyQuest</a>
         </div>
 
         <div class="game-card tapping" onclick="window.location.href='tapping.html?mode=tapping'">
@@ -163,6 +171,24 @@
                 Perform a rhythm! Keep the beat in one hand and tap the rhythm in the other — same levels as BeatQuest.
             </div>
             <a href="tapping.html?mode=tapping" class="game-link">Play Tapping</a>
+        </div>
+
+        <div class="game-card sing-quest" onclick="window.location.href='singquest.html'">
+            <div class="game-icon"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M32 40a8 8 0 0 0 8-8V16a8 8 0 0 0-16 0v16a8 8 0 0 0 8 8Z"/><path d="M16 30a16 16 0 0 0 32 0"/><path d="M32 46v10"/><path d="M24 56h16"/></svg></div>
+            <div class="game-title">SingQuest</div>
+            <div class="game-description">
+                Sight-singing! The app listens through your mic and coaches you to match pitch and sing in tune — from your very first note.
+            </div>
+            <a href="singquest.html" class="game-link">Enter SingQuest</a>
+        </div>
+
+        <div class="game-card beat-casual" onclick="window.location.href='beatquest-casual.html'">
+            <div class="game-icon"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M26 44V16l20-4v24"/><circle cx="19" cy="44" r="6.5"/><circle cx="39" cy="40" r="6.5"/><path d="M50 12l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"/></svg></div>
+            <div class="game-title">BeatQuest Casual</div>
+            <div class="game-description">
+                The relaxed, kid-friendly BeatQuest — same rhythm engine, a playful guided journey with softer edges.
+            </div>
+            <a href="beatquest-casual.html" class="game-link">Play Casual</a>
         </div>
     </div>
 </body>

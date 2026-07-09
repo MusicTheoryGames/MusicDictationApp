@@ -1,0 +1,71 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Ear Arcade — Simon (say it back)</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;}
+  html,body{height:100%;overflow:hidden;font-family:-apple-system,"SF Pro Display","Segoe UI",system-ui,sans-serif;background:#05060f;color:#eaf2ff;}
+  .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:18px;background:radial-gradient(120% 80% at 50% -10%,#161038,#05060f 70%);}
+  .phone{position:relative;width:390px;height:800px;max-height:96vh;border-radius:40px;overflow:hidden;background:radial-gradient(120% 90% at 50% 20%,#0f1330,#070713);box-shadow:0 40px 120px rgba(90,60,200,.28),0 4px 30px #000a;}
+  .hud{position:absolute;left:0;right:0;top:0;padding:24px 24px 0;z-index:5;display:flex;justify-content:space-between;align-items:flex-start;}
+  .brand{font-weight:900;letter-spacing:.12em;font-size:.9rem;color:#8fd0ff;text-shadow:0 0 14px #3aa0ff88;}
+  .brand small{display:block;font-weight:500;letter-spacing:.02em;font-size:.62rem;opacity:.55;margin-top:3px;}
+  .score{text-align:right;} .score b{font-size:1.7rem;font-weight:900;} .score small{display:block;font-size:.56rem;letter-spacing:.2em;opacity:.55;}
+  .status{position:absolute;left:0;right:0;top:150px;text-align:center;z-index:5;font-size:1.05rem;font-weight:700;letter-spacing:.02em;min-height:26px;}
+  .round{position:absolute;left:0;right:0;top:196px;text-align:center;z-index:5;font-size:.78rem;opacity:.55;letter-spacing:.1em;}
+  .beat{position:absolute;left:50%;top:250px;transform:translateX(-50%);width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 0 18px #fff;z-index:4;opacity:0;}
+  .beat.on{animation:bp .5s ease-out;}
+  @keyframes bp{0%{transform:translateX(-50%) scale(.6);opacity:.95;}100%{transform:translateX(-50%) scale(1.5);opacity:0;}}
+  .pads{position:absolute;left:0;right:0;bottom:170px;top:300px;display:flex;align-items:center;justify-content:center;gap:18px;z-index:3;}
+  .pad{width:100px;height:150px;border-radius:22px;cursor:pointer;position:relative;display:flex;align-items:center;justify-content:center;
+    font-size:2.1rem;font-weight:900;color:#fff;transition:transform .06s,filter .12s;
+    background:linear-gradient(180deg,var(--c1),var(--c2));box-shadow:0 12px 0 var(--sh),0 20px 30px #0007,inset 0 2px 0 #ffffff55;
+    text-shadow:0 2px 6px #0007;filter:brightness(.62) saturate(.85);}
+  .pad.lit{filter:brightness(1.5) saturate(1.2);box-shadow:0 6px 0 var(--sh),0 0 40px var(--c1),inset 0 2px 0 #fff;transform:translateY(4px);}
+  .pad.wrong{animation:shk .3s;}
+  @keyframes shk{25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
+  .foot{position:absolute;left:0;right:0;bottom:24px;text-align:center;z-index:6;}
+  .go{background:linear-gradient(180deg,#39e0b0,#12b78e);color:#032;border:none;font-weight:800;padding:13px 34px;border-radius:16px;font-size:1rem;cursor:pointer;box-shadow:0 8px 0 #0a6e5c,0 14px 26px #0008;}
+  .labsys{display:flex;gap:8px;justify-content:center;margin-bottom:12px;}
+  .labsys button{background:#ffffff14;border:1px solid #ffffff2e;color:#bcd6ff;font-weight:700;font-size:.72rem;padding:6px 13px;border-radius:999px;cursor:pointer;}
+  .labsys button.on{background:#ffffff2e;color:#fff;border-color:#ffffff77;}
+  .hint{margin-top:10px;font-size:.7rem;opacity:.45;}
+</style></head><body>
+<div class="wrap"><div class="phone" id="phone">
+  <div class="hud"><div class="brand">SIMON<small>say the melody back</small></div><div class="score"><b id="score">0</b><small>BEST&nbsp;<span id="best">0</span></small></div></div>
+  <div class="status" id="status">Tap Start</div>
+  <div class="round" id="roundlbl"></div>
+  <div class="beat" id="beat"></div>
+  <div class="pads" id="pads"></div>
+  <div class="foot"><div class="labsys" id="labsys"><button data-s="num" class="on">1̂ 3̂ 5̂</button><button data-s="mov">Moveable do</button><button data-s="fix">Fixed do</button></div>
+    <button class="go" id="go">Start</button>
+    <div class="hint">Home (1̂) plays first as your anchor. The melody has no lights — tap it back by ear.</div></div>
+</div></div>
+<script>(()=>{
+  const LAB={num:['1̂','2̂','3̂','4̂','5̂','6̂','7̂'],mov:['do','re','mi','fa','sol','la','ti'],fix:['do','re','mi','fa','sol','la','ti']};let SYS='num';
+  const T=[{deg:1,c1:'#5ee0c8',c2:'#159e86',sh:'#0a5f52'},{deg:3,c1:'#b79bff',c2:'#6a3fd0',sh:'#3d2288'},{deg:5,c1:'#ff8fb8',c2:'#d43f78',sh:'#8a1f4a'}];
+  const padsEl=document.getElementById('pads'),phone=document.getElementById('phone'),status=document.getElementById('status'),roundlbl=document.getElementById('roundlbl'),beat=document.getElementById('beat');
+  const scoreEl=document.getElementById('score'),bestEl=document.getElementById('best');
+  const pads=T.map((t,i)=>{const el=document.createElement('div');el.className='pad';el.style.cssText=`--c1:${t.c1};--c2:${t.c2};--sh:${t.sh}`;el.textContent=LAB[SYS][t.deg-1];el.dataset.i=i;el.onpointerdown=()=>tap(i);padsEl.appendChild(el);return el;});
+  const relabel=()=>pads.forEach((el,i)=>{el.textContent=LAB[SYS][T[i].deg-1];el.style.fontSize=SYS==='num'?'2.1rem':'1.4rem';});
+  let AC=null;const midi=d=>({1:60,3:64,5:67})[d];const hz=m=>440*Math.pow(2,(m-69)/12);
+  function tone(i,long){try{AC=AC||new(window.AudioContext||webkitAudioContext)();const m=midi(T[i].deg),o=AC.createOscillator(),o2=AC.createOscillator(),g=AC.createGain();o.type='sine';o2.type='triangle';o.frequency.value=hz(m);o2.frequency.value=hz(m)*2;const g2=AC.createGain();g2.gain.value=.08;o2.connect(g2);g2.connect(AC.destination);o.connect(g);g.connect(AC.destination);const t=AC.currentTime,dur=long?.55:.42;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.3,t+.02);g.gain.exponentialRampToValueAtTime(.0006,t+dur);g2.gain.exponentialRampToValueAtTime(.0004,t+dur*.7);o.start(t);o2.start(t);o.stop(t+dur+.05);o2.stop(t+dur);}catch(e){}}
+  let seq=[],pos=0,accepting=false,score=0,best=0;
+  function light(i){pads[i].classList.add('lit');setTimeout(()=>pads[i].classList.remove('lit'),240);}
+  function pulse(){beat.classList.remove('on');void beat.offsetWidth;beat.classList.add('on');}
+  async function playSeq(){accepting=false;status.textContent='Home is '+LAB[SYS][0]+' …';await wait(450);
+    // HOME anchor first — light the home pad so it reads as a GIVEN anchor, not a melody note to echo.
+    light(0);tone(0,true);pulse();await wait(780);
+    status.textContent='Now the melody — listen';await wait(430);
+    for(const i of seq){ tone(i);pulse(); await wait(620); }
+    status.textContent='Your turn — tap it back';accepting=true;pos=0;}
+  function start(){seq=[];score=0;scoreEl.textContent='0';addNote();}
+  function addNote(){seq.push(Math.floor(Math.random()*T.length));roundlbl.textContent='Melody length: '+seq.length;playSeq();}
+  function tap(i){ if(!accepting){ tone(i);light(i);return; } tone(i);light(i);
+    if(i===seq[pos]){ pos++; if(pos===seq.length){ accepting=false; score+=seq.length*10; scoreEl.textContent=score; best=Math.max(best,seq.length); bestEl.textContent=best; status.textContent='Nice!'; setTimeout(addNote,700);} }
+    else { accepting=false; pads[i].classList.add('wrong'); setTimeout(()=>pads[i].classList.remove('wrong'),300); status.textContent='Oops — it was '+LAB[SYS][T[seq[pos]].deg-1]+'. Tap Start.'; }
+  }
+  const wait=ms=>new Promise(r=>setTimeout(r,ms));
+  window.__simon={seq:()=>seq.slice(),pos:()=>pos,acc:()=>accepting,tap:i=>tap(i),start,status:()=>status.textContent,score:()=>score};
+  document.getElementById('go').onpointerdown=start;
+  document.querySelectorAll('#labsys button').forEach(x=>x.onpointerdown=()=>{SYS=x.dataset.s;document.querySelectorAll('#labsys button').forEach(y=>y.classList.toggle('on',y===x));relabel();});
+})();</script></body></html>

@@ -1,0 +1,14 @@
+# No-store the actively-iterated casual-game assets so devices always fetch fresh
+# (kills the stale-HTML / stale-engine cache bugs during development).
+/beatquest-casual.html
+  Cache-Control: no-store
+/rhythm-student.js
+  Cache-Control: no-store
+/solo-mode.js
+  Cache-Control: no-store
+/core-bridge.js
+  Cache-Control: no-store
+/teach-content.js
+  Cache-Control: no-store
+/suite-theme.js
+  Cache-Control: no-store

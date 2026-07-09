@@ -5,13 +5,27 @@
  */
 
 /**
- * Note name to semitone mapping for interval calculations
+ * Note name to semitone mapping for interval calculations.
+ * Letter base + counted accidentals (not a fixed lookup table) so it handles EVERY legitimate
+ * spelling — including the ones that only appear in extreme keys, like e#/b# (F#/C# major's
+ * 7th degree — using f-natural/c-natural there would wrongly reuse a letter already used
+ * elsewhere in the scale) and f##  (the raised-7th of G# harmonic minor). A fixed table of the
+ * 12 "common" spellings crashes on these instead of just being unusual to look at.
  */
-const NOTE_SEMITONES = {
-    'c': 0, 'd': 2, 'e': 4, 'f': 5, 'g': 7, 'a': 9, 'b': 11,
-    'c#': 1, 'db': 1, 'd#': 3, 'eb': 3, 'f#': 6, 'gb': 6,
-    'g#': 8, 'ab': 8, 'a#': 10, 'bb': 10
-};
+const LETTER_BASE_SEMITONES = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+function noteNameToSemitone(noteName) {
+    const letter = noteName[0];
+    if (!(letter in LETTER_BASE_SEMITONES)) {
+        throw new Error(`Unknown note: ${noteName}`);
+    }
+    let acc = 0;
+    for (let i = 1; i < noteName.length; i++) {
+        if (noteName[i] === '#') acc += 1;
+        else if (noteName[i] === 'b') acc -= 1;
+        else throw new Error(`Unknown note: ${noteName}`);
+    }
+    return ((LETTER_BASE_SEMITONES[letter] + acc) % 12 + 12) % 12;
+}
 
 /**
  * Extract note name and octave from VexFlow key notation
@@ -30,12 +44,8 @@ function parseKey(key) {
     
     const noteName = parts[0].toLowerCase();
     const octave = parseInt(parts[1]);
-    
-    if (!(noteName in NOTE_SEMITONES)) {
-        throw new Error(`Unknown note: ${noteName}`);
-    }
-    
-    const semitone = (octave * 12) + NOTE_SEMITONES[noteName];
+
+    const semitone = (octave * 12) + noteNameToSemitone(noteName);
     
     return {
         note: noteName,

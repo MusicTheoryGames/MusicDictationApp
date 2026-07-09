@@ -107,7 +107,7 @@
             border-radius: 8px;
             padding: 20px 50px 20px 20px;
             position: relative;
-            width: 900px;
+            width: 1400px;
             height: 120px;
         }
 
@@ -197,6 +197,7 @@
             width: 100%;
             height: 100%;
             display: flex;
+            gap: 5px;
         }
 
         .beat-drop-zone {
@@ -208,21 +209,26 @@
             transition: all 0.3s ease;
         }
 
-        /* Only show bar line in the middle (after beat 4) */
-        .beat-drop-zone[data-beat="4"] {
+        /* Bar lines between measures (every 4th beat that's not the last beat) */
+        .beat-drop-zone[data-beat="4"]:not(:last-of-type) {
             border-right: 3px solid #333; /* Bar line between measures */
             margin-right: 15px; /* Add space after bar line */
         }
 
-        /* Add thick line to the right of the last bar to make double bar */
-        .beat-drop-zone[data-beat="4"][data-measure="2"]::after {
+        /* Double bar at the very end (only on the last beat of the last measure) */
+        .beat-drop-zone:last-of-type {
+            border-right: 2px solid #333; /* Thin line for double bar */
+            margin-right: 10px;
+        }
+
+        .beat-drop-zone:last-of-type::after {
             content: '';
             position: absolute;
-            right: -10px;
+            right: -8px;
             top: 0;
             bottom: 0;
             width: 4px;
-            background: #333; /* Thick line to the right */
+            background: #333; /* Thick line at the end */
         }
 
         /* Beat indicators inside white area */
@@ -245,6 +251,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+
+        .beat-notation img {
+            width: 98%;
+            height: 98%;
+            object-fit: fill;
         }
 
         .waiting-message {
@@ -281,6 +293,7 @@
                 transform: translateY(-50%);
                 font-size: clamp(16px, 4.5vw, 24px);
             }
+
         }
 
         @media (max-width: 480px) {
@@ -290,6 +303,7 @@
                 transform: translateY(-50%);
                 font-size: clamp(14px, 5vw, 22px);
             }
+
         }
     </style>
 </head>

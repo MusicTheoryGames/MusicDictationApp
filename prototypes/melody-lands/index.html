@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Melody Lands — Prototype (not production)</title>
+<meta name="description" content="Standalone design prototype of MelodyQuest M0–M3. Does not touch the live product.">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Nunito:wght@500;600;700;800&display=swap');
+
+  :root {
+    --bg0: #0c0a18;
+    --bg1: #1a1235;
+    --ink: #f4f0ff;
+    --muted: #a89bc8;
+    --gold: #ffd36b;
+    --teal: #3dffc8;
+    --pink: #ff6eb4;
+    --violet: #9b7dff;
+    --good: #3dd68c;
+    --bad: #ff5c7a;
+    --card: rgba(255,255,255,.07);
+    --stroke: rgba(255,255,255,.14);
+    --shadow: 0 18px 50px rgba(0,0,0,.45);
+    --radius: 18px;
+    --font: 'Nunito', system-ui, sans-serif;
+    --display: 'Fraunces', Georgia, serif;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: var(--font);
+    color: var(--ink);
+    background:
+      radial-gradient(1000px 600px at 15% -10%, #3a1f7a 0%, transparent 55%),
+      radial-gradient(900px 500px at 95% 10%, #0e5f5a 0%, transparent 50%),
+      radial-gradient(700px 500px at 50% 100%, #5a1a4a 0%, transparent 55%),
+      linear-gradient(165deg, var(--bg0), var(--bg1));
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: "";
+    position: fixed; inset: 0; pointer-events: none; opacity: .35; z-index: 0;
+    background-image: radial-gradient(1.5px 1.5px at 20% 30%, #fff, transparent),
+      radial-gradient(1px 1px at 70% 20%, #fff8, transparent),
+      radial-gradient(1.5px 1.5px at 40% 70%, #fff6, transparent),
+      radial-gradient(1px 1px at 85% 60%, #fff7, transparent);
+  }
+
+  #app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; min-height: 100vh; padding: 16px 16px 40px; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin-bottom: 14px;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .brand-mark {
+    width: 36px; height: 36px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--violet), var(--pink));
+    display: grid; place-items: center;
+    box-shadow: 0 0 20px rgba(155,125,255,.4);
+  }
+  .brand-mark svg { width: 20px; height: 20px; }
+  .brand h1 {
+    font-family: var(--display); font-size: 1.15rem; margin: 0; line-height: 1.1;
+    letter-spacing: -.01em;
+  }
+  .brand small { display: block; font-size: .68rem; color: var(--muted); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+
+  .hud-stats { display: flex; gap: 8px; }
+  .stat {
+    background: var(--card); border: 1px solid var(--stroke); border-radius: 999px;
+    padding: 6px 11px; font-size: .78rem; font-weight: 800; display: flex; align-items: center; gap: 5px;
+  }
+  .stat b { color: var(--gold); font-variant-numeric: tabular-nums; }
+
+  /* ---------- screens ---------- */
+  .screen { display: none; animation: fadeIn .28s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- map ---------- */
+  .map-intro {
+    text-align: center; margin: 8px 0 20px;
+  }
+  .map-intro h2 {
+    font-family: var(--display); font-size: 1.85rem; margin: 0 0 6px;
+    background: linear-gradient(90deg, #fff, var(--gold));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .map-intro p { margin: 0; color: var(--muted); font-size: .95rem; line-height: 1.4; }
+
+  .path {
+    position: relative;
+    display: flex; flex-direction: column; gap: 14px;
+    padding: 8px 0 20px;
+  }
+  .path::before {
+    content: "";
+    position: absolute; left: 29px; top: 24px; bottom: 40px; width: 3px;
+    background: linear-gradient(180deg, var(--violet), var(--teal));
+    opacity: .35; border-radius: 2px;
+  }
+
+  .land {
+    position: relative;
+    display: grid; grid-template-columns: 58px 1fr; gap: 12px; align-items: center;
+    background: var(--card); border: 1px solid var(--stroke); border-radius: var(--radius);
+    padding: 14px 14px 14px 10px; cursor: pointer; transition: transform .12s ease, border-color .12s, box-shadow .12s;
+    text-align: left; color: inherit; width: 100%; font: inherit;
+  }
+  .land:hover:not(:disabled) { transform: translateY(-2px); border-color: rgba(255,255,255,.28); box-shadow: var(--shadow); }
+  .land:disabled { opacity: .45; cursor: not-allowed; }
+  .land.is-current {
+    border-color: rgba(61,255,200,.55);
+    box-shadow: 0 0 0 1px rgba(61,255,200,.25), 0 12px 40px rgba(61,255,200,.12);
+  }
+  .land.is-done { border-color: rgba(61,214,140,.4); }
+
+  .land-orb {
+    width: 48px; height: 48px; border-radius: 50%;
+    display: grid; place-items: center; font-weight: 800; font-size: 1.05rem;
+    border: 3px solid rgba(255,255,255,.2);
+    box-shadow: inset 0 0 16px rgba(255,255,255,.15);
+  }
+  .land.is-done .land-orb { border-color: var(--good); color: var(--good); background: rgba(61,214,140,.12); }
+  .land.is-current .land-orb { border-color: var(--teal); color: var(--teal); background: rgba(61,255,200,.12); animation: pulseOrb 1.8s ease-in-out infinite; }
+  .land.is-locked .land-orb { color: var(--muted); }
+  @keyframes pulseOrb { 0%,100% { box-shadow: 0 0 0 0 rgba(61,255,200,.4), inset 0 0 16px rgba(255,255,255,.15); } 50% { box-shadow: 0 0 0 10px rgba(61,255,200,0), inset 0 0 16px rgba(255,255,255,.15); } }
+
+  .land-body h3 { margin: 0 0 2px; font-size: 1.05rem; font-weight: 800; }
+  .land-body .tagline { margin: 0; font-size: .82rem; color: var(--muted); line-height: 1.3; }
+  .land-meta {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+  }
+  .chip {
+    font-size: .68rem; font-weight: 800; letter-spacing: .03em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 999px; background: rgba(255,255,255,.08); color: var(--muted);
+  }
+  .chip.skill { color: var(--gold); background: rgba(255,211,107,.12); }
+  .chip.done { color: var(--good); background: rgba(61,214,140,.12); }
+
+  .inventory {
+    margin-top: 8px;
+    background: rgba(0,0,0,.22); border: 1px solid var(--stroke); border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .inventory h4 {
+    margin: 0 0 10px; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+  }
+  .tokens { display: flex; flex-wrap: wrap; gap: 8px; }
+  .token {
+    width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+    font-weight: 900; font-size: 1rem; border: 2px solid transparent; opacity: .28;
+    background: rgba(255,255,255,.06); transition: .25s;
+  }
+  .token.owned {
+    opacity: 1; border-color: currentColor;
+    box-shadow: 0 0 16px color-mix(in srgb, currentColor 35%, transparent);
+  }
+  .token[data-id="home"] { color: var(--gold); }
+  .token[data-id="up"] { color: var(--teal); }
+  .token[data-id="echo"] { color: var(--violet); }
+  .token[data-id="pulse"] { color: var(--pink); }
+  .token[data-id="1"] { color: #7ec8ff; }
+  .token[data-id="2"] { color: #ffb347; }
+  .token[data-id="3"] { color: #ff6eb4; }
+
+  .proto-note {
+    margin-top: 18px; font-size: .75rem; color: var(--muted); text-align: center; line-height: 1.4;
+    opacity: .85;
+  }
+  .proto-note code { font-size: .72rem; background: rgba(255,255,255,.08); padding: 1px 5px; border-radius: 4px; }
+
+  /* ---------- play screen ---------- */
+  .play-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px;
+  }
+  .back-btn {
+    background: rgba(255,255,255,.08); border: 1px solid var(--stroke); color: var(--ink);
+    border-radius: 999px; padding: 8px 12px; font-weight: 700; font-size: .85rem; cursor: pointer;
+  }
+  .play-title { text-align: right; }
+  .play-title .land-num { font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 800; }
+  .play-title h2 { margin: 2px 0 0; font-family: var(--display); font-size: 1.35rem; }
+
+  .stage-pips {
+    display: flex; gap: 6px; justify-content: center; margin: 4px 0 16px;
+  }
+  .stage-pips span {
+    width: 10px; height: 10px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); opacity: .5;
+  }
+  .stage-pips span.done { background: var(--good); border-color: var(--good); opacity: 1; }
+  .stage-pips span.now { background: var(--gold); border-color: var(--gold); opacity: 1; box-shadow: 0 0 10px rgba(255,211,107,.5); }
+
+  .stage-card {
+    background: rgba(255,255,255,.06); border: 1px solid var(--stroke); border-radius: 22px;
+    padding: 22px 18px 20px; box-shadow: var(--shadow); position: relative; overflow: hidden;
+    min-height: 360px; display: flex; flex-direction: column;
+  }
+  .stage-card::after {
+    content: ""; position: absolute; inset: -40% -20% auto; height: 70%; pointer-events: none;
+    background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--accent, var(--violet)) 22%, transparent), transparent 65%);
+  }
+
+  .cue {
+    position: relative; z-index: 1; text-align: center; margin-bottom: 8px;
+  }
+  .cue .eyebrow { font-size: .72rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .cue h3 { margin: 0 0 6px; font-family: var(--display); font-size: 1.45rem; }
+  .cue p { margin: 0 auto; max-width: 28ch; color: var(--muted); font-size: .92rem; line-height: 1.4; }
+
+  .arena {
+    position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px; padding: 12px 0 8px;
+  }
+
+  .wave-dot {
+    width: 16px; height: 16px; border-radius: 50%; background: #fff;
+    box-shadow: 0 0 20px #fff; opacity: 0; pointer-events: none;
+  }
+  .wave-dot.on { animation: wave .65s ease-out; }
+  @keyframes wave {
+    0% { opacity: .95; transform: scale(.4); box-shadow: 0 0 12px #fff, 0 0 0 0 #fff6; }
+    100% { opacity: 0; transform: scale(1.2); box-shadow: 0 0 12px #fff, 0 0 0 70px #fff0; }
+  }
+
+  .home-btn {
+    width: min(240px, 78%); padding: 22px 16px; border-radius: 18px; border: none;
+    font-family: var(--font); font-weight: 900; font-size: 1.35rem; letter-spacing: .08em;
+    color: #1a1030; cursor: pointer;
+    background: linear-gradient(180deg, var(--gold), #e8a820);
+    box-shadow: 0 8px 0 #a87410, 0 14px 28px rgba(0,0,0,.35);
+    transition: transform .06s ease, box-shadow .06s;
+  }
+  .home-btn:active { transform: translateY(4px); box-shadow: 0 4px 0 #a87410, 0 8px 16px rgba(0,0,0,.3); }
+  .home-btn.hit { background: linear-gradient(180deg, var(--good), #1fa865); box-shadow: 0 8px 0 #0f6b40, 0 0 30px rgba(61,214,140,.45); color: #fff; }
+  .home-btn.miss { background: linear-gradient(180deg, var(--bad), #c83050); box-shadow: 0 8px 0 #7a1830; color: #fff; animation: shake .35s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+
+  .hit-meter { display: flex; gap: 8px; }
+  .hit-meter i {
+    width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35);
+  }
+  .hit-meter i.filled { background: var(--good); border-color: var(--good); box-shadow: 0 0 10px rgba(61,214,140,.5); }
+
+  .contour-row, .pad-row, .choice-row, .degree-row {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+  }
+
+  .shape-btn, .pad, .choice-btn, .deg-btn, .rhythm-tile {
+    border: 2px solid rgba(255,255,255,.2); background: rgba(255,255,255,.07);
+    color: var(--ink); border-radius: 16px; cursor: pointer; font-family: var(--font);
+    font-weight: 800; transition: transform .08s, border-color .12s, background .12s, box-shadow .12s;
+  }
+  .shape-btn:hover, .pad:hover, .choice-btn:hover, .deg-btn:hover, .rhythm-tile:hover {
+    border-color: rgba(255,255,255,.45); background: rgba(255,255,255,.12);
+  }
+  .shape-btn:active, .pad:active, .choice-btn:active, .deg-btn:active, .rhythm-tile:active {
+    transform: translateY(2px);
+  }
+  .shape-btn {
+    width: 96px; height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  }
+  .shape-btn svg { width: 56px; height: 36px; }
+  .shape-btn span { font-size: .78rem; letter-spacing: .04em; text-transform: uppercase; opacity: .85; }
+  .shape-btn.correct, .pad.correct, .choice-btn.correct, .deg-btn.correct, .rhythm-tile.correct {
+    border-color: var(--good); box-shadow: 0 0 0 3px rgba(61,214,140,.3), 0 0 20px rgba(61,214,140,.25);
+  }
+  .shape-btn.wrong, .pad.wrong, .choice-btn.wrong, .deg-btn.wrong, .rhythm-tile.wrong {
+    border-color: var(--bad); box-shadow: 0 0 0 3px rgba(255,92,122,.25);
+  }
+
+  .pad {
+    width: 64px; height: 72px; font-size: 1.35rem; border-radius: 14px;
+  }
+  .pad.is-play {
+    border-color: var(--gold); box-shadow: 0 0 18px rgba(255,211,107,.45); transform: translateY(-6px);
+  }
+
+  .slots {
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 8px;
+  }
+  .slot {
+    min-width: 52px; height: 52px; border-radius: 12px; border: 2px dashed rgba(255,255,255,.3);
+    display: grid; place-items: center; font-weight: 900; font-size: 1.15rem;
+    background: rgba(0,0,0,.18);
+  }
+  .slot.filled { border-style: solid; border-color: rgba(255,255,255,.4); background: rgba(255,255,255,.1); }
+  .slot.active { border-color: var(--teal); box-shadow: 0 0 12px rgba(61,255,200,.3); }
+
+  .deg-btn { min-width: 58px; height: 54px; font-size: 1.2rem; }
+  .rhythm-tile { min-width: 88px; height: 70px; padding: 8px 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: .85rem; }
+  .rhythm-tile .glyph { font-size: 1.4rem; letter-spacing: 2px; }
+
+  .transport {
+    position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 8px;
+  }
+  .btn {
+    border: none; border-radius: 14px; padding: 12px 18px; font-family: var(--font);
+    font-weight: 800; font-size: .95rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-play {
+    background: linear-gradient(180deg, var(--teal), #18b88f); color: #06261c;
+    box-shadow: 0 6px 0 #0d7a5e, 0 10px 22px rgba(0,0,0,.3);
+  }
+  .btn-play:active { transform: translateY(3px); box-shadow: 0 3px 0 #0d7a5e; }
+  .btn-play:disabled { opacity: .4; cursor: default; transform: none; }
+  .btn-ghost {
+    background: rgba(255,255,255,.08); color: var(--ink); border: 1px solid var(--stroke);
+  }
+  .btn-primary {
+    background: linear-gradient(180deg, var(--violet), #6a4ad4); color: #fff;
+    box-shadow: 0 6px 0 #3d2a8a, 0 10px 22px rgba(0,0,0,.3);
+  }
+  .btn-primary:disabled { opacity: .4; cursor: default; }
+  .btn-primary:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 3px 0 #3d2a8a; }
+
+  .feedback {
+    min-height: 1.4em; text-align: center; font-weight: 800; margin-top: 10px; position: relative; z-index: 1;
+  }
+  .feedback.good { color: var(--good); }
+  .feedback.bad { color: var(--bad); }
+
+  .combo-float {
+    position: absolute; right: 16px; top: 16px; z-index: 5; text-align: right;
+    font-weight: 900; opacity: 0; transform: scale(.8); transition: .15s;
+  }
+  .combo-float.show { opacity: 1; transform: scale(1); }
+  .combo-float b { display: block; font-size: 1.4rem; color: var(--gold); text-shadow: 0 0 12px rgba(255,211,107,.5); }
+  .combo-float small { font-size: .65rem; letter-spacing: .16em; color: var(--muted); }
+
+  /* complete overlay */
+  .overlay {
+    position: fixed; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center;
+    background: rgba(6,4,16,.78); backdrop-filter: blur(8px); padding: 20px;
+  }
+  .overlay.show { display: flex; animation: fadeIn .25s ease; }
+  .overlay-card {
+    width: min(380px, 100%); background: linear-gradient(165deg, #241846, #14102a);
+    border: 1px solid rgba(255,255,255,.16); border-radius: 24px; padding: 28px 22px; text-align: center;
+    box-shadow: 0 30px 80px rgba(0,0,0,.5);
+  }
+  .overlay-card .burst {
+    width: 72px; height: 72px; margin: 0 auto 12px; border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, var(--gold), #c47a10);
+    display: grid; place-items: center; font-size: 2rem;
+    box-shadow: 0 0 40px rgba(255,211,107,.45);
+  }
+  .overlay-card h2 { font-family: var(--display); margin: 0 0 6px; font-size: 1.7rem; }
+  .overlay-card p { color: var(--muted); margin: 0 0 16px; line-height: 1.4; }
+  .earned-row { display: flex; gap: 8px; justify-content: center; margin-bottom: 18px; flex-wrap: wrap; }
+  .earned-row .token { opacity: 1; width: 48px; height: 48px; }
+
+  .scorepop {
+    position: fixed; z-index: 60; font-weight: 900; font-size: 1.6rem; color: var(--gold);
+    pointer-events: none; text-shadow: 0 2px 10px rgba(0,0,0,.5);
+    animation: rise 1s ease-out forwards;
+  }
+  @keyframes rise {
+    0% { opacity: 0; transform: translate(-50%,0) scale(.7); }
+    20% { opacity: 1; transform: translate(-50%,-10px) scale(1.1); }
+    100% { opacity: 0; transform: translate(-50%,-50px) scale(1); }
+  }
+
+  .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 55; overflow: hidden; }
+  .confetti i {
+    position: absolute; width: 8px; height: 8px; border-radius: 2px; top: 45%; left: 50%;
+    animation: conf 1s ease-out forwards;
+  }
+  @keyframes conf {
+    0% { opacity: 0; transform: translate(0,0) rotate(0) scale(.3); }
+    15% { opacity: 1; }
+    100% { opacity: 0; transform: translate(var(--x), var(--y)) rotate(var(--r)) scale(1); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- MAP -->
+  <section id="screen-map" class="screen active">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M9 18V6l12-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </div>
+        <div>
+          <h1>Melody Lands</h1>
+          <small>Prototype · not production</small>
+        </div>
+      </div>
+      <div class="hud-stats">
+        <div class="stat" title="Stars from clean rounds"><span aria-hidden="true">★</span> <b id="starCount">0</b></div>
+        <div class="stat" title="Best combo"><span aria-hidden="true">×</span> <b id="comboBest">0</b></div>
+      </div>
+    </div>
+
+    <div class="map-intro">
+      <h2>Your ear journey</h2>
+      <p>Five lands. One new skill each. Notation stays locked until you can <em>hear</em> it.</p>
+    </div>
+
+    <div class="path" id="landPath"></div>
+
+    <div class="inventory">
+      <h4>Ear tokens collected</h4>
+      <div class="tokens" id="tokenShelf"></div>
+    </div>
+
+    <p class="proto-note">
+      Isolated prototype of MelodyQuest <strong>M0 → M3</strong> with journey framing, collectibles, and juice.
+      Lives only under <code>prototypes/melody-lands/</code> — does not change the deployed product.
+    </p>
+  </section>
+
+  <!-- PLAY -->
+  <section id="screen-play" class="screen">
+    <div class="play-head">
+      <button type="button" class="back-btn" id="btnBack">← Map</button>
+      <div class="play-title">
+        <div class="land-num" id="playLandNum">Land 1</div>
+        <h2 id="playLandTitle">The Hearth</h2>
+      </div>
+    </div>
+    <div class="stage-pips" id="stagePips"></div>
+    <div class="stage-card" id="stageCard" style="--accent: var(--gold)">
+      <div class="combo-float" id="comboFloat"><b id="comboN">×2</b><small>COMBO</small></div>
+      <div class="cue">
+        <div class="eyebrow" id="stageEyebrow">Stage 1</div>
+        <h3 id="stageTitle">Find home</h3>
+        <p id="stageHint">A home pitch settles. Tap HOME only when you hear it again.</p>
+      </div>
+      <div class="arena" id="arena"></div>
+      <div class="transport" id="transport"></div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+  </section>
+</div>
+
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="ovTitle">
+  <div class="overlay-card">
+    <div class="burst" id="ovBurst">★</div>
+    <h2 id="ovTitle">Land cleared</h2>
+    <p id="ovBody">You claimed a new ear token.</p>
+    <div class="earned-row" id="ovTokens"></div>
+    <button type="button" class="btn btn-primary" id="ovContinue" style="width:100%;justify-content:center">Continue the path →</button>
+  </div>
+</div>
+<div class="confetti" id="confetti" aria-hidden="true"></div>
+
+<script>
+/* =============================================================================
+   Melody Lands — standalone prototype
+   Pedagogy mirrors MelodyQuest M0–M3; presentation is the "gamified lands" concept.
+   No imports from production melodic-game / core / suite-theme.
+   ========================================================================== */
+
+(() => {
+  'use strict';
+
+  // ---------- persistence (local only, prototype namespace) ----------
+  const SAVE_KEY = 'melody-lands-proto-v1';
+  const defaultSave = () => ({
+    unlocked: 0, // index of highest unlocked land
+    done: {},    // landId -> true
+    stars: 0,
+    bestCombo: 0,
+    tokens: {},  // tokenId -> true
+  });
+  let save = loadSave();
+  function loadSave() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return defaultSave();
+      return { ...defaultSave(), ...JSON.parse(raw) };
+    } catch { return defaultSave(); }
+  }
+  function persist() {
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch {}
+  }
+
+  // ---------- audio engine (simple but musical) ----------
+  let AC = null;
+  function ensureAC() {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+  function midiToHz(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+
+  function tone(midi, dur = 0.4, type = 'triangle', gain = 0.14, when = 0) {
+    const ac = ensureAC();
+    const t0 = ac.currentTime + when;
+    const o = ac.createOscillator();
+    const g = ac.createGain();
+    const f = ac.createBiquadFilter();
+    o.type = type;
+    o.frequency.value = midiToHz(midi);
+    f.type = 'lowpass';
+    f.frequency.value = 2200;
+    o.connect(f); f.connect(g); g.connect(ac.destination);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(gain, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + Math.max(dur, 0.08));
+    o.start(t0);
+    o.stop(t0 + dur + 0.05);
+  }
+
+  function drone(midi, dur = 1.4) {
+    tone(midi, dur, 'sine', 0.06, 0);
+    tone(midi + 12, dur, 'sine', 0.03, 0);
+  }
+
+  function playChord(rootMidi) {
+    // tonic triad arpeggio to establish home
+    [0, 4, 7, 12].forEach((off, i) => tone(rootMidi + off, 0.55, 'triangle', 0.1, i * 0.12));
+  }
+
+  function sfxGood() {
+    tone(72, 0.12, 'sine', 0.08, 0);
+    tone(76, 0.12, 'sine', 0.08, 0.06);
+    tone(79, 0.18, 'sine', 0.1, 0.12);
+  }
+  function sfxBad() {
+    tone(54, 0.2, 'sawtooth', 0.05, 0);
+    tone(51, 0.25, 'sawtooth', 0.04, 0.05);
+  }
+  function sfxClick() { tone(84, 0.06, 'square', 0.04, 0); }
+  function sfxUnlock() {
+    [60, 64, 67, 72, 76].forEach((m, i) => tone(m, 0.3, 'triangle', 0.09, i * 0.08));
+  }
+
+  // scale helpers
+  const MAJOR = { 1: 0, 2: 2, 3: 4, 4: 5, 5: 7 };
+  const KEYS = [
+    { name: 'C', midi: 60 }, { name: 'D', midi: 62 }, { name: 'E', midi: 64 },
+    { name: 'F', midi: 65 }, { name: 'G', midi: 67 }, { name: 'A', midi: 69 },
+  ];
+  function degMidi(tonic, deg, oct = 0) {
+    return tonic + MAJOR[deg] + oct * 12;
+  }
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  function shuffle(a) {
+    const x = a.slice();
+    for (let i = x.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [x[i], x[j]] = [x[j], x[i]];
+    }
+    return x;
+  }
+  function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  // ---------- lands definition (pedagogy = M0–M3) ----------
+  const LANDS = [
+    {
+      id: 'hearth',
+      index: 0,
+      title: 'The Hearth',
+      tagline: 'Every melody has a home. Can you hear it?',
+      skill: 'Find home',
+      curriculum: 'M0',
+      accent: 'var(--gold)',
+      token: 'home',
+      stages: 3,
+      roundsNeeded: 5,
+    },
+    {
+      id: 'ridge',
+      index: 1,
+      title: 'The Ridge',
+      tagline: 'Up, down, or stay — name the shape before the pitch.',
+      skill: 'Contour',
+      curriculum: 'M1',
+      accent: 'var(--teal)',
+      token: 'up',
+      stages: 3,
+      roundsNeeded: 5,
+    },
+    {
+      id: 'echo',
+      index: 2,
+      title: 'Echo Cave',
+      tagline: 'Hold a short tune in your ear and sing it back on pads.',
+      skill: 'Memory span',
+      curriculum: 'M1.5',
+      accent: 'var(--violet)',
+      token: 'echo',
+      stages: 3,
+      roundsNeeded: 4,
+    },
+    {
+      id: 'pulse',
+      index: 3,
+      title: 'Pulse Path',
+      tagline: 'The rhythm is the melody — feel the pattern first.',
+      skill: 'Rhythm-first',
+      curriculum: 'M2',
+      accent: 'var(--pink)',
+      token: 'pulse',
+      stages: 3,
+      roundsNeeded: 4,
+    },
+    {
+      id: 'stones',
+      index: 4,
+      title: 'Name Stones',
+      tagline: 'The first three scale steps get numbers: 1 · 2 · 3.',
+      skill: 'Degree labeling',
+      curriculum: 'M3',
+      accent: '#7ec8ff',
+      tokens: ['1', '2', '3'],
+      stages: 3,
+      roundsNeeded: 4,
+    },
+  ];
+
+  const ALL_TOKENS = [
+    { id: 'home', label: '⌂' },
+    { id: 'up', label: '↗' },
+    { id: 'echo', label: '◎' },
+    { id: 'pulse', label: '♩' },
+    { id: '1', label: '1' },
+    { id: '2', label: '2' },
+    { id: '3', label: '3' },
+  ];
+
+  // ---------- UI refs ----------
+  const $ = (id) => document.getElementById(id);
+  const screenMap = $('screen-map');
+  const screenPlay = $('screen-play');
+  const landPath = $('landPath');
+  const tokenShelf = $('tokenShelf');
+  const arena = $('arena');
+  const transport = $('transport');
+  const feedback = $('feedback');
+  const stagePips = $('stagePips');
+  const stageCard = $('stageCard');
+  const comboFloat = $('comboFloat');
+  const comboN = $('comboN');
+
+  let state = {
+    land: null,
+    stage: 0,
+    hits: 0,
+    needed: 5,
+    combo: 0,
+    busy: false,
+    round: null, // per-land round data
+  };
+
+  // ---------- map render ----------
+  function renderMap() {
+    landPath.innerHTML = '';
+    LANDS.forEach((land, i) => {
+      const unlocked = i <= save.unlocked;
+      const done = !!save.done[land.id];
+      const current = unlocked && !done && (i === save.unlocked || (done === false && i === Math.min(save.unlocked, LANDS.length - 1)));
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'land'
+        + (done ? ' is-done' : '')
+        + (unlocked && !done ? ' is-current' : '')
+        + (!unlocked ? ' is-locked' : '');
+      btn.disabled = !unlocked;
+      btn.innerHTML = `
+        <div class="land-orb">${done ? '✓' : (i + 1)}</div>
+        <div class="land-body">
+          <h3>${land.title}</h3>
+          <p class="tagline">${land.tagline}</p>
+          <div class="land-meta">
+            <span class="chip skill">${land.skill}</span>
+            <span class="chip">${land.curriculum}</span>
+            ${done ? '<span class="chip done">cleared</span>' : (unlocked ? '<span class="chip">play</span>' : '<span class="chip">locked</span>')}
+          </div>
+        </div>`;
+      if (unlocked) btn.addEventListener('click', () => startLand(land));
+      landPath.appendChild(btn);
+    });
+
+    tokenShelf.innerHTML = '';
+    ALL_TOKENS.forEach(t => {
+      const el = document.createElement('div');
+      el.className = 'token' + (save.tokens[t.id] ? ' owned' : '');
+      el.dataset.id = t.id;
+      el.textContent = t.label;
+      el.title = t.id;
+      tokenShelf.appendChild(el);
+    });
+
+    $('starCount').textContent = String(save.stars);
+    $('comboBest').textContent = String(save.bestCombo);
+  }
+
+  function showScreen(which) {
+    screenMap.classList.toggle('active', which === 'map');
+    screenPlay.classList.toggle('active', which === 'play');
+  }
+
+  // ---------- juice helpers ----------
+  function setFeedback(msg, kind) {
+    feedback.textContent = msg || '';
+    feedback.className = 'feedback' + (kind ? ' ' + kind : '');
+  }
+  function bumpCombo(n) {
+    state.combo = n;
+    if (n >= 2) {
+      comboN.textContent = '×' + n;
+      comboFloat.classList.add('show');
+      if (n > save.bestCombo) { save.bestCombo = n; persist(); $('comboBest').textContent = String(n); }
+    } else {
+      comboFloat.classList.remove('show');
+    }
+  }
+  function scorePop(text, el) {
+    const r = (el || stageCard).getBoundingClientRect();
+    const p = document.createElement('div');
+    p.className = 'scorepop';
+    p.textContent = text;
+    p.style.left = (r.left + r.width / 2) + 'px';
+    p.style.top = (r.top + r.height * 0.35) + 'px';
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 1000);
+  }
+  function confettiBurst() {
+    const root = $('confetti');
+    root.innerHTML = '';
+    const colors = ['#ffd36b', '#3dffc8', '#ff6eb4', '#9b7dff', '#7ec8ff'];
+    for (let i = 0; i < 28; i++) {
+      const c = document.createElement('i');
+      const ang = (Math.PI * 2 * i) / 28;
+      const dist = 80 + Math.random() * 160;
+      c.style.setProperty('--x', Math.cos(ang) * dist + 'px');
+      c.style.setProperty('--y', Math.sin(ang) * dist - 40 + 'px');
+      c.style.setProperty('--r', (Math.random() * 360) + 'deg');
+      c.style.background = colors[i % colors.length];
+      c.style.animationDelay = (Math.random() * 0.1) + 's';
+      root.appendChild(c);
+    }
+    setTimeout(() => { root.innerHTML = ''; }, 1100);
+  }
+  function flashWave() {
+    const d = arena.querySelector('.wave-dot');
+    if (!d) return;
+    d.classList.remove('on');
+    void d.offsetWidth;
+    d.classList.add('on');
+  }
+
+  // ---------- land lifecycle ----------
+  function startLand(land) {
+    ensureAC();
+    state.land = land;
+    state.stage = 0;
+    state.hits = 0;
+    state.needed = land.roundsNeeded;
+    state.combo = 0;
+    state.busy = false;
+    state.round = null;
+    bumpCombo(0);
+    showScreen('play');
+    $('playLandNum').textContent = `Land ${land.index + 1} · ${land.curriculum}`;
+    $('playLandTitle').textContent = land.title;
+    stageCard.style.setProperty('--accent', land.accent);
+    renderStage();
+  }
+
+  function renderPips() {
+    stagePips.innerHTML = '';
+    for (let i = 0; i < state.land.stages; i++) {
+      const s = document.createElement('span');
+      if (i < state.stage) s.className = 'done';
+      else if (i === state.stage) s.className = 'now';
+      stagePips.appendChild(s);
+    }
+  }
+
+  function renderStage() {
+    renderPips();
+    setFeedback('');
+    arena.innerHTML = '';
+    transport.innerHTML = '';
+    state.hits = 0;
+    const land = state.land;
+    const stage = state.stage;
+
+    if (land.id === 'hearth') return stageHearth(stage);
+    if (land.id === 'ridge') return stageRidge(stage);
+    if (land.id === 'echo') return stageEcho(stage);
+    if (land.id === 'pulse') return stagePulse(stage);
+    if (land.id === 'stones') return stageStones(stage);
+  }
+
+  function advanceOrComplete() {
+    state.hits++;
+    if (state.hits >= state.needed) {
+      if (state.stage + 1 < state.land.stages) {
+        state.stage++;
+        state.hits = 0;
+        confettiBurst();
+        sfxGood();
+        setTimeout(() => renderStage(), 450);
+      } else {
+        completeLand();
+      }
+    } else {
+      // soft refresh of hit meters etc.
+      const meter = arena.querySelector('.hit-meter');
+      if (meter) {
+        [...meter.children].forEach((el, i) => el.classList.toggle('filled', i < state.hits));
+      }
+    }
+  }
+
+  function completeLand() {
+    const land = state.land;
+    save.done[land.id] = true;
+    save.stars += 3;
+    if (land.token) save.tokens[land.token] = true;
+    if (land.tokens) land.tokens.forEach(t => { save.tokens[t] = true; });
+    // unlock next land (keep last unlocked when finishing the final land)
+    if (land.index + 1 < LANDS.length) {
+      save.unlocked = Math.max(save.unlocked, land.index + 1);
+    }
+    persist();
+    sfxUnlock();
+    confettiBurst();
+
+    $('ovTitle').textContent = `${land.title} cleared`;
+    $('ovBody').textContent = `You mastered ${land.skill}. ${land.index < LANDS.length - 1 ? 'The next land unlocks.' : 'Early ladder complete — the real MelodyQuest continues from here.'}`;
+    const row = $('ovTokens');
+    row.innerHTML = '';
+    const earned = land.tokens || [land.token];
+    earned.forEach(id => {
+      const t = ALL_TOKENS.find(x => x.id === id);
+      const el = document.createElement('div');
+      el.className = 'token owned';
+      el.dataset.id = id;
+      el.textContent = t ? t.label : id;
+      row.appendChild(el);
+    });
+    $('overlay').classList.add('show');
+  }
+
+  $('ovContinue').addEventListener('click', () => {
+    $('overlay').classList.remove('show');
+    showScreen('map');
+    renderMap();
+  });
+  $('btnBack').addEventListener('click', () => {
+    showScreen('map');
+    renderMap();
+  });
+
+  // =========================================================================
+  // LAND 1 — THE HEARTH (M0 Find home)
+  // =========================================================================
+  function stageHearth(stage) {
+    const titles = [
+      { e: 'Stage 1 · Settle', t: 'Find home', h: 'Hear the hearth chord. Then tones play — tap HOME only when you hear home.' },
+      { e: 'Stage 2 · Any key', t: 'Home moves', h: 'Home is a new key each round. Listen for the hearth, not a fixed pitch.' },
+      { e: 'Stage 3 · Mixed stream', t: 'Catch home', h: 'A stream of notes. Tap HOME the moment you hear it in the mix.' },
+    ];
+    setCue(titles[stage]);
+    state.needed = stage === 2 ? 4 : 5;
+
+    const meter = el('div', 'hit-meter');
+    for (let i = 0; i < state.needed; i++) meter.appendChild(el('i'));
+    arena.appendChild(el('div', 'wave-dot'));
+    arena.appendChild(meter);
+
+    const btn = el('button', 'home-btn');
+    btn.type = 'button';
+    btn.textContent = 'HOME';
+    arena.appendChild(btn);
+
+    const key = stage === 0 ? KEYS[0] : pick(KEYS);
+    state.round = { key, stage, expecting: false, homeMidi: key.midi, armed: false };
+
+    const playBtn = el('button', 'btn btn-play');
+    playBtn.type = 'button';
+    playBtn.innerHTML = playIcon() + ' Establish home';
+    transport.appendChild(playBtn);
+
+    playBtn.addEventListener('click', async () => {
+      if (state.busy) return;
+      state.busy = true;
+      playBtn.disabled = true;
+      setFeedback('');
+      btn.classList.remove('hit', 'miss');
+
+      const k = stage === 0 ? KEYS[0] : pick(KEYS);
+      state.round.key = k;
+      state.round.homeMidi = k.midi;
+      drone(k.midi, 1.2);
+      playChord(k.midi);
+      flashWave();
+      await wait(1100);
+
+      if (stage < 2) {
+        // single test tone: 55% home, else neighbor
+        const isHome = Math.random() < 0.55;
+        const deg = isHome ? 1 : pick([2, 3, 5]);
+        const midi = degMidi(k.midi, deg);
+        state.round.expecting = isHome;
+        state.round.armed = true;
+        tone(midi, 0.55, 'triangle', 0.15);
+        flashWave();
+        setFeedback(isHome ? 'Was that home?' : 'Was that home?', null);
+      } else {
+        // stream of 5 notes, one or two homes
+        const stream = [];
+        let homes = 0;
+        for (let i = 0; i < 5; i++) {
+          const isHome = homes < 2 && (Math.random() < 0.35 || (i === 4 && homes === 0));
+          if (isHome) homes++;
+          stream.push(isHome ? 1 : pick([2, 3, 5]));
+        }
+        state.round.stream = stream;
+        state.round.streamI = 0;
+        state.round.hitsThis = 0;
+        state.round.armed = true;
+        state.round.expecting = stream[0] === 1;
+        for (let i = 0; i < stream.length; i++) {
+          await wait(i === 0 ? 200 : 480);
+          if (!state.round.armed) break;
+          state.round.streamI = i;
+          state.round.expecting = stream[i] === 1;
+          tone(degMidi(k.midi, stream[i]), 0.35, 'triangle', 0.14);
+          flashWave();
+        }
+        await wait(400);
+        state.round.armed = false;
+        // auto-advance if they caught enough homes during stream
+      }
+      state.busy = false;
+      playBtn.disabled = false;
+      playBtn.innerHTML = playIcon() + ' Next hearth';
+    });
+
+    btn.addEventListener('click', () => {
+      if (!state.round.armed && state.round.stage < 2) {
+        setFeedback('Establish home first', 'bad');
+        return;
+      }
+      if (state.round.stage < 2) {
+        const ok = state.round.expecting;
+        judgeHome(btn, ok);
+        state.round.armed = false;
+      } else if (state.round.armed) {
+        const ok = state.round.expecting;
+        judgeHome(btn, ok, true);
+      }
+    });
+  }
+
+  function judgeHome(btn, ok, soft = false) {
+    if (ok) {
+      btn.classList.remove('miss');
+      btn.classList.add('hit');
+      sfxGood();
+      bumpCombo(state.combo + 1);
+      scorePop('+' + (10 + state.combo * 2), btn);
+      save.stars += 1; persist(); $('starCount').textContent = String(save.stars);
+      setFeedback(pick(['Home!', 'That\'s the hearth.', 'You found it.']), 'good');
+      if (!soft) setTimeout(() => { btn.classList.remove('hit'); advanceOrComplete(); }, 500);
+      else {
+        state.round.hitsThis = (state.round.hitsThis || 0) + 1;
+        setTimeout(() => btn.classList.remove('hit'), 280);
+        if (state.round.hitsThis >= 2) {
+          state.round.armed = false;
+          setTimeout(() => advanceOrComplete(), 400);
+        }
+      }
+    } else {
+      btn.classList.remove('hit');
+      btn.classList.add('miss');
+      sfxBad();
+      bumpCombo(0);
+      setFeedback(pick(['Not home — listen again.', 'Close, but not the hearth.']), 'bad');
+      setTimeout(() => btn.classList.remove('miss'), 400);
+    }
+  }
+
+  // =========================================================================
+  // LAND 2 — THE RIDGE (M1 Contour)
+  // =========================================================================
+  function stageRidge(stage) {
+    const titles = [
+      { e: 'Stage 1 · One move', t: 'Which way?', h: 'Two notes. Did the melody climb, fall, or stay?' },
+      { e: 'Stage 2 · Path of three', t: 'Trace the ridge', h: 'Three notes. Pick the shape that matches the whole path.' },
+      { e: 'Stage 3 · Mixed shapes', t: 'Name every ridge', h: 'Arch, valley, or line — hear it, claim it.' },
+    ];
+    setCue(titles[stage]);
+    state.needed = 5;
+
+    arena.appendChild(el('div', 'wave-dot'));
+    const meter = el('div', 'hit-meter');
+    for (let i = 0; i < state.needed; i++) meter.appendChild(el('i'));
+    arena.appendChild(meter);
+
+    const row = el('div', 'contour-row');
+    arena.appendChild(row);
+
+    const shapes = stage === 0
+      ? [
+          { id: 'up', label: 'Up', path: 'M4 28 L28 8 L52 8' },
+          { id: 'down', label: 'Down', path: 'M4 8 L28 28 L52 28' },
+          { id: 'same', label: 'Same', path: 'M4 18 L52 18' },
+        ]
+      : stage === 1
+        ? [
+            { id: 'up-up', label: 'Climb', path: 'M4 32 L20 20 L36 10 L52 4' },
+            { id: 'down-down', label: 'Fall', path: 'M4 4 L20 12 L36 22 L52 32' },
+            { id: 'up-down', label: 'Arch', path: 'M4 28 L28 6 L52 28' },
+            { id: 'down-up', label: 'Valley', path: 'M4 8 L28 30 L52 8' },
+          ]
+        : [
+            { id: 'up-up', label: 'Climb', path: 'M4 32 L20 20 L36 10 L52 4' },
+            { id: 'down-down', label: 'Fall', path: 'M4 4 L20 12 L36 22 L52 32' },
+            { id: 'up-down', label: 'Arch', path: 'M4 28 L28 6 L52 28' },
+            { id: 'down-up', label: 'Valley', path: 'M4 8 L28 30 L52 8' },
+            { id: 'same-same', label: 'Flat', path: 'M4 18 L52 18' },
+          ];
+
+    shapes.forEach(s => {
+      const b = el('button', 'shape-btn');
+      b.type = 'button';
+      b.dataset.id = s.id;
+      b.innerHTML = `<svg viewBox="0 0 56 36" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="${s.path}"/></svg><span>${s.label}</span>`;
+      b.addEventListener('click', () => onContourPick(b, s.id));
+      row.appendChild(b);
+    });
+
+    function genContour() {
+      const key = pick(KEYS);
+      let degrees, shapeId;
+      if (stage === 0) {
+        const a = pick([1, 3, 5]);
+        const dir = pick(['up', 'down', 'same']);
+        let b = a;
+        if (dir === 'up') b = Math.min(5, a === 1 ? 3 : a === 3 ? 5 : 5);
+        if (dir === 'down') b = Math.max(1, a === 5 ? 3 : a === 3 ? 1 : 1);
+        if (dir === 'same') b = a;
+        // ensure actual direction
+        if (dir === 'up' && b <= a) { degrees = [1, 3]; shapeId = 'up'; }
+        else if (dir === 'down' && b >= a) { degrees = [5, 3]; shapeId = 'down'; }
+        else if (dir === 'same') { degrees = [a, a]; shapeId = 'same'; }
+        else { degrees = [a, b]; shapeId = dir; }
+      } else {
+        const patterns = {
+          'up-up': [1, 2, 3],
+          'down-down': [5, 3, 1],
+          'up-down': [1, 5, 3],
+          'down-up': [5, 1, 3],
+          'same-same': [3, 3, 3],
+        };
+        const ids = stage === 1
+          ? ['up-up', 'down-down', 'up-down', 'down-up']
+          : Object.keys(patterns);
+        shapeId = pick(ids);
+        degrees = patterns[shapeId];
+      }
+      return { key, degrees, shapeId };
+    }
+
+    state.round = { answer: null, locked: false };
+    const playBtn = el('button', 'btn btn-play');
+    playBtn.type = 'button';
+    playBtn.innerHTML = playIcon() + ' Hear the ridge';
+    transport.appendChild(playBtn);
+
+    async function playRound() {
+      if (state.busy) return;
+      state.busy = true;
+      playBtn.disabled = true;
+      row.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('correct', 'wrong'));
+      setFeedback('');
+      const r = genContour();
+      state.round = { ...r, locked: false };
+      drone(r.key.midi, 0.8);
+      await wait(500);
+      for (let i = 0; i < r.degrees.length; i++) {
+        tone(degMidi(r.key.midi, r.degrees[i]), 0.4, 'triangle', 0.14, 0);
+        flashWave();
+        await wait(420);
+      }
+      state.busy = false;
+      playBtn.disabled = false;
+    }
+    playBtn.addEventListener('click', playRound);
+
+    function onContourPick(btn, id) {
+      if (!state.round || state.round.shapeId == null) {
+        setFeedback('Hear the ridge first', 'bad');
+        return;
+      }
+      if (state.round.locked) return;
+      state.round.locked = true;
+      const ok = id === state.round.shapeId;
+      btn.classList.add(ok ? 'correct' : 'wrong');
+      if (ok) {
+        sfxGood();
+        bumpCombo(state.combo + 1);
+        scorePop('+' + (12 + state.combo * 3), btn);
+        save.stars += 1; persist(); $('starCount').textContent = String(save.stars);
+        setFeedback('Shape locked in.', 'good');
+        setTimeout(() => advanceOrComplete(), 550);
+      } else {
+        sfxBad();
+        bumpCombo(0);
+        setFeedback('Not that shape — hear it again.', 'bad');
+        const right = row.querySelector(`[data-id="${state.round.shapeId}"]`);
+        if (right) right.classList.add('correct');
+        setTimeout(() => {
+          row.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('correct', 'wrong'));
+          state.round.locked = false;
+          state.round.shapeId = null;
+        }, 900);
+      }
+    }
+  }
+
+  // =========================================================================
+  // LAND 3 — ECHO CAVE (M1.5 memory span)
+  // =========================================================================
+  function stageEcho(stage) {
+    const lens = [2, 3, 4];
+    const len = lens[stage];
+    setCue({
+      e: `Stage ${stage + 1} · Span ${len}`,
+      t: 'Hold the tune',
+      h: `Listen carefully, then tap the pads in order. Length: ${len} notes.`,
+    });
+    state.needed = 4;
+
+    arena.appendChild(el('div', 'wave-dot'));
+    const meter = el('div', 'hit-meter');
+    for (let i = 0; i < state.needed; i++) meter.appendChild(el('i'));
+    arena.appendChild(meter);
+
+    const pads = el('div', 'pad-row');
+    const degs = [1, 2, 3, 5];
+    const padEls = {};
+    degs.forEach(d => {
+      const b = el('button', 'pad');
+      b.type = 'button';
+      b.textContent = d === 5 ? '5' : String(d);
+      b.dataset.deg = d;
+      b.addEventListener('click', () => onPad(d, b));
+      pads.appendChild(b);
+      padEls[d] = b;
+    });
+    arena.appendChild(pads);
+
+    const key = KEYS[0];
+    state.round = { seq: [], input: [], listening: false, key };
+
+    function genSeq() {
+      const seq = [1]; // start on home
+      const pool = [1, 2, 3, 5];
+      while (seq.length < len) {
+        const last = seq[seq.length - 1];
+        const next = pick(pool.filter(d => d !== last || Math.random() < 0.2));
+        seq.push(next);
+      }
+      return seq;
+    }
+
+    async function playSeq() {
+      if (state.busy) return;
+      state.busy = true;
+      state.round.seq = genSeq();
+      state.round.input = [];
+      state.round.listening = false;
+      setFeedback('Listen…');
+      drone(key.midi, 0.6);
+      await wait(400);
+      for (const d of state.round.seq) {
+        const p = padEls[d];
+        p.classList.add('is-play');
+        tone(degMidi(key.midi, d), 0.38, 'triangle', 0.15);
+        flashWave();
+        await wait(450);
+        p.classList.remove('is-play');
+        await wait(80);
+      }
+      state.round.listening = true;
+      state.busy = false;
+      setFeedback('Your turn — echo it back.');
+    }
+
+    function onPad(d, btn) {
+      if (!state.round.listening || state.busy) return;
+      sfxClick();
+      tone(degMidi(key.midi, d), 0.28, 'triangle', 0.12);
+      state.round.input.push(d);
+      const i = state.round.input.length - 1;
+      if (state.round.input[i] !== state.round.seq[i]) {
+        btn.classList.add('wrong');
+        sfxBad();
+        bumpCombo(0);
+        setFeedback('Lost the echo — hear it again.', 'bad');
+        state.round.listening = false;
+        setTimeout(() => btn.classList.remove('wrong'), 400);
+        return;
+      }
+      btn.classList.add('correct');
+      setTimeout(() => btn.classList.remove('correct'), 250);
+      if (state.round.input.length === state.round.seq.length) {
+        state.round.listening = false;
+        sfxGood();
+        bumpCombo(state.combo + 1);
+        scorePop('+' + (15 + len * 3), btn);
+        save.stars += 1; persist(); $('starCount').textContent = String(save.stars);
+        setFeedback('Echo held!', 'good');
+        setTimeout(() => advanceOrComplete(), 550);
+      }
+    }
+
+    const playBtn = el('button', 'btn btn-play');
+    playBtn.type = 'button';
+    playBtn.innerHTML = playIcon() + ' Hear echo';
+    playBtn.addEventListener('click', playSeq);
+    transport.appendChild(playBtn);
+  }
+
+  // =========================================================================
+  // LAND 4 — PULSE PATH (M2 rhythm-first, simplified)
+  // =========================================================================
+  function stagePulse(stage) {
+    setCue({
+      e: `Stage ${stage + 1} · Pulse`,
+      t: 'The rhythm IS the melody',
+      h: 'One pitch sings a rhythm. Rebuild it with the pattern tiles.',
+    });
+    state.needed = 4;
+
+    // patterns as arrays of beat units (1 = quarter, 0.5 = eighth)
+    const bank = [
+      { id: 'qqqq', cells: [1, 1, 1, 1], label: '♩ ♩ ♩ ♩', name: 'Four steps' },
+      { id: 'eeq', cells: [0.5, 0.5, 1, 1], label: '♪♪ ♩ ♩', name: 'Run then steps' },
+      { id: 'qeeq', cells: [1, 0.5, 0.5, 1], label: '♩ ♪♪ ♩', name: 'Split middle' },
+      { id: 'hqq', cells: [2, 1, 1], label: '𝅗𝅥 ♩ ♩', name: 'Long then two' },
+      { id: 'qhq', cells: [1, 2, 1], label: '♩ 𝅗𝅥 ♩', name: 'Long center' },
+      { id: 'eeee', cells: [0.5, 0.5, 0.5, 0.5, 1], label: '♪♪♪♪ ♩', name: 'Scatter then land' },
+    ];
+    const pool = stage === 0 ? bank.slice(0, 3) : stage === 1 ? bank.slice(0, 5) : bank;
+
+    arena.appendChild(el('div', 'wave-dot'));
+    const meter = el('div', 'hit-meter');
+    for (let i = 0; i < state.needed; i++) meter.appendChild(el('i'));
+    arena.appendChild(meter);
+
+    const slots = el('div', 'slots');
+    arena.appendChild(slots);
+
+    const tiles = el('div', 'choice-row');
+    arena.appendChild(tiles);
+
+    state.round = { answer: null, pick: null };
+
+    function layoutChoices(answer) {
+      tiles.innerHTML = '';
+      slots.innerHTML = '';
+      const slot = el('div', 'slot active');
+      slot.textContent = '?';
+      slots.appendChild(slot);
+
+      const foils = shuffle(pool.filter(p => p.id !== answer.id)).slice(0, 2);
+      const opts = shuffle([answer, ...foils]);
+      opts.forEach(p => {
+        const b = el('button', 'rhythm-tile');
+        b.type = 'button';
+        b.innerHTML = `<span class="glyph">${p.label}</span><span>${p.name}</span>`;
+        b.addEventListener('click', () => {
+          if (state.busy || !state.round.answer) return;
+          tiles.querySelectorAll('.rhythm-tile').forEach(x => x.classList.remove('correct', 'wrong'));
+          const ok = p.id === state.round.answer.id;
+          b.classList.add(ok ? 'correct' : 'wrong');
+          slot.textContent = p.label;
+          slot.classList.add('filled');
+          if (ok) {
+            sfxGood();
+            bumpCombo(state.combo + 1);
+            scorePop('+' + (14 + state.combo * 2), b);
+            save.stars += 1; persist(); $('starCount').textContent = String(save.stars);
+            setFeedback('Pulse matched.', 'good');
+            state.round.answer = null;
+            setTimeout(() => advanceOrComplete(), 550);
+          } else {
+            sfxBad();
+            bumpCombo(0);
+            setFeedback('Not that pulse — hear it again.', 'bad');
+            setTimeout(() => {
+              b.classList.remove('wrong');
+              slot.textContent = '?';
+              slot.classList.remove('filled');
+            }, 700);
+          }
+        });
+        tiles.appendChild(b);
+      });
+    }
+
+    async function playRhythm() {
+      if (state.busy) return;
+      state.busy = true;
+      const answer = pick(pool);
+      state.round.answer = answer;
+      layoutChoices(answer);
+      setFeedback('Listen to the pulse…');
+      const midi = 64; // fixed pitch = rhythm-first
+      drone(60, 0.5);
+      await wait(350);
+      // count-in clicks
+      for (let i = 0; i < 2; i++) {
+        tone(88, 0.05, 'square', 0.03);
+        flashWave();
+        await wait(300);
+      }
+      // play cells sequentially (fixed pitch = attention on rhythm only)
+      for (const cell of answer.cells) {
+        const dur = Math.min(cell * 0.4, 0.75);
+        tone(midi, dur, 'triangle', 0.14);
+        flashWave();
+        await wait(cell * 420);
+      }
+      state.busy = false;
+      setFeedback('Build the same pulse.');
+    }
+
+    const playBtn = el('button', 'btn btn-play');
+    playBtn.type = 'button';
+    playBtn.innerHTML = playIcon() + ' Hear pulse';
+    playBtn.addEventListener('click', playRhythm);
+    transport.appendChild(playBtn);
+  }
+
+  // =========================================================================
+  // LAND 5 — NAME STONES (M3 degree labeling 1-2-3)
+  // =========================================================================
+  function stageStones(stage) {
+    setCue({
+      e: `Stage ${stage + 1} · Name`,
+      t: 'First three notes get numbers',
+      h: 'Rhythm is given. Label each note 1, 2, or 3 — still no staff.',
+    });
+    state.needed = 4;
+
+    arena.appendChild(el('div', 'wave-dot'));
+    const meter = el('div', 'hit-meter');
+    for (let i = 0; i < state.needed; i++) meter.appendChild(el('i'));
+    arena.appendChild(meter);
+
+    const slots = el('div', 'slots');
+    arena.appendChild(slots);
+    const degs = el('div', 'degree-row');
+    arena.appendChild(degs);
+
+    [1, 2, 3].forEach(d => {
+      const b = el('button', 'deg-btn');
+      b.type = 'button';
+      b.textContent = d + '\u0302'; // combining circumflex ≈ scale degree hat
+      b.addEventListener('click', () => onDeg(d, b));
+      degs.appendChild(b);
+    });
+
+    const undo = el('button', 'btn btn-ghost');
+    undo.type = 'button';
+    undo.textContent = 'Undo';
+    const check = el('button', 'btn btn-primary');
+    check.type = 'button';
+    check.textContent = 'Check';
+    check.disabled = true;
+    transport.appendChild(undo);
+    transport.appendChild(check);
+
+    function genMelody() {
+      // start on 1, stepwise 1-2-3 only
+      const n = stage === 0 ? 3 : stage === 1 ? 4 : 4;
+      const seq = [1];
+      while (seq.length < n) {
+        const last = seq[seq.length - 1];
+        const opts = [last - 1, last, last + 1].filter(d => d >= 1 && d <= 3);
+        seq.push(pick(opts));
+      }
+      // ensure not all same
+      if (seq.every(d => d === seq[0])) seq[seq.length - 1] = seq[0] === 1 ? 2 : 1;
+      return seq;
+    }
+
+    state.round = { seq: [], labels: [], cursor: 0, key: KEYS[0] };
+
+    function rebuildSlots() {
+      slots.innerHTML = '';
+      state.round.seq.forEach((_, i) => {
+        const s = el('div', 'slot');
+        if (i === state.round.cursor) s.classList.add('active');
+        if (state.round.labels[i] != null) {
+          s.classList.add('filled');
+          s.textContent = state.round.labels[i] + '\u0302';
+        } else {
+          s.textContent = '·';
+        }
+        s.addEventListener('click', () => {
+          state.round.cursor = i;
+          rebuildSlots();
+        });
+        slots.appendChild(s);
+      });
+      check.disabled = state.round.labels.filter(x => x != null).length < state.round.seq.length;
+    }
+
+    function onDeg(d) {
+      if (!state.round.seq.length) {
+        setFeedback('Hear the melody first', 'bad');
+        return;
+      }
+      sfxClick();
+      tone(degMidi(state.round.key.midi, d), 0.22, 'triangle', 0.1);
+      state.round.labels[state.round.cursor] = d;
+      if (state.round.cursor < state.round.seq.length - 1) state.round.cursor++;
+      rebuildSlots();
+    }
+
+    undo.addEventListener('click', () => {
+      if (!state.round.seq.length) return;
+      // clear last filled or current
+      let i = state.round.cursor;
+      if (state.round.labels[i] == null && i > 0) i--;
+      state.round.labels[i] = null;
+      state.round.cursor = i;
+      rebuildSlots();
+    });
+
+    check.addEventListener('click', () => {
+      if (check.disabled) return;
+      const ok = state.round.labels.every((d, i) => d === state.round.seq[i]);
+      if (ok) {
+        sfxGood();
+        bumpCombo(state.combo + 1);
+        scorePop('+' + (18 + state.combo * 3), slots);
+        save.stars += 1; persist(); $('starCount').textContent = String(save.stars);
+        setFeedback('Every stone named.', 'good');
+        // collect token flash for degrees used
+        state.round.seq.forEach(d => { save.tokens[String(d)] = true; });
+        persist();
+        setTimeout(() => advanceOrComplete(), 600);
+      } else {
+        sfxBad();
+        bumpCombo(0);
+        setFeedback('One or more stones are wrong — try again.', 'bad');
+        // highlight mismatches
+        [...slots.children].forEach((s, i) => {
+          if (state.round.labels[i] !== state.round.seq[i]) s.style.borderColor = 'var(--bad)';
+          else s.style.borderColor = 'var(--good)';
+        });
+      }
+    });
+
+    async function playMel() {
+      if (state.busy) return;
+      state.busy = true;
+      const seq = genMelody();
+      state.round.seq = seq;
+      state.round.labels = seq.map(() => null);
+      state.round.cursor = 0;
+      rebuildSlots();
+      setFeedback('Listen…');
+      drone(state.round.key.midi, 0.7);
+      await wait(450);
+      for (const d of seq) {
+        tone(degMidi(state.round.key.midi, d), 0.4, 'triangle', 0.14);
+        flashWave();
+        await wait(430);
+      }
+      state.busy = false;
+      setFeedback('Label each note 1̂ 2̂ 3̂.');
+    }
+
+    const playBtn = el('button', 'btn btn-play');
+    playBtn.type = 'button';
+    playBtn.innerHTML = playIcon() + ' Hear melody';
+    playBtn.addEventListener('click', playMel);
+    transport.insertBefore(playBtn, undo);
+  }
+
+  // ---------- shared UI bits ----------
+  function setCue({ e, t, h }) {
+    $('stageEyebrow').textContent = e;
+    $('stageTitle').textContent = t;
+    $('stageHint').textContent = h;
+  }
+  function el(tag, cls) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    return n;
+  }
+  function playIcon() {
+    return '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+  }
+
+  // boot
+  renderMap();
+})();
+</script>
+</body>
+</html>

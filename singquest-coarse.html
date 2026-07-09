@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SingQuest — coarse match feedback</title>
+<style>
+  :root{ --ink:#33405e; --muted:#8791ad; --accent:#5b6ee1; --accent2:#8a6ee6; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:ui-rounded,"SF Pro Rounded","Nunito","Segoe UI",system-ui,sans-serif; color:var(--ink);
+        background:#c9d3ee; display:flex; gap:26px; justify-content:center; flex-wrap:wrap; padding:28px; }
+  .phone{ width:360px; height:720px; border-radius:32px; overflow:hidden; position:relative; display:flex; flex-direction:column;
+          background:linear-gradient(165deg,#eaf3ff,#f3edff 55%,#ffeef6); box-shadow:0 16px 44px rgba(60,80,150,.3); }
+  .cap{ position:absolute; top:0; left:0; right:0; text-align:center; font-size:11px; font-weight:900; letter-spacing:.05em; color:#fff; padding:7px; background:rgba(40,50,80,.4); }
+  .hud{ display:flex; align-items:center; justify-content:space-between; padding:38px 16px 4px; }
+  .wm{ display:flex; align-items:center; gap:6px; font-weight:900; font-size:16px; background:linear-gradient(92deg,var(--accent),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .wm svg{ width:18px; height:18px; }
+  .cog{ color:var(--muted); }
+  .tabs{ display:flex; justify-content:space-between; padding:2px 14px 0; }
+  .tab{ background:#fff; color:#59638a; border-radius:11px; padding:5px 10px; font-size:11px; font-weight:900; display:flex; align-items:center; gap:6px; box-shadow:0 3px 9px rgba(90,110,180,.13); }
+  .pips{ display:flex; gap:4px; } .pips i{ width:7px; height:7px; border-radius:50%; background:#dfe4f7; } .pips i.on{ background:#f2b134; }
+  .flame{ color:#ff8c42; }
+  .stage{ flex:1; margin:8px 14px 18px; border-radius:22px; background:#fff; padding:14px; display:flex; flex-direction:column; position:relative;
+          box-shadow:0 0 0 6px var(--ring,#34c987), 0 12px 26px rgba(60,150,110,.2); }
+  .steps{ display:flex; gap:5px; justify-content:center; margin-bottom:10px; }
+  .step{ font-size:10px; font-weight:900; padding:5px 8px; border-radius:14px; display:flex; align-items:center; gap:4px; color:var(--muted); background:#f3f5fd; }
+  .step .n{ width:14px; height:14px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9px; background:rgba(255,255,255,.4); }
+  .step.done{ color:#2fbf87; background:#e7f8f0; } .step.on{ color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent2)); }
+  .prompt{ text-align:center; font-weight:900; font-size:18px; margin:0 6px 2px; }
+  .sub{ text-align:center; font-weight:700; font-size:12px; color:var(--muted); margin:0 10px 6px; }
+
+  /* the coarse match field — two friendly orbs, NO scale/ticks/numbers */
+  .field{ flex:1; position:relative; border-radius:18px; background:linear-gradient(180deg,#f7f9ff,#eef2ff); border:1.5px solid #e7ecfb; min-height:250px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .target{ position:absolute; width:96px; height:96px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+           font-weight:900; font-size:24px; color:#1f9c6d; background:radial-gradient(circle at 50% 50%, rgba(52,201,135,.16), rgba(52,201,135,.05)); border:3px dashed #48c98f; }
+  .buddy{ position:absolute; width:60px; height:60px; border-radius:50%; box-shadow:0 8px 18px rgba(0,0,0,.14); }
+  .buddy .e{ position:absolute; width:7px; height:7px; border-radius:50%; background:#fff; top:21px; } .buddy .e.l{ left:17px; } .buddy .e.r{ right:17px; }
+  .buddy .m{ position:absolute; bottom:15px; left:50%; transform:translateX(-50%); width:15px; height:8px; }
+  /* rings for matched burst */
+  .burst{ position:absolute; width:150px; height:150px; border-radius:50%; border:3px solid rgba(52,201,135,.5); }
+  .verdict{ text-align:center; font-weight:900; font-size:16px; margin-top:12px; }
+  .act{ display:flex; gap:8px; padding:12px 14px 0; }
+  .act .ghost{ border:1.5px solid #e2e8f6; background:#fff; color:#5a6488; border-radius:13px; font-family:inherit; font-weight:900; font-size:13px; padding:13px 14px; display:flex; align-items:center; gap:6px; }
+  .act .go{ flex:1; border:0; border-radius:13px; color:#fff; font-family:inherit; font-weight:900; font-size:15px; padding:13px; background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:0 7px 16px rgba(110,110,230,.3); }
+  .sparkle{ position:absolute; width:8px; height:8px; border-radius:50%; background:#ffd76a; }
+</style>
+</head>
+<body>
+
+<!-- WAY OFF -->
+<div class="phone" style="--ring:#e2726e">
+  <div class="cap">STATE 1 · WAY OFF — "listen again, come closer"</div>
+  <div class="hud"><div class="wm"><svg viewBox="0 0 24 24" fill="none" stroke="url(#g1)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="g1" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#5b6ee1"/><stop offset="1" stop-color="#8a6ee6"/></linearGradient></defs><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v4"/></svg>SingQuest</div><div class="cog"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.3 1a7 7 0 0 0-1.7-1l-.4-2.5H10l-.4 2.5a7 7 0 0 0-1.7 1l-2.3-1-2 3.4 2 1.6a7 7 0 0 0 0 2l-2 1.6 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"/></svg></div></div>
+  <div class="tabs"><div class="tab">LVL 1 <span class="pips"><i class="on"></i><i></i><i></i></span></div><div class="tab"><svg class="flame" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2s5 4 5 9a5 5 0 0 1-10 0c0-1 .3-2 .8-2.6C7 10 8 12 9 12c0-3 3-4 3-10Z"/></svg>2 · 180</div></div>
+  <div class="stage">
+    <div class="steps"><div class="step done"><span class="n">✓</span>Listen</div><div class="step on"><span class="n">2</span>Sing with me</div><div class="step"><span class="n">3</span>Your turn</div></div>
+    <div class="prompt">Sing with me</div><div class="sub">Get your buddy up to the note</div>
+    <div class="field">
+      <div class="target" style="top:26px">do</div>
+      <div class="buddy" style="bottom:22px; background:radial-gradient(circle at 38% 34%,#f2a3a0,#e2726e);"><span class="e l"></span><span class="e r"></span><svg class="m" viewBox="0 0 15 8"><path d="M1 6 Q7.5 2 14 6" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" transform="translate(0,1) scale(1,-1) translate(0,-8)"/></svg></div>
+    </div>
+    <div class="verdict" style="color:#d8524d">Way off — listen again, then come closer</div>
+    <div class="act"><button class="ghost"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9V3Z"/></svg>Hear it</button><button class="go">Try again</button></div>
+  </div>
+</div>
+
+<!-- CLOSE -->
+<div class="phone" style="--ring:#f2b134">
+  <div class="cap">STATE 2 · CLOSE — "almost, nudge up"</div>
+  <div class="hud"><div class="wm"><svg viewBox="0 0 24 24" fill="none" stroke="url(#g2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="g2" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#5b6ee1"/><stop offset="1" stop-color="#8a6ee6"/></linearGradient></defs><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v4"/></svg>SingQuest</div><div class="cog"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.3 1a7 7 0 0 0-1.7-1l-.4-2.5H10l-.4 2.5a7 7 0 0 0-1.7 1l-2.3-1-2 3.4 2 1.6a7 7 0 0 0 0 2l-2 1.6 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"/></svg></div></div>
+  <div class="tabs"><div class="tab">LVL 1 <span class="pips"><i class="on"></i><i></i><i></i></span></div><div class="tab"><svg class="flame" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2s5 4 5 9a5 5 0 0 1-10 0c0-1 .3-2 .8-2.6C7 10 8 12 9 12c0-3 3-4 3-10Z"/></svg>2 · 180</div></div>
+  <div class="stage">
+    <div class="steps"><div class="step done"><span class="n">✓</span>Listen</div><div class="step on"><span class="n">2</span>Sing with me</div><div class="step"><span class="n">3</span>Your turn</div></div>
+    <div class="prompt">Sing with me</div><div class="sub">Get your buddy up to the note</div>
+    <div class="field">
+      <div class="target" style="top:26px">do</div>
+      <div class="buddy" style="top:74px; background:radial-gradient(circle at 38% 34%,#ffd98a,#f2b134);"><span class="e l"></span><span class="e r"></span><svg class="m" viewBox="0 0 15 8"><path d="M1 3 Q7.5 7 14 3" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg></div>
+    </div>
+    <div class="verdict" style="color:#d79820">Almost — a little higher</div>
+    <div class="act"><button class="ghost"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9V3Z"/></svg>Hear it</button><button class="go">Keep going…</button></div>
+  </div>
+</div>
+
+<!-- MATCHED -->
+<div class="phone" style="--ring:#34c987">
+  <div class="cap">STATE 3 · MATCHED — "you've got it!"</div>
+  <div class="hud"><div class="wm"><svg viewBox="0 0 24 24" fill="none" stroke="url(#g3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="g3" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#5b6ee1"/><stop offset="1" stop-color="#8a6ee6"/></linearGradient></defs><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v4"/></svg>SingQuest</div><div class="cog"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.3 1a7 7 0 0 0-1.7-1l-.4-2.5H10l-.4 2.5a7 7 0 0 0-1.7 1l-2.3-1-2 3.4 2 1.6a7 7 0 0 0 0 2l-2 1.6 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"/></svg></div></div>
+  <div class="tabs"><div class="tab">LVL 1 <span class="pips"><i class="on"></i><i class="on"></i><i></i></span></div><div class="tab"><svg class="flame" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2s5 4 5 9a5 5 0 0 1-10 0c0-1 .3-2 .8-2.6C7 10 8 12 9 12c0-3 3-4 3-10Z"/></svg>3 · 205</div></div>
+  <div class="stage">
+    <div class="steps"><div class="step done"><span class="n">✓</span>Listen</div><div class="step done"><span class="n">✓</span>Sing with me</div><div class="step on"><span class="n">3</span>Your turn</div></div>
+    <div class="prompt">You matched it!</div><div class="sub">That's the note — nicely done</div>
+    <div class="field">
+      <div class="burst" style="border-color:rgba(52,201,135,.35); width:170px; height:170px;"></div>
+      <div class="burst" style="border-color:rgba(52,201,135,.55);"></div>
+      <div class="sparkle" style="top:60px; left:120px"></div><div class="sparkle" style="top:190px; left:70px"></div><div class="sparkle" style="top:120px; right:64px; background:#8fe0b5"></div>
+      <div class="target" style="position:static; border-style:solid; border-color:#34c987; background:radial-gradient(circle at 50% 45%,#7fe3b4,#2fbf87); color:#fff;">do</div>
+      <!-- buddy merged onto the note, happy -->
+      <div class="buddy" style="position:absolute; background:transparent; box-shadow:none;"><span class="e l" style="background:#eafff5"></span><span class="e r" style="background:#eafff5"></span><svg class="m" viewBox="0 0 15 8"><path d="M1 3 Q7.5 8 14 3" fill="none" stroke="#eafff5" stroke-width="3" stroke-linecap="round"/></svg></div>
+    </div>
+    <div class="verdict" style="color:#1f9c6d">You've got it — that's the note</div>
+    <div class="act"><button class="ghost"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9V3Z"/></svg>Hear it</button><button class="go">Your turn
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></button></div>
+  </div>
+</div>
+
+</body>
+</html>

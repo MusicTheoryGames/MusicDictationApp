@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Rhythm PNG Generator</title>
+    <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .pattern { margin: 20px 0; border: 1px solid #ccc; }
+        .pattern h3 { margin: 0; padding: 10px; background: #f0f0f0; }
+        .preview { padding: 10px; background: white; }
+        button { padding: 10px 20px; margin: 10px 0; background: #007bff; color: white; border: none; cursor: pointer; }
+        #download-all { background: #28a745; font-weight: bold; }
+        canvas { border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <h1>Rhythm PNG Generator</h1>
+    <p>This will generate clean PNG files for all rhythm patterns.</p>
+
+    <button id="generate-all">Generate All PNGs</button>
+    <button id="download-all" style="display:none;">Download All PNGs</button>
+
+    <div id="patterns-container"></div>
+
+    <script>
+        const VF = Vex.Flow;
+
+        const rhythmPatterns = [
+            {
+                id: 'quarter',
+                name: 'Quarter Note',
+                beats: 1,
+                vexflow: [{ keys: ['b/4'], duration: 'q' }]
+            },
+            {
+                id: 'two-eighths',
+                name: 'Two Eighths',
+                beats: 1,
+                vexflow: [
+                    { keys: ['b/4'], duration: '8' },
+                    { keys: ['b/4'], duration: '8' }
+                ]
+            },
+            {
+                id: 'four-sixteenths',
+                name: 'Four Sixteenths',
+                beats: 1,
+                vexflow: [
+                    { keys: ['b/4'], duration: '16' },
+                    { keys: ['b/4'], duration: '16' },
+                    { keys: ['b/4'], duration: '16' },
+                    { keys: ['b/4'], duration: '16' }
+                ]
+            },
+            {
+                id: 'eighth-two-sixteenths',
+                name: 'Eighth + 2 Sixteenths',
+                beats: 1,
+                vexflow: [
+                    { keys: ['b/4'], duration: '8' },
+                    { keys: ['b/4'], duration: '16' },
+                    { keys: ['b/4'], duration: '16' }
+                ]
+            },
+            {
+                id: 'two-sixteenths-eighth',
+                name: '2 Sixteenths + Eighth',
+                beats: 1,
+                vexflow: [
+                    { keys: ['b/4'], duration: '16' },
+                    { keys: ['b/4'], duration: '16' },
+                    { keys: ['b/4'], duration: '8' }
+                ]
+            },
+            {
+                id: 'dotted-quarter-eighth',
+                name: 'Dotted Quarter + Eighth',
+                beats: 2,
+                vexflow: [
+                    { keys: ['b/4'], duration: 'q', dots: 1 },
+                    { keys: ['b/4'], duration: '8' }
+                ]
+            },
+            {
+                id: 'half',
+                name: 'Half Note',
+                beats: 2,
+                vexflow: [{ keys: ['b/4'], duration: 'h' }]
+            },
+            {
+                id: 'eighth-rest-eighth',
+                name: 'Eighth Rest + Eighth',
+                beats: 1,
+                vexflow: [
+                    { keys: ['b/4'], duration: '8r' },
+                    { keys: ['b/4'], duration: '8' }
+                ]
+            },
+            {
+                id: 'eighth-eighth-rest',
+                name: 'Eighth + Eighth Rest',
+                beats: 1,
+                vexflow: [
+                    { keys: ['b/4'], duration: '8' },
+                    { keys: ['b/4'], duration: '8r' }
+                ]
+            },
+            {
+                id: 'quarter-rest',
+                name: 'Quarter Rest',
+                beats: 1,
+                vexflow: [{ keys: ['b/4'], duration: 'qr' }]
+            },
+            {
+                id: 'sixteenth-eighth-sixteenth',
+                name: '16th + 8th + 16th',
+                beats: 1,
+                vexflow: [
+                    { keys: ['b/4'], duration: '16' },
+                    { keys: ['b/4'], duration: '8' },
+                    { keys: ['b/4'], duration: '16' }
+                ]
+            },
+            {
+                id: 'dotted-eighth-sixteenth',
+                name: 'Dotted 8th + 16th',
+                beats: 1,
+                vexflow: [
+                    { keys: ['b/4'], duration: '8', dots: 1 },
+                    { keys: ['b/4'], duration: '16' }
+                ]
+            },
+            {
+                id: 'triplet-eighths',
+                name: 'Triplet Eighths',
+                beats: 1,
+                vexflow: [
+                    { keys: ['b/4'], duration: '8' },
+                    { keys: ['b/4'], duration: '8' },
+                    { keys: ['b/4'], duration: '8' }
+                ],
+                triplet: true
+            },
+            {
+                id: 'sixteenth-dotted-eighth',
+                name: '16th + Dotted 8th',
+                beats: 1,
+                vexflow: [
+                    { keys: ['b/4'], duration: '16' },
+                    { keys: ['b/4'], duration: '8', dots: 1 }
+                ]
+            },
+            {
+                id: 'eighth-quarter-eighth',
+                name: '8th + Quarter + 8th',
+                beats: 2,
+                vexflow: [
+                    { keys: ['b/4'], duration: '8' },
+                    { keys: ['b/4'], duration: 'q' },
+                    { keys: ['b/4'], duration: '8' }
+                ]
+            },
+            {
+                id: 'eighth-rest-two-sixteenths',
+                name: '8th Rest + 2 16ths',
+                beats: 1,
+                vexflow: [
+                    { keys: ['b/4'], duration: '8r' },
+                    { keys: ['b/4'], duration: '16' },
+                    { keys: ['b/4'], duration: '16' }
+                ]
+            },
+            {
+                id: 'sixteenth-rest-three-sixteenths',
+                name: '16th Rest + 3 16ths',
+                beats: 1,
+                vexflow: [
+                    { keys: ['b/4'], duration: '16r' },
+                    { keys: ['b/4'], duration: '16' },
+                    { keys: ['b/4'], duration: '16' },
+                    { keys: ['b/4'], duration: '16' }
+                ]
+            },
+            {
+                id: 'triplet-quarters',
+                name: 'Triplet Quarters',
+                beats: 2,
+                vexflow: [
+                    { keys: ['b/4'], duration: 'q' },
+                    { keys: ['b/4'], duration: 'q' },
+                    { keys: ['b/4'], duration: 'q' }
+                ],
+                triplet: true
+            }
+        ];
+
+        let generatedPNGs = {};
+
+        function generatePNG(pattern) {
+            // Create high-res canvas for crisp rendering
+            const canvas = document.createElement('canvas');
+            canvas.width = 400;  // 2x resolution for crisp display
+            canvas.height = 240;
+            const ctx = canvas.getContext('2d');
+
+            // Transparent background (no fill needed)
+
+            // Create VexFlow renderer on canvas
+            const renderer = new VF.Renderer(canvas, VF.Renderer.Backends.CANVAS);
+            renderer.resize(400, 240);
+            const context = renderer.getContext();
+
+            // Scale up for higher resolution and larger notes
+            context.scale(2.5, 2.5);
+
+            const stave = new VF.Stave(-8, -10, 180);
+            stave.setContext(context);
+
+            // Convert pattern to VexFlow notes
+            const notes = [];
+            pattern.vexflow.forEach(noteData => {
+                const note = new VF.StaveNote({
+                    clef: 'percussion',
+                    keys: noteData.keys,
+                    duration: noteData.duration
+                });
+
+                if (noteData.dots && noteData.dots > 0) {
+                    note.addModifier(new VF.Dot(), 0);
+                }
+
+                notes.push(note);
+            });
+
+            if (notes.length > 0) {
+                let beams = [];
+                let triplet = null;
+
+                if (pattern.triplet && notes.length === 3) {
+                    notes.forEach(note => note.setStemDirection(VF.StaveNote.STEM_DOWN));
+
+                    const canBeam = notes.every(note => note.getDuration() === '8' || note.getDuration() === '16');
+                    if (canBeam) {
+                        const tripletBeam = new VF.Beam(notes);
+                        beams = [tripletBeam];
+                    }
+
+                    triplet = new VF.Tuplet(notes, {
+                        num_notes: 3,
+                        notes_occupied: 2,
+                        bracketed: true,
+                        location: 1,
+                        y_offset: 15
+                    });
+                } else {
+                    beams = VF.Beam.generateBeams(notes);
+                }
+
+                VF.Formatter.FormatAndDraw(context, stave, notes);
+                beams.forEach(beam => beam.setContext(context).draw());
+
+                if (triplet) {
+                    triplet.setContext(context).draw();
+                }
+
+                // Create cropped canvas (remove 20% top, 5% right)
+                const croppedCanvas = document.createElement('canvas');
+                const cropTop = Math.floor(canvas.height * 0.20);
+                const cropRight = Math.floor(canvas.width * 0.05);
+                croppedCanvas.width = canvas.width - cropRight;
+                croppedCanvas.height = canvas.height - cropTop;
+
+                const croppedCtx = croppedCanvas.getContext('2d');
+                // Copy from original canvas starting at (0, cropTop) with new dimensions
+                croppedCtx.drawImage(canvas, 0, cropTop, croppedCanvas.width, croppedCanvas.height, 0, 0, croppedCanvas.width, croppedCanvas.height);
+
+                // Store cropped PNG data
+                generatedPNGs[pattern.id] = {
+                    canvas: croppedCanvas,
+                    name: pattern.name,
+                    beats: pattern.beats,
+                    triplet: pattern.triplet || false
+                };
+            }
+
+            return canvas;
+        }
+
+        function displayPattern(pattern) {
+            const patternDiv = document.createElement('div');
+            patternDiv.className = 'pattern';
+            patternDiv.innerHTML = `
+                <h3>${pattern.name} (${pattern.id})</h3>
+                <div class="preview" id="container-${pattern.id}"></div>
+                <button onclick="downloadPNG('${pattern.id}')">Download ${pattern.id}.png</button>
+            `;
+
+            document.getElementById('patterns-container').appendChild(patternDiv);
+
+            const canvas = generatePNG(pattern);
+            // Use the cropped canvas for display
+            const displayCanvas = generatedPNGs[pattern.id].canvas;
+            displayCanvas.style.width = '200px';
+            displayCanvas.style.height = '120px';
+            document.getElementById(`container-${pattern.id}`).appendChild(displayCanvas);
+        }
+
+        function downloadPNG(patternId) {
+            const pngData = generatedPNGs[patternId];
+            if (pngData) {
+                pngData.canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${patternId}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+            }
+        }
+
+        document.getElementById('generate-all').onclick = function() {
+            rhythmPatterns.forEach(pattern => {
+                displayPattern(pattern);
+            });
+            document.getElementById('download-all').style.display = 'inline-block';
+        };
+
+        document.getElementById('download-all').onclick = function() {
+            // Auto-download all PNG files
+            Object.keys(generatedPNGs).forEach((patternId, index) => {
+                setTimeout(() => {
+                    downloadPNG(patternId);
+                }, index * 200); // Stagger downloads
+            });
+
+            // Download asset map file
+            setTimeout(() => {
+                const assetMapContent = `// Auto-generated rhythm pattern asset map
+export const rhythmAssets = ${JSON.stringify(
+                    Object.fromEntries(
+                        Object.entries(generatedPNGs).map(([id, data]) => [
+                            id,
+                            {
+                                file: `${id}.png`,
+                                name: data.name,
+                                beats: data.beats,
+                                triplet: data.triplet
+                            }
+                        ])
+                    ), null, 2
+                )};`;
+
+                const mapBlob = new Blob([assetMapContent], { type: 'text/javascript' });
+                const mapUrl = URL.createObjectURL(mapBlob);
+                const mapLink = document.createElement('a');
+                mapLink.href = mapUrl;
+                mapLink.download = 'rhythm-assets.js';
+                document.body.appendChild(mapLink);
+                mapLink.click();
+                document.body.removeChild(mapLink);
+                URL.revokeObjectURL(mapUrl);
+            }, Object.keys(generatedPNGs).length * 200 + 500);
+
+            alert('Downloading all ' + Object.keys(generatedPNGs).length + ' PNG files automatically!');
+        };
+    </script>
+</body>
+</html>

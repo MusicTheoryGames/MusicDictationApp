@@ -1,0 +1,3032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MelodyQuest — Melodic Dictation</title>
+<script src="vendor/vexflow.js"></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M10 38h7l4-19 6 30 5-24 4 13h11M52 24v19' stroke='%232563eb' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='47' cy='43' r='6' fill='%232563eb'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="suite-theme.css?v=20260701-bricks">
+<style>
+  /* Structural layout only — COLORS come from the suite theme (body.theme-*)
+     via the shared panel classes below, per the no-universal-colors rule. */
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; }
+  .header { padding: 16px 24px 4px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .header h1 { font-size: 1.35rem; margin: 0; margin-right: auto; }
+  .melodic-hud { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap;
+    max-width: 1000px; margin: 6px auto 0; padding: 0 24px; width: 100%; }
+  .melodic-hud__title { display: inline-flex; align-items: center; gap: 9px; }
+  /* Two-line title: small "Level N" over the big title (+ info icon). Never breaks mid-word. */
+  .melodic-hud__level { display: flex; flex-direction: column; line-height: 1.08; }
+  .melodic-hud__levelnum { font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .6; }
+  .melodic-hud__leveltitle { font-weight: 900; font-size: 1.7rem; letter-spacing: .015em; display: inline-flex; align-items: center; gap: 8px; }
+  .melodic-hud__about { background: transparent; border: none; padding: 3px; margin: 0; cursor: pointer;
+    opacity: .45; color: inherit; line-height: 0; border-radius: 50%; transition: opacity .12s ease; }
+  .melodic-hud__about:hover, .melodic-hud__about:focus-visible { opacity: 1; }
+  .melodic-hud__goal { opacity: .8; flex-basis: 100%; margin-top: -2px; }
+  .melodic-hud__mastery { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .melodic-hud__game { flex-basis: 100%; font-weight: 700; opacity: .9; }
+  /* Round stars: big, immediate, visual verdict (SVG, currentColor — no emoji). */
+  .melodic-stars { display: flex; gap: 6px; margin: 8px 0 2px; height: 34px; }
+  .melodic-stars svg { width: 32px; height: 32px; opacity: .25; transform: scale(.6); }
+  .melodic-stars svg.is-earned { opacity: 1; color: #f5b301; animation: starPop .45s cubic-bezier(.2,1.6,.4,1) forwards; }
+  .melodic-stars svg.is-earned:nth-child(2) { animation-delay: .12s; }
+  .melodic-stars svg.is-earned:nth-child(3) { animation-delay: .24s; }
+  @keyframes starPop { from { transform: scale(.4) rotate(-18deg); } to { transform: scale(1) rotate(0); } }
+  /* Floating +points */
+  /* Correct-answer celebration: custom-SVG confetti spray + a central star pop. */
+  .melodic-confetti { position: absolute; inset: 0; overflow: visible; pointer-events: none; z-index: 40; }
+  .melodic-confetti span { position: absolute; left: 50%; top: 44%; display: block; will-change: transform, opacity; }
+  .melodic-confetti span svg { display: block; width: 100%; height: 100%; }
+  @keyframes confettiFly {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(.2) rotate(0deg); }
+    12%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1) rotate(var(--rot)); }
+  }
+  .melodic-celebrate-pop { position: absolute; left: 50%; top: 42%; color: #f5b301; z-index: 41; pointer-events: none;
+    transform: translate(-50%, -50%); animation: celebratePop .9s cubic-bezier(.2,1.5,.4,1) forwards; }
+  @keyframes celebratePop {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(-25deg); }
+    30%  { opacity: 1; transform: translate(-50%, -50%) scale(1.12) rotate(0deg); }
+    72%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1.3) rotate(10deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .melodic-confetti, .melodic-celebrate-pop { display: none; }
+  }
+  .melodic-scorepop { position: absolute; font-weight: 900; font-size: 2rem; color: #2a9d5c;
+    pointer-events: none; animation: scoreRise 1.2s ease-out forwards; z-index: 50; text-shadow: 0 2px 6px rgba(0,0,0,.25); }
+  @keyframes scoreRise { 0% { opacity: 0; transform: translateY(8px) scale(.7); } 18% { opacity: 1; transform: translateY(0) scale(1.15); } 70% { opacity: 1; } 100% { opacity: 0; transform: translateY(-40px) scale(1); } }
+  /* Achievement banner */
+  .melodic-achv { position: fixed; top: 18px; left: 50%; transform: translateX(-50%) translateY(-80px);
+    z-index: 950; padding: 12px 22px; border-radius: 12px; font-weight: 800; display: flex; gap: 10px;
+    align-items: center; background: #1f2430; color: #ffd23f; box-shadow: 0 8px 30px rgba(0,0,0,.35);
+    animation: achvIn .5s cubic-bezier(.2,1.4,.4,1) forwards, achvOut .5s ease-in 3.4s forwards; }
+  .melodic-achv svg { width: 22px; height: 22px; }
+  @keyframes achvIn { to { transform: translateX(-50%) translateY(0); } }
+  @keyframes achvOut { to { transform: translateX(-50%) translateY(-80px); opacity: 0; } }
+  .melodic-hud__bar { width: 140px; height: 12px; border-radius: 6px; overflow: hidden; background: rgba(127,127,127,.25); }
+  .melodic-hud__fill { height: 100%; width: 0; transition: width .3s; background: currentColor; }
+  .melodic-main { max-width: 1000px; margin: 0 auto; padding: 14px 24px 60px; }
+  .answer-area { border-radius: 16px; padding: 26px 28px; position: relative; }
+  /* Theme is a set-once preference, not an every-screen control — hide the floating
+     picker suite-theme.js appends to <body>; it now lives inside the Settings drawer. */
+  #themeSwitcher { display: none !important; }
+  /* Settings cog + slide-in drawer: keep config off the gameplay screen entirely. */
+  .melodic-cog { position: fixed; top: 12px; right: 12px; z-index: 1200; width: 40px; height: 40px;
+    display: inline-flex; align-items: center; justify-content: center; border-radius: 999px;
+    border: none; cursor: pointer; color: currentColor; background: rgba(127,127,127,.16); opacity: .7; }
+  .melodic-cog:hover { opacity: 1; }
+  .melodic-drawer-scrim { position: fixed; inset: 0; z-index: 1300; background: rgba(0,0,0,.5); }
+  .melodic-drawer { position: fixed; top: 0; right: 0; z-index: 1301; height: 100%; width: min(340px, 88vw);
+    display: flex; flex-direction: column; box-shadow: -8px 0 30px rgba(0,0,0,.35);
+    background: #17171a; color: #e8e8ea; /* default; each theme overrides in suite-theme.css */
+    transform: translateX(0); transition: transform .18s ease; }
+  .melodic-drawer[hidden] { display: flex !important; transform: translateX(102%); pointer-events: none; }
+  .melodic-drawer-scrim[hidden] { display: none; }
+  .melodic-drawer__head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid rgba(127,127,127,.25); }
+  .melodic-drawer__title { font-size: 1.1rem; font-weight: 800; letter-spacing: .02em; }
+  .melodic-drawer__close { padding: 6px; min-width: 0; }
+  .melodic-drawer__body { display: flex; flex-direction: column; gap: 18px; padding: 20px 18px; overflow-y: auto; }
+  .melodic-drawer__body label { display: flex; flex-direction: column; gap: 6px; font-size: .92rem; font-weight: 700; }
+  .melodic-drawer__body label.melodic-drawer__check { flex-direction: row; align-items: center; gap: 8px; font-weight: 600; }
+  .melodic-drawer__body select { padding: 9px 10px; border-radius: 8px; font-size: 1rem; }
+  .melodic-controls { display: flex; gap: 12px; margin-top: 20px; align-items: center; flex-wrap: wrap; }
+  .melodic-controls select { padding: 6px 10px; border-radius: 8px; font-size: .9rem; }
+  .melodic-toast { font-weight: 800; min-height: 1.4em; margin-top: 10px; }
+
+  /* Renderer structural styles (same semantic class names the renderers emit
+     everywhere — lab and game share the renderer code verbatim). */
+  .melodic-btn { padding: 11px 20px; border-radius: 10px; border: 2px solid transparent; font-weight: 700; cursor: pointer; font-size: 1rem; display: inline-flex; align-items: center; gap: 8px; }
+  .melodic-btn svg { width: 15px; height: 15px; }
+  /* icon-only button (e.g. Play on tile stages, Hear-home reference): compact square, no word */
+  .melodic-btn--icon { padding: 11px 14px; gap: 0; }
+  .melodic-btn--icon svg { width: 20px; height: 20px; }
+  /* Play button is ALWAYS just the green triangle; the hearings pips sit in their own row
+     BELOW it (this wrapper stacks them), so the button never changes shape. */
+  /* Every renderer's "[Play] HOME" row: the buttons are DOM-appended with no whitespace, so
+     without this they touch/collide. Center them with a gap; wrap on narrow phones. */
+  [class$="__play-row"] { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; }
+  .melodic-play-wrap { display: inline-flex; flex-direction: row; align-items: center; gap: 14px; }
+  .melodic-play-wrap__col { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; }
+  .melodic-hearpips { display: inline-flex; gap: 5px; align-items: center; }
+  .melodic-hearpip { width: 7px; height: 7px; border-radius: 999px; background: currentColor; opacity: .85; }
+  .melodic-hearpip.is-spent { opacity: .22; }
+  /* Transport buttons (--play / --go) are GREEN, but each THEME renders that green in its
+     own style — see the per-theme rules in suite-theme.css. The role (green=play, accent=CTA)
+     is consistent WITHIN every theme; the exact shade/finish differs BETWEEN themes. */
+  /* degree/choice palettes: consistent keycap-sized buttons */
+  .melodic-labeling__palette .melodic-btn, .melodic-missing-note__palette .melodic-btn,
+  .melodic-notation-entry__palette .melodic-btn, .melodic-error-detect__palette .melodic-btn { min-width: 58px; justify-content: center; font-size: 1.15rem; }
+  .melodic-recognition__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  @media (max-width: 760px) { .melodic-recognition__grid { grid-template-columns: 1fr; } }
+  .melodic-recognition__option { border: 2px solid rgba(127,127,127,.35); border-radius: 12px; padding: 12px; cursor: pointer; background: #fff; }
+  /* Option staves must be READABLE at a glance — the four choices differ by one
+     or two noteheads, so small engraving makes them look identical (self-run
+     finding while watching the real flow). */
+  /* Staff scales to fit the tile (renderStaff is responsive now) — whole melody + clef always show. */
+  .melodic-recognition__option.is-correct { border-color: #2a9d5c; }
+  .melodic-recognition__option.is-wrong { border-color: #e6413a; }
+  .melodic-recognition__status, .melodic-labeling__status, .melodic-missing-note__status,
+  .melodic-error-detect__status, .melodic-notation-entry__status, .melodic-tonic-contour__status { font-weight: 800; min-height: 1.4em; margin-top: 8px; }
+  .is-correct { color: #2a9d5c; }
+  .is-wrong { color: #e6413a; }
+  .melodic-labeling__strip, .melodic-missing-note__strip, .melodic-notation-entry__strip { display: flex; gap: 6px; margin: 10px 0; }
+  .melodic-labeling__slot, .melodic-missing-note__slot, .melodic-notation-entry__slot { min-width: 54px; height: 46px; border: 2px solid rgba(127,127,127,.4); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; cursor: pointer; background: #fff; }
+  .melodic-labeling__slot.is-active, .melodic-missing-note__slot.is-active { border-color: #3b82f6; }
+  .melodic-labeling__slot.is-filled, .melodic-missing-note__slot.is-filled, .melodic-notation-entry__slot.is-filled { background: #eef3fc; }
+  .melodic-labeling__palette, .melodic-missing-note__palette, .melodic-notation-entry__palette { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+  .melodic-labeling__palette .melodic-btn, .melodic-missing-note__palette .melodic-btn,
+  .melodic-notation-entry__palette .melodic-btn { background: #fff; color: #1f2430; border-color: rgba(127,127,127,.4); }
+  .melodic-btn:disabled { opacity: .4; cursor: default; }
+  .melodic-notation-entry__actions { display: flex; gap: 8px; margin: 10px 0; }
+  .melodic-notation-entry__heading, .melodic-tonic-contour__prompt { font-weight: 700; margin-bottom: 8px; }
+  .melodic-notation-entry__progress { opacity: .7; font-size: .85rem; margin-bottom: 8px; }
+  /* wrap + center so rows (degree palettes, choices, play rows) never spill past the
+     themed container/plating — items must fit inside it, not run off screen. */
+  .melodic-tonic-contour__choices { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 10px 0; }
+  .melodic-tonic-contour__card { margin: 10px 0; }
+  .melodic-tonic-contour__progress { opacity: .7; font-size: .85rem; }
+  .melodic-tonic-contour__heading { font-weight: 800; font-size: 1.1rem; margin-bottom: 6px; }
+  /* Interval Gym (INTERVAL_GYM_SPEC §6) */
+  .melodic-gym__heading { font-size: 1.15rem; }
+  .melodic-gym__board { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; margin: 12px 0 16px; }
+  .melodic-gym__circuit { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left; padding: 12px 14px; }
+  .melodic-gym__circuit span { font-size: .8rem; opacity: .75; font-weight: 500; }
+  .melodic-gym__circuit.is-locked { opacity: .45; }
+  .melodic-gym__chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 14px; }
+  .melodic-gym__chip { font-size: .85rem; padding: 6px 10px; }
+  .melodic-gym__chip[disabled] { opacity: .4; }
+  .melodic-btn.is-selected { outline: 2px solid currentColor; }
+  .melodic-gym__capstone { display: block; margin: 4px 0 12px; }
+  .melodic-gym__capstone-done { margin: 4px 0 12px; }
+  .melodic-hud__coverage { font-size: .85rem; opacity: .8; }
+  .melodic-feedback { margin-top: 8px; font-size: .92rem; font-weight: 600; opacity: .92; line-height: 1.45; max-width: 620px; }
+  .melodic-bookend .melodic-labeling__staff { margin: 12px 0; }
+  /* Prominent target: "Click every (play) 3-hat you hear" — a soft note-coin pill (the little
+     round play button says "tap to hear it"), sized so the degree is the hero without the
+     boxed-number-in-a-sentence look. Surrounding words are quiet so the coin leads. */
+  .melodic-tap-target { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 9px;
+    margin: 6px 0 12px; font-size: 1rem; font-weight: 600; }
+  .melodic-tap-target__lead { opacity: .62; letter-spacing: .01em; }
+  .melodic-tap-target__chip { display: inline-flex; align-items: center; gap: 13px; cursor: pointer;
+    padding: 5px 20px 5px 7px; border-radius: 999px; color: inherit;
+    border: 1.5px solid rgba(128,128,128,.38); background: rgba(128,128,128,.12);
+    transition: transform .08s ease, background .12s ease, border-color .12s ease; }
+  .melodic-tap-target__play { display: inline-flex; align-items: center; justify-content: center;
+    width: 27px; height: 27px; border-radius: 999px; flex: 0 0 auto;
+    border: 1.5px solid currentColor; background: rgba(128,128,128,.10); }
+  .melodic-tap-target__play svg { width: 11px; height: 11px; margin-left: 1px; opacity: .95; }
+  /* Degree is the hero. The extra top padding leaves room for the caret (hat) so it
+     never crowds the play button or looks vertically off. */
+  .melodic-tap-target__deg { font-weight: 900; font-size: 1.5rem; line-height: 1; letter-spacing: .02em; padding-top: 2px; }
+  .melodic-tap-target__chip:hover { background: rgba(128,128,128,.22); border-color: currentColor; }
+  .melodic-tap-target__chip:active { transform: translateY(1px); }
+  /* M0 stage 0 — live "find home" single big button + its feedback states. */
+  .melodic-live-home { text-align: center; }
+  .melodic-live-home__progress { display: flex; align-items: center; justify-content: center; gap: 18px; margin: 6px 0 16px; }
+  .melodic-live-home__hits { display: inline-flex; gap: 8px; }
+  .melodic-live-home__hit { width: 14px; height: 14px; border-radius: 999px; border: 2px solid currentColor; opacity: .4; transition: all .15s ease; }
+  .melodic-live-home__hit.is-filled { background: #2a9d5c; border-color: #2a9d5c; opacity: 1; }
+  .melodic-live-home__keys { display: inline-flex; gap: 5px; }
+  .melodic-live-home__key { width: 8px; height: 8px; border-radius: 999px; border: 1px solid currentColor; opacity: .35; }
+  .melodic-live-home__key.is-done { background: currentColor; opacity: .8; }
+  .melodic-live-home__key.is-active { opacity: 1; box-shadow: 0 0 0 3px rgba(230,184,0,.35); border-color: #e6b800; background: #e6b800; }
+  /* Tile-stage round meter: a dot per required clean round (owner: not a jammed text line). */
+  .melodic-round-meter { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 2px 0 10px; }
+  .melodic-round-meter__dot { width: 12px; height: 12px; border-radius: 999px; border: 2px solid currentColor; opacity: .4; }
+  .melodic-round-meter__dot.is-done { background: #2a9d5c; border-color: #2a9d5c; opacity: 1; }
+  .melodic-round-meter__fast { font-weight: 800; color: #e6b800; font-size: .85rem; letter-spacing: .03em; margin-left: 6px; text-transform: uppercase; }
+  /* Big HOME button: wears the theme accent (via melodic-btn--primary) so it looks like
+     THE thing to tap, not a grey box. Size/shape here; colour comes from the theme. */
+  .melodic-live-home__btn { font-weight: 900; font-size: 1.4rem; letter-spacing: .08em; padding: 20px 0;
+    width: min(280px, 78%); border-radius: 16px; cursor: pointer;
+    display: inline-flex; justify-content: center; align-items: center; /* centre the label (base .melodic-btn left-aligns) */
+    box-shadow: 0 4px 0 rgba(0,0,0,.28);
+    transition: transform .06s ease, background .1s ease, border-color .1s ease, box-shadow .12s ease; }
+  .melodic-live-home__btn:active { transform: translateY(2px); box-shadow: 0 0 0 rgba(0,0,0,.25); }
+  /* "tap me" pulse + glow while waiting to begin. */
+  .melodic-live-home__btn.is-await { animation: liveHomeInvite 1.5s ease-in-out infinite; }
+  @keyframes liveHomeInvite { 0%,100% { transform: scale(1); box-shadow: 0 4px 0 rgba(0,0,0,.28); }
+    50% { transform: scale(1.045); box-shadow: 0 8px 26px rgba(0,0,0,.35); } }
+  /* Feedback flashes must beat the theme accent (higher specificity), hence !important. */
+  .melodic-live-home__btn.is-demo { border-color: #e6b800 !important; box-shadow: 0 6px 20px rgba(230,184,0,.5) !important; animation: liveHomePulse 1.4s ease-in-out infinite; }
+  .melodic-live-home__btn.is-hit { border-color: #2a9d5c !important; background: #2a9d5c !important; color: #fff !important; box-shadow: 0 6px 20px rgba(42,157,92,.55) !important; transform: translateY(-3px); }
+  .melodic-live-home__btn.is-false { border-color: #e6413a !important; background: #e6413a !important; color: #fff !important; }
+  .melodic-live-home__btn.is-miss { border-color: #d08700 !important; background: #d08700 !important; color: #fff !important; }
+  @keyframes liveHomePulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+  .melodic-live-home__restart { margin-top: 16px; padding: 9px; border-radius: 999px; opacity: .6; min-width: 0; }
+  .melodic-live-home__restart svg { width: 22px; height: 22px; display: block; }
+  .melodic-live-home__restart:hover { opacity: 1; }
+  /* M1 contour controls: SVG arrow buttons (stage 0), step/skip move grid (stage 1),
+     shape-picker (stage 2). All custom SVG, feedback via the shared is-correct/is-wrong. */
+  .melodic-contour-btn { min-width: 84px; height: 64px; display: inline-flex; align-items: center; justify-content: center; }
+  .melodic-contour-btn svg { width: 50px; height: 44px; }
+  .melodic-move-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-width: 300px; margin: 12px auto; }
+  .melodic-move-btn { height: 66px; border-radius: 12px; border: 2px solid rgba(128,128,128,.4); background: rgba(128,128,128,.10);
+    cursor: pointer; color: inherit; display: inline-flex; align-items: center; justify-content: center; transition: transform .08s ease, background .1s ease, border-color .1s ease; }
+  .melodic-move-btn svg { width: 44px; height: 40px; }
+  .melodic-move-btn:hover { background: rgba(128,128,128,.2); border-color: currentColor; }
+  .melodic-move-btn:active { transform: translateY(1px); }
+  .melodic-move-btn--same { grid-column: 1 / span 2; height: 52px; }
+  .melodic-move-btn.is-correct { border-color: #2a9d5c; color: #2a9d5c; box-shadow: inset 0 0 0 3px #2a9d5c; }
+  .melodic-move-btn.is-wrong { border-color: #e6413a; color: #e6413a; box-shadow: inset 0 0 0 3px #e6413a; }
+  .melodic-shape-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 16px 0; }
+  .melodic-shape-btn { padding: 10px 14px; border-radius: 14px; border: 2px solid rgba(128,128,128,.4); background: rgba(128,128,128,.10);
+    cursor: pointer; color: inherit; transition: transform .08s ease, background .1s ease, border-color .1s ease; }
+  .melodic-shape-btn svg { width: 132px; height: 66px; display: block; }
+  .melodic-shape-btn:hover { background: rgba(128,128,128,.2); border-color: currentColor; }
+  .melodic-shape-btn:active { transform: translateY(1px); }
+  .melodic-shape-btn.is-correct { border-color: #2a9d5c; color: #2a9d5c; box-shadow: 0 0 0 3px rgba(42,157,92,.4); }
+  .melodic-shape-btn.is-wrong { border-color: #e6413a; color: #e6413a; }
+  /* Tap-stream tiles + beat cursor (M0 stages 2-4 · Gym FIND) */
+  .melodic-tap-tiles { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+  .melodic-tap-tile { min-width: 48px; height: 54px; border-radius: 10px; border: 2px solid rgba(128,128,128,.45);
+    background: transparent; font-weight: 800; font-size: 1.05rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: transform .08s ease, box-shadow .08s ease, border-color .1s ease; }
+  .melodic-tap-tile.is-marked { border-color: currentColor; box-shadow: inset 0 0 0 3px currentColor; }
+  .melodic-tap-tile.is-playing { transform: translateY(-6px); border-color: #e6b800; box-shadow: 0 6px 16px rgba(230,184,0,.45); }
+  /* Three DISTINCT grading states so a false mark and a missed target never look alike:
+     correct (green, check) · wrong = you marked it but it wasn't the note (red, cross) ·
+     missed = it WAS the note but you didn't mark it (amber dashed, dot). */
+  .melodic-tap-tile.is-correct { border-color: #2a9d5c; color: #2a9d5c; box-shadow: inset 0 0 0 3px #2a9d5c; }
+  .melodic-tap-tile.is-wrong { border-color: #e6413a; color: #e6413a; box-shadow: inset 0 0 0 3px #e6413a; }
+  .melodic-tap-tile.is-missed { border-color: #d08700; color: #a86a00; border-style: dashed; box-shadow: inset 0 0 0 2px rgba(208,135,0,.4); }
+  .melodic-tap-tile__mark { position: absolute; top: -8px; right: -8px; width: 20px; height: 20px; border-radius: 999px;
+    display: flex; align-items: center; justify-content: center; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+  .melodic-tap-tile__mark svg { width: 13px; height: 13px; }
+  .melodic-tap-tile.is-correct .melodic-tap-tile__mark { color: #2a9d5c; }
+  .melodic-tap-tile.is-wrong .melodic-tap-tile__mark { color: #e6413a; }
+  .melodic-tap-tile.is-missed .melodic-tap-tile__mark { color: #d08700; }
+  .melodic-tap-tile { position: relative; }
+  .melodic-tap-tile--wide { min-width: 120px; padding: 0 14px; font-size: .95rem; }
+  /* HOME is an ACTION button (replay home anytime), not an answer tile — give it a
+     filled, obviously-clickable look distinct from the empty numbered tiles. */
+  .melodic-tap-tile--home { min-width: 82px; gap: 5px; font-size: .8rem; letter-spacing: .04em; margin-right: 12px;
+    background: rgba(128,128,128,.22); border-color: currentColor; opacity: 1;
+    box-shadow: 0 2px 0 rgba(0,0,0,.28); }
+  .melodic-tap-tile--home svg { width: 15px; height: 15px; }
+  .melodic-tap-tile--home:hover { background: rgba(128,128,128,.34); }
+  .melodic-tap-tile--home:active { transform: translateY(2px); box-shadow: 0 0 0 rgba(0,0,0,.28); }
+  /* Motivation bar (visible points · streak · journey · next goal) */
+  .melodic-motivation { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 4px 0 14px; padding: 10px 14px; border-radius: 12px; background: rgba(128,128,128,.10); }
+  .melodic-motivation__streak { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: .95rem; padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(128,128,128,.35); }
+  .melodic-motivation__streak.is-hot { border-color: #e6b800; color: #e6b800; box-shadow: 0 0 0 2px rgba(230,184,0,.18) inset; }
+  .melodic-motivation__streak.is-hot.bump { animation: mot-bump .4s ease; }
+  @keyframes mot-bump { 0%{transform:scale(1)} 40%{transform:scale(1.18)} 100%{transform:scale(1)} }
+  .melodic-motivation__journey { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .melodic-motivation__step { font-size: .82rem; font-weight: 700; padding: 3px 9px; border-radius: 8px; opacity: .5; border: 1px solid transparent; }
+  .melodic-motivation__step.is-active { opacity: 1; border-color: currentColor; }
+  .melodic-motivation__step.is-done { opacity: .95; color: #2a9d5c; }
+  /* Journey as dots: upcoming = hollow dot, done = filled+check, current = labelled pill. */
+  /* stage progress: uniform pure dots — colour is the only signal, no words */
+  .melodic-motivation__pip { display: inline-block; width: 11px; height: 11px; border-radius: 999px; box-sizing: border-box; }
+  .melodic-motivation__pip.is-upcoming { border: 2px solid currentColor; opacity: .3; }        /* not yet: empty ring */
+  .melodic-motivation__pip.is-done { background: #2a9d5c; }                                     /* passed: solid green */
+  .melodic-motivation__pip.is-active { background: #e6b800; box-shadow: 0 0 0 3px rgba(230,184,0,.3); } /* you-are-here: solid amber */
+  /* Level 4 two-step meter (Rhythm -> Notes): dots, not "Step 1/Step 2" words */
+  .melodic-rhythm-steps { display: flex; justify-content: center; gap: 8px; margin: 8px 0 12px; min-height: 11px; }
+  /* Native figure-tile rhythm entry (ported BeatQuest bank; white surfaces so the note glyphs read on every theme) */
+  .melodic-rhythmentry__staff { display: flex; justify-content: center; min-height: 92px; overflow-x: auto; margin: 4px 0 10px; background: #fff; border-radius: 10px; padding: 6px; }
+  .melodic-rhythmentry__empty { opacity: .65; font-size: .9rem; padding: 28px 6px; text-align: center; color: #333; }
+  .melodic-rhythmentry__beats { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 2px 0 12px; }
+  .melodic-rhythmentry__beat { width: 9px; height: 9px; border-radius: 999px; border: 2px solid currentColor; opacity: .3; box-sizing: border-box; }
+  .melodic-rhythmentry__beat.is-filled { background: #2a9d5c; border-color: #2a9d5c; opacity: 1; }
+  .melodic-rhythmentry__bank { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 6px 0; }
+  .melodic-rhythmentry__tile { background: #fff; border: 1px solid rgba(0,0,0,.18); border-radius: 8px; padding: 4px 8px; min-height: 58px; display: inline-flex; align-items: center; cursor: pointer; }
+  .melodic-rhythmentry__tile:hover:not(:disabled) { border-color: #2a9d5c; box-shadow: 0 0 0 2px rgba(42,157,92,.3); }
+  .melodic-rhythmentry__tile:disabled { opacity: .32; cursor: default; }
+  .melodic-motivation__sep { opacity: .35; }
+  .melodic-motivation__score { margin-left: auto; font-weight: 800; font-size: 1rem; }
+  .melodic-motivation__goal { flex-basis: 100%; font-size: .85rem; font-weight: 600; opacity: .85; }
+  .melodic-sing__meter { height: 10px; border-radius: 6px; background: rgba(128,128,128,.25); margin: 10px 0; overflow: hidden; max-width: 320px; }
+  .melodic-sing__meter span { display: block; height: 100%; width: 0%; background: #2a9d5c; transition: width .05s linear; }
+  .melodic-memory-span__slots { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; margin: 14px 0; border-radius: 12px; padding: 6px; }
+  /* HOME block sits with the answer boxes (Level 1 style); lights when home is sounding */
+  .melodic-memory-span__home { display: inline-flex; align-items: center; gap: 5px; height: 40px; padding: 0 12px; border-radius: 8px;
+    border: 1px solid rgba(128,128,128,.4); background: transparent; color: inherit; font-weight: 800; letter-spacing: .04em; cursor: pointer; }
+  .melodic-memory-span__home svg { width: 14px; height: 14px; }
+  .melodic-memory-span__home.is-playing { border-color: #e6b800; box-shadow: 0 0 0 3px rgba(230,184,0,.35); color: #e6b800; }
+  /* whole-row "listening" glow while the tune plays — NOT a per-box cursor */
+  .melodic-memory-span__slots.is-listening { animation: memListen 1.1s ease-in-out infinite; }
+  @keyframes memListen { 0%,100% { box-shadow: 0 0 0 0 rgba(230,184,0,0); } 50% { box-shadow: 0 0 0 4px rgba(230,184,0,.18); } }
+  .melodic-memory-span__slot { min-width: 34px; height: 40px; line-height: 40px; text-align: center; border-radius: 8px; border: 1px solid rgba(128,128,128,.4); font-weight: 800; font-size: 1.1rem; }
+  .melodic-memory-span__slot.is-filled { border-style: solid; }
+  .melodic-memory-span__slot.is-correct { border-color: #2a9d5c; color: #2a9d5c; }
+  .melodic-memory-span__slot.is-wrong { border-color: #e6413a; color: #e6413a; }
+  .melodic-protonotation__grid { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+  .melodic-protonotation__col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .melodic-protonotation__contour { display: flex; gap: 3px; min-height: 30px; align-items: center; font-weight: 800; }
+  .melodic-protonotation__arrow { padding: 3px 7px; font-size: 1rem; }
+  .melodic-protonotation__degree { padding: 6px; border-radius: 8px; font-size: 1rem; font-weight: 700; }
+  .melodic-tap-target__tap { width: 100%; max-width: 420px; padding: 26px 0; font-size: 1.5rem; margin: 14px 0; }
+  .melodic-tap-target__reveal { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .melodic-tap-target__chip { min-width: 40px; text-align: center; padding: 6px 8px; border-radius: 8px; border: 2px solid rgba(127,127,127,.4); font-weight: 800; background: #fff; color: #1f2430; }
+  .melodic-tap-target__chip.is-correct { border-color: #2a9d5c; }
+  .melodic-tap-target__chip.is-wrong { border-color: #e6413a; }
+  .melodic-error-detect__hint { opacity: .8; margin: 8px 0; }
+  .melodic-error-detect__staff, .melodic-missing-note__staff, .melodic-labeling__staff { overflow-x: auto; }
+
+  /* (removed a stray universal "--play/--primary = flat blue" fallback — transport green and
+     the CTA accent are both fully owned per-theme in suite-theme.css now.) */
+
+  /* Level-intro / level-up overlay: a dim scrim + one themed panel (the card
+     reuses .answer-area so every theme's panel treatment applies untouched). */
+  .melodic-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex;
+    align-items: center; justify-content: center; z-index: 900; }
+  .melodic-overlay__card { max-width: 460px; width: calc(100% - 40px); padding: 26px 28px;
+    display: flex; flex-direction: column; gap: 12px; text-align: center; align-items: center; }
+  .melodic-overlay__heading { font-size: 1.5rem; font-weight: 800; }
+  .melodic-overlay__sub { font-size: 1.05rem; font-weight: 700; }
+  .melodic-overlay__goal { opacity: .85; }
+  .melodic-overlay__stats { font-size: .9rem; opacity: .75; }
+  .melodic-overlay__listen-label { font-weight: 700; margin-top: 2px; }
+  .melodic-overlay__listen { text-align: left; margin: 0; padding-left: 22px; }
+  .melodic-overlay__listen li { margin: 3px 0; }
+  .melodic-overlay__strategy { font-style: italic; opacity: .85; }
+  .melodic-overlay__controls { margin: 8px 0; padding: 10px 13px; border-radius: 10px; background: rgba(128,128,128,.13); line-height: 1.45; }
+  .melodic-overlay__controls-lbl { font-weight: 800; }
+  /* Skills Gym */
+  .melodic-skillsgym__level { font-size: 1.1rem; padding: 16px 20px; width: min(360px, 88%); display: block; margin: 10px auto; }
+  .melodic-skillsgym__bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 8px 12px; border-radius: 12px;
+    background: rgba(128,128,128,.12); margin-bottom: 12px; font-weight: 800; }
+  .melodic-skillsgym__skill { flex: 1 1 auto; }
+  .melodic-skillsgym__streak, .melodic-skillsgym__score { opacity: .85; font-size: .95rem; }
+  .melodic-skillsgym__end { margin-left: auto; }
+  .melodic-skillsgym__drill { padding: 4px 0; }
+  .melodic-skillsgym__summary { text-align: center; }
+  .melodic-skillsgym__summary .melodic-btn { margin: 6px; }
+  .melodic-skillsgym__free { display: block; margin: 14px auto 8px; opacity: .9; }
+  .melodic-skillsgym__freegrid { flex-wrap: wrap; justify-content: center; }
+  .melodic-skillsgym__reward { position: fixed; left: 50%; top: 18%; transform: translateX(-50%); z-index: 60;
+    padding: 12px 20px; border-radius: 12px; font-weight: 900; box-shadow: 0 6px 24px rgba(0,0,0,.4);
+    background: rgba(128,128,128,.2); border: 2px solid currentColor; animation: scoreRise 2.4s ease forwards; }
+  .melodic-skillsgym__reward.is-big { color: #f5b301; font-size: 1.2rem; }
+  .melodic-skillsgym__reward.is-medium { color: #2a9d5c; }
+  .melodic-skillsgym__reward.is-small { color: inherit; opacity: .8; font-size: .85rem; animation-duration: 1.1s; }
+  /* M1 modal legend — move icons + meanings + play example */
+  .melodic-legend { margin: 10px 0 4px; border-radius: 12px; padding: 10px 12px; background: rgba(128,128,128,.10); }
+  .melodic-legend__note { font-size: .9rem; opacity: .85; margin-bottom: 8px; line-height: 1.4; }
+  .melodic-legend__row { display: flex; align-items: center; gap: 12px; padding: 5px 0; }
+  .melodic-legend__icon { display: inline-flex; width: 46px; flex: 0 0 auto; }
+  .melodic-legend__icon svg { width: 46px; height: 40px; }
+  .melodic-legend__label { flex: 1 1 auto; font-weight: 700; text-align: left; }
+  .melodic-legend__play { padding: 5px 12px; font-size: .85rem; }
+  .melodic-legend__play svg { margin-right: 4px; }
+  .melodic-overlay__btnrow { display: flex; gap: 10px; margin-top: 6px; }
+  .melodic-placement__card { max-width: 520px; }
+  .melodic-placement__tier { width: 100%; display: flex; flex-direction: column; gap: 2px; align-items: flex-start; text-align: left; }
+  .melodic-placement__tier span { font-weight: 400; opacity: .8; font-size: .9rem; }
+  .melodic-daily { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .melodic-daily__label { font-weight: 700; opacity: .85; }
+  .melodic-daily__chip.is-done { opacity: .55; }
+  .melodic-howto, .melodic-tonic-contour__howto { opacity: .85; margin: 4px 0 12px; line-height: 1.45; }
+  /* suite-theme's mountDecor injects a DECORATIVE fake score/VU HUD into .header
+     (built for the rhythm game's chrome). This page shows REAL mastery — fake
+     score data next to it is misleading clutter. */
+  .header .dq-extra { display: none !important; }
+  /* Single-line rhythm staff (labeling / notation-entry phase 2): notation ink
+     stays black-on-card; the ACTIVE note (awaiting its degree) highlights via
+     the .is-active class renderRhythmLine sets on the note's SVG group. */
+  .melodic-labeling__staff, .melodic-notation-entry__rhythm { background: #fff; border-radius: 12px;
+    padding: 14px 16px 8px; overflow-x: auto; margin: 14px 0; display: flex; justify-content: center; }
+  /* Pitched staffs sit on a white card in EVERY theme — engraving must always
+     read as ink on paper (same principle as the recognition option cards). */
+  .melodic-error-detect__staff, .melodic-missing-note__staff { display: flex; justify-content: center;
+    background: #fff; border-radius: 12px; padding: 12px 16px; margin: 12px 0; overflow-x: auto; }
+  .melodic-labeling__staff svg .is-labelable:hover path,
+  .melodic-notation-entry__rhythm svg .is-labelable:hover path { fill: #3b82f6; stroke: #3b82f6; }
+  .melodic-labeling__staff svg .is-active path,
+  .melodic-notation-entry__rhythm svg .is-active path { fill: #3b82f6; stroke: #3b82f6; }
+  .melodic-rhythmline { margin: 0 auto; }
+  .melodic-rhythmline__label { font-weight: 800; font-size: 1.05rem; color: #1f2430; min-width: 20px; text-align: center; }
+  .melodic-rhythmline__label:not(.is-filled) { opacity: .35; }
+  .melodic-rhythmline__label.is-active { color: #3b82f6; }
+  /* Mystery-note chip (missing-note): an empty-slot marker at the note's true
+     position — deliberately NOT a notehead, so it carries zero pitch information. */
+  .melodic-mystery-chip { display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border: 2px dashed #6b7280; border-radius: 7px;
+    background: #fff; color: #1f2430; font-weight: 800; font-size: 15px; }
+
+  /* Per-example playback SPEED WHEEL (in every dictation level's play row). A compact vertical
+     scroll picker showing ONE mode at a time; flick/scroll to change, click cycles. currentColor
+     border + inset edge-shadow hint that it scrolls; the bright option is the active mode. Never
+     green (green stays the Play CTA). Starts on Medium each example. */
+  .melodic-speedwheel { display: inline-flex; flex-direction: column; align-items: center; gap: 3px;
+    cursor: ns-resize; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+  .melodic-speedwheel:focus-visible { outline: none; }
+  .melodic-speedwheel__cap { font-size: .58rem; font-weight: 800; letter-spacing: .06em;
+    text-transform: uppercase; opacity: .5; }
+  .melodic-speedwheel__view { height: 30px; width: 86px; overflow-y: auto; scroll-snap-type: y mandatory;
+    border: 1.5px solid currentColor; border-radius: 9px; scrollbar-width: none; -ms-overflow-style: none;
+    box-shadow: inset 0 7px 6px -7px currentColor, inset 0 -7px 6px -7px currentColor; }
+  .melodic-speedwheel__view::-webkit-scrollbar { display: none; }
+  .melodic-speedwheel__track { display: flex; flex-direction: column; }
+  .melodic-speedwheel__opt { height: 30px; line-height: 30px; scroll-snap-align: center; text-align: center;
+    font-size: .82rem; font-weight: 800; opacity: .32; transition: opacity .12s; }
+  .melodic-speedwheel__opt.is-active { opacity: 1; }
+
+  /* Measure-focus aid (Level 4): "Hear a bar" 1 / 2 — plays a single bar at the wheel speed and
+     highlights it on the staff. Numbered play buttons; the highlight is a blue "listen" tint,
+     distinct from green (which means placed / correct). */
+  .melodic-measurehear { display: flex; align-items: center; justify-content: center; gap: 8px;
+    flex-wrap: wrap; margin: 2px 0 4px; }
+  .melodic-measurehear__cap { font-size: .72rem; font-weight: 800; opacity: .6; }
+  .melodic-measurehear__btn { padding: 4px 12px 4px 9px; min-width: 42px; font-size: .85rem;
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+  .melodic-measurehear__btn svg { width: 13px; height: 13px; }
+  .mq-rhythm-native .beat-drop-zone.mq-hear { background: rgba(52,152,219,0.22);
+    box-shadow: inset 0 0 0 2px rgba(52,152,219,0.55); border-radius: 4px; }
+
+  /* Practice menu — one stacked button per mode (name + one-line "when to use"). */
+  .melodic-practice-item { display: block; width: 100%; text-align: left; margin: 6px 0; padding: 10px 14px; }
+  .melodic-practice-item__name { font-weight: 800; }
+  .melodic-practice-item__blurb { font-size: .8rem; opacity: .72; margin-top: 2px; font-weight: 500; }
+
+  /* Ear Arcade (Practice mode) — whack-a-degree game. Neutral per-theme (currentColor); hit = green
+     flash, wrong tap = red flash (game feedback, matching the reserved grading colours). */
+  .melodic-arcade { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
+  .melodic-arcade__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .melodic-arcade__title { font-weight: 800; font-size: 1rem; }
+  .melodic-arcade__pips { display: flex; gap: 5px; }
+  .melodic-arcade__pip { width: 9px; height: 9px; border-radius: 999px; border: 1.5px solid currentColor; opacity: .4; }
+  .melodic-arcade__pip.is-active { opacity: 1; background: currentColor; }
+  .melodic-arcade__pip.is-done { opacity: .8; background: currentColor; }
+  .melodic-arcade__scorerow { display: flex; align-items: baseline; justify-content: space-between; }
+  .melodic-arcade__score { font-weight: 900; font-size: 1.3rem; }
+  .melodic-arcade__combo { font-weight: 800; opacity: .8; }
+  .melodic-arcade__combo.is-hot { color: #f5b301; }
+  .melodic-arcade__stage { position: relative; min-height: 96px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 10px; border-radius: 14px; background: rgba(127,127,127,.10); padding: 14px; }
+  .melodic-arcade__pulse { width: 46px; height: 46px; border-radius: 999px; background: currentColor; opacity: .18; transform: scale(.7); }
+  .melodic-arcade__pulse.is-on { animation: mq-arcade-pop .32s ease-out; }
+  @keyframes mq-arcade-pop { 0% { transform: scale(1.25); opacity: .85; } 100% { transform: scale(.7); opacity: .18; } }
+  .melodic-arcade__status { font-size: .9rem; opacity: .85; text-align: center; }
+  .melodic-arcade__pad { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .melodic-arcade__key { min-width: 64px; min-height: 56px; font-size: 1.2rem; font-weight: 800; }
+  .melodic-arcade__key.is-hit { background: #2a9d5c !important; color: #fff !important; border-color: #2a9d5c !important; }
+  .melodic-arcade__key.is-false { background: #e6413a !important; color: #fff !important; border-color: #e6413a !important; }
+  .melodic-arcade__actions { display: flex; gap: 10px; justify-content: center; }
+
+  /* ============================================================================
+     NATIVE RHYTHM GRID (Level 4) — the ACTUAL BeatQuest drag-and-drop engine
+     (rhythm-student.js) mounted natively in MelodyQuest: no iframe, no chrome.
+     These are the STRUCTURAL rules lifted verbatim from tapping.html's <style>
+     (sizes, staff layout, bar lines, time-sig, drop zones, placed notes). The
+     per-theme COLOURS already live in suite-theme.css (which this page loads) and
+     layer on top via the same class names — so the grid looks/behaves exactly as
+     it does in BeatQuest. .mq-rhythm-native is just the MelodyQuest layout host.
+     ============================================================================ */
+  .mq-rhythm-native { display: flex; flex-direction: column; gap: 12px; width: 100%; align-items: stretch; }
+  .mq-rhythm-native .answer-area { order: 1; }
+  .mq-rhythm-native .rhythm-bank { order: 2; }
+
+  .mq-rhythm-native .rhythm-bank { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+    border-radius: 15px; padding: 12px; border: 1px solid rgba(255,255,255,0.18); flex-shrink: 0; }
+  .mq-rhythm-native .rhythm-tiles { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
+    max-height: 30vh; overflow-y: auto; }
+  .mq-rhythm-native .rhythm-tile { width: 120px; flex: 0 0 120px; background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(16px) saturate(180%); border-radius: 18px; padding: 0; cursor: grab;
+    transition: all 0.3s cubic-bezier(0.4,0,0.2,1); border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.6); text-align: center;
+    color: #333; font-size: 0.8rem; min-height: 78px; display: flex; flex-direction: column;
+    justify-content: center; align-items: center; position: relative; overflow: hidden; }
+  .mq-rhythm-native .rhythm-tile::before { content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); }
+  .mq-rhythm-native .rhythm-tile img { max-width: 100%; height: auto; padding: 0 !important; margin: 0 !important; }
+  .mq-rhythm-native .rhythm-tile:hover { border-color: rgba(255,255,255,0.4); }
+  .mq-rhythm-native .rhythm-tile.dragging { opacity: 0.5; cursor: grabbing; }
+
+  .mq-rhythm-native .answer-area { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+    border-radius: 15px; padding: 15px; border: 1px solid rgba(255,255,255,0.18); flex: 0 0 auto; }
+  .mq-rhythm-native .measure-container { display: flex; justify-content: center; margin-bottom: 12px; }
+  .mq-rhythm-native .answer-staff { background: white; border-radius: 8px; padding: 20px 40px 20px 20px;
+    position: relative; width: 100%; max-width: 1100px; }
+  .mq-rhythm-native .answer-staff-label { position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
+    background: rgba(255,255,255,0.9); padding: 4px 12px; border-radius: 4px; font-weight: 600;
+    font-size: 0.85rem; color: #333; }
+  .mq-rhythm-native .staff-container { position: relative; height: clamp(130px, 13vw, 190px); margin-top: 0; }
+  .mq-rhythm-native .staff-container + .staff-container { margin-top: 30px; }
+  .mq-rhythm-native .staff-lines { position: absolute; width: 100%; top: 0; height: 100%; }
+  .mq-rhythm-native .staff-line { position: absolute; width: 100%; height: 2px; background: #333; top: 44%; }
+  .mq-rhythm-native .answer-time-sig { position: absolute; left: 2px; top: 44%; transform: translateY(-50%);
+    display: flex; flex-direction: column; align-items: center; line-height: 0.8; gap: 0.26em;
+    font-family: Georgia, 'Times New Roman', serif; font-variant-numeric: lining-nums tabular-nums;
+    font-feature-settings: "lnum" 1, "tnum" 1; font-weight: 700; font-size: clamp(30px, 4vw, 56px);
+    color: #333; z-index: 5; }
+  .mq-rhythm-native .beat-divisions { position: absolute; left: 0; right: 0; height: 100%; display: flex; }
+  .mq-rhythm-native .beat-drop-zone { flex: 1; position: relative; display: flex; align-items: center;
+    justify-content: center; transition: all 0.3s ease; }
+  .mq-rhythm-native .beat-drop-zone.measure-end:not(.final-cell) { border-right: 3px solid var(--bar-ink, #333); }
+  .mq-rhythm-native .beat-drop-zone.final-cell { border-right: 3px solid transparent; }
+  .mq-rhythm-native .beat-drop-zone.final-cell::after { content: ''; position: absolute; right: 0; top: 0;
+    bottom: 0; width: 7px; background: linear-gradient(90deg, var(--bar-ink, #333) 0 2px, transparent 2px 4px, var(--bar-ink, #333) 4px 7px); }
+  .mq-rhythm-native .beat-drop-zone::before { content: attr(data-beat); position: absolute; bottom: 6px;
+    left: 0; transform: translateX(-50%); font-size: 1.2rem; color: #ddd; font-weight: 300; z-index: 0; }
+  .mq-rhythm-native .beat-drop-zone[data-beat="1"] { padding-left: 14px; }
+  .mq-rhythm-native .beat-drop-zone[data-beat="1"] .beat-notation { left: 14px; right: 0; width: auto; }
+  .mq-rhythm-native .beat-drop-zone[data-beat="1"]::before { left: 14px; }
+  .mq-rhythm-native .beat-drop-zone.drag-over { background: rgba(76,175,80,0.14);
+    box-shadow: inset 0 0 0 2px rgba(76,175,80,0.7); border-radius: 4px; }
+  .mq-rhythm-native .beat-drop-zone.filled { background: rgba(76,175,80,0.1); }
+  .mq-rhythm-native .beat-drop-zone.continuation { background: rgba(76,175,80,0.1); }
+  .mq-rhythm-native .beat-drop-zone.revealed { background: rgba(52,152,219,0.1); }
+  .mq-rhythm-native .beat-notation { position: absolute; width: 100%; height: 100%; display: flex;
+    align-items: center; justify-content: center; }
+  .mq-rhythm-native .placed-note { position: absolute; left: 0; top: 44%; transform: translateY(-66%);
+    height: auto; pointer-events: none; user-select: none; -webkit-user-select: none; z-index: 2; }
+  .mq-rhythm-native .remove-btn { position: absolute; top: -8px; right: -8px; background: #ff4757;
+    color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 10px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10; }
+  @media (max-width: 768px) {
+    .mq-rhythm-native .rhythm-tile { width: 96px; flex: 0 0 96px; min-height: 68px; }
+    .mq-rhythm-native .answer-staff { padding: 12px 22px 12px 12px; }
+    .mq-rhythm-native .beat-drop-zone { min-height: 66px; }
+    .mq-rhythm-native .staff-container { height: clamp(104px, 30vw, 150px); }
+    .mq-rhythm-native .remove-btn { width: 20px; height: 20px; }
+    .mq-rhythm-native .rhythm-tile:active { transform: scale(0.98); }
+  }
+  @media (max-width: 400px) {
+    .mq-rhythm-native .rhythm-tile { width: 78px; flex: 0 0 78px; min-height: 58px; }
+    .mq-rhythm-native .staff-container { height: 96px; }
+    .mq-rhythm-native .beat-drop-zone { min-height: 56px; }
+  }
+</style>
+</head>
+<body>
+<script>
+/* Apply the saved theme BEFORE first paint so the page doesn't flash the default theme
+   and then swap (suite-theme.js re-applies on DOMContentLoaded — too late on its own). */
+(function () {
+  try {
+    var THEMES = ['mpc', 'manuscript', 'arcade', 'brutalist', 'kids'];
+    var t = localStorage.getItem('beatquest-theme');
+    document.body.classList.add('theme-' + (THEMES.indexOf(t) === -1 ? 'mpc' : t));
+  } catch (e) { document.body.classList.add('theme-mpc'); }
+})();
+(function () {
+  function showFatal(msg) {
+    var el = document.getElementById('fatalBanner');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'fatalBanner';
+      el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#b91c1c;color:#fff;' +
+        'font:700 14px/1.4 -apple-system,sans-serif;padding:10px 14px;white-space:pre-wrap;';
+      (document.body || document.documentElement).appendChild(el);
+    }
+    el.textContent = 'Something broke on this page — please tell Aaron this exact text:\n' + msg;
+  }
+  window.addEventListener('error', function (e) {
+    showFatal((e.message || 'script error') + (e.filename ? '  @ ' + e.filename.split('/').pop() + ':' + e.lineno : ''));
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    showFatal('async: ' + (e.reason && (e.reason.message || String(e.reason))));
+  });
+  // Library sanity: if a vendored lib failed to load, say so instead of dying silently.
+  window.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () {
+      if (typeof Vex === 'undefined') showFatal('notation library (vendor/vexflow.js) did not load');
+    }, 800);
+  });
+})();
+</script>
+  <div class="header">
+    <h1>MelodyQuest</h1>
+    <div class="melodic-hud">
+      <span class="melodic-hud__title">
+        <span class="melodic-hud__level" id="hudLevel">
+          <span class="melodic-hud__levelnum" id="hudLevelNum"></span>
+          <span class="melodic-hud__leveltitle"><span id="hudLevelTitle">—</span><button class="melodic-hud__about" id="aboutIcon" type="button" aria-label="What is this level about?" title="What is this level about?"></button></span>
+        </span>
+      </span>
+      <span class="melodic-hud__goal" id="hudGoal"></span>
+      <span class="melodic-hud__coverage" id="hudCoverage"></span>
+      <span class="melodic-hud__mastery">
+        <span id="hudBand">New</span>
+        <span class="melodic-hud__bar"><span class="melodic-hud__fill" id="hudFill"></span></span>
+        <span id="hudScore">0</span>
+      </span>
+      <span class="melodic-hud__game" id="hudGame"></span>
+    </div>
+  </div>
+
+  <div class="melodic-main">
+    <div class="answer-area">
+      <div id="dailyRow" class="melodic-daily"></div>
+      <div id="motivationBar" class="melodic-motivation"></div>
+      <div id="rendererHost"></div>
+      <div class="melodic-toast" id="toast"></div>
+      <div class="melodic-controls">
+        <button class="melodic-btn melodic-btn--primary melodic-next" id="nextBtn">Next melody</button>
+        <button class="melodic-btn" id="practiceBtn">Practice</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings live behind a cog, off the gameplay screen. Scrim + right-side drawer. -->
+  <button class="melodic-cog" id="cogBtn" type="button" aria-label="Settings" title="Settings">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M19.14 12.94a7.6 7.6 0 000-1.88l2.03-1.58a.5.5 0 00.12-.64l-1.92-3.32a.5.5 0 00-.6-.22l-2.39.96a7.03 7.03 0 00-1.62-.94l-.36-2.54a.5.5 0 00-.5-.42h-3.84a.5.5 0 00-.5.42l-.36 2.54c-.58.24-1.12.56-1.62.94l-2.39-.96a.5.5 0 00-.6.22L2.68 8.84a.5.5 0 00.12.64l2.03 1.58a7.6 7.6 0 000 1.88l-2.03 1.58a.5.5 0 00-.12.64l1.92 3.32c.14.24.42.32.66.22l2.39-.96c.5.38 1.04.7 1.62.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.58-.24 1.12-.56 1.62-.94l2.39.96c.24.1.52.02.66-.22l1.92-3.32a.5.5 0 00-.12-.64l-2.03-1.58zM12 15.6A3.6 3.6 0 1112 8.4a3.6 3.6 0 010 7.2z"/></svg>
+  </button>
+  <div class="melodic-drawer-scrim" id="settingsScrim" hidden></div>
+  <aside class="melodic-drawer" id="settingsDrawer" hidden aria-label="Settings" role="dialog" aria-modal="true">
+    <div class="melodic-drawer__head">
+      <span class="melodic-drawer__title">Settings</span>
+      <button class="melodic-btn melodic-drawer__close" id="settingsClose" type="button" aria-label="Close settings" title="Close">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M18.3 5.71 12 12l6.3 6.29-1.41 1.42L12 13.41l-6.29 6.3-1.42-1.42L10.59 12 4.29 5.71 5.71 4.29 12 10.59l6.29-6.3z"/></svg>
+      </button>
+    </div>
+    <div class="melodic-drawer__body">
+      <label>Level
+        <select id="levelJump"></select>
+      </label>
+      <label class="melodic-drawer__check"><input type="checkbox" id="practiceChk"> Practice mode (unlimited hearings)</label>
+      <label>Labels
+        <select id="sysSel">
+          <option value="numbers">Numbers</option>
+          <option value="moveable-do">Moveable do</option>
+          <option value="fixed-do">Fixed do</option>
+        </select>
+      </label>
+      <label>Theme
+        <select id="themeSel">
+          <option value="mpc">MPC</option>
+          <option value="manuscript">Ink</option>
+          <option value="arcade">Arcade</option>
+          <option value="brutalist">Print</option>
+          <option value="kids">Kids</option>
+        </select>
+      </label>
+      <label>Instrument
+        <select id="instrumentSel"></select>
+      </label>
+    </div>
+  </aside>
+
+<!-- Off-screen stubs so the REAL rhythm-student.js engine (the BeatQuest drag-and-drop,
+     reused verbatim on Level 4) constructs without error: its setupEventListeners() queries
+     #joinBtn/#studentName/#roomCode, and showFeedback() queries #feedback. We never call
+     joinSession (no network) — we drive the engine directly via updateGameSettings/placeTile. -->
+<div id="rs-stubs" aria-hidden="true" style="position:absolute;left:-9999px;top:auto;width:0;height:0;overflow:hidden;">
+  <input id="studentName" type="text"><input id="roomCode" type="text"><button id="joinBtn" type="button"></button>
+  <div id="feedback"></div>
+</div>
+<!-- The actual BeatQuest rhythm engine (class RhythmStudent -> window.rhythmStudent). Level 4
+     mounts its bank + staff into MelodyQuest's own containers; no iframe, no BeatQuest chrome. -->
+<script type="module" src="rhythm-student.js?v=20260704-native"></script>
+<script src="melodic-teach-content.js"></script>
+<script type="module">
+import { labelNote, labelPalette } from './core/melodic.js';
+import { melodicLadder, melodicLevel } from './core/melodic-curriculum.js';
+import { mountGym, mountGymStation, unlockedCircuitIds } from './melodic-gym.js';
+import { mountSkillsGym } from './melodic-skills-gym.js';
+import { mountChunkDrill } from './melodic-chunks-ui.js';
+import { mountBookendDrill } from './melodic-bookend-ui.js';
+import { mountEarArcade } from './melodic-ear-arcade.js';
+import { INSTRUMENTS, INSTRUMENT_LABELS } from './melodic-instruments.js';
+import * as mastery from './core/mastery.js';
+import * as review from './core/review.js';
+import { createServices } from './melodic-shell-services.js';
+import { keyChoices, buildRound } from './melodic-round.js';
+import {
+  createRecognitionRenderer, createLabelingRenderer, createTonicContourRenderer,
+  createMissingNoteRenderer, createErrorDetectRenderer, createNotationEntryRenderer,
+  createRhythmFirstRenderer, createRhythmIdentityRenderer, createTwoPartRenderer, createTwoPartNotateRenderer,
+  createMemorySpanRenderer, createProtonotationRenderer,
+  createLiveHomeMinorRenderer, contourMoveIcon,
+} from './melodic-renderers.js';
+
+const RENDERERS = {
+  recognition: createRecognitionRenderer,
+  labeling: createLabelingRenderer,
+  'tonic-contour': createTonicContourRenderer,
+  'missing-note': createMissingNoteRenderer,
+  'error-detect': createErrorDetectRenderer,
+  'notation-entry': createNotationEntryRenderer,
+  'rhythm-first': createRhythmIdentityRenderer, // Level 4: native rhythm dictation on a moving melody (+ name/shape final stage)
+  'two-part': createTwoPartRenderer,
+  'two-part-notate': createTwoPartNotateRenderer,
+  // Ladder expansion (MELODIC_LADDER_EXPANSION_PLAN first slice):
+  'memory-span': createMemorySpanRenderer,       // M1.5 Hold the tune
+  protonotation: createProtonotationRenderer,    // M8.5 Sketch it
+  'live-home-minor': createLiveHomeMinorRenderer, // M5.5 Find home — minor
+};
+
+/* The guided ladder: every level the engine + renderers can actually PLAY today.
+   m2 (rhythm-first) plays as the EMBEDDED real rhythm game via solo-mode.js's
+   external-target seam. Excluded honestly: m20 (two-part — needs the two-voice
+   engine, the shared duet gap). */
+const PLAYABLE = melodicLadder().filter((L) =>
+  L.pitch.degrees && L.pitch.degrees.length &&
+  (RENDERERS[L.exerciseMode] || L.modulation || (L.symmetricCollections || []).length));
+
+/* ---- Guided progression (same mastery engine as the rhythm game:
+   core/mastery.js recordAnswer +20/-30, 50/80/95 bands). Advancement gate:
+   Proficient band (80) + a 3-clean streak — the melodic analog of solo-mode.js's
+   GUIDE gate (its capstone/hand-swap parts are rhythm-performance-specific). ---- */
+const STORE_KEY = 'melodic-guided-v1';
+
+/* PLACEMENT (LEVEL_SYSTEM_RESEARCH.md §1, the StaffCommander-validated flow):
+   self-select a tier card -> a capped NO-FAIL in-engine assessment (16 items,
+   easiest mode = recognition, PASS = 0.85). Pass -> placed one step AHEAD of the
+   tier's top; fail -> step DOWN one tier and re-test (gentle, re-validated).
+   Placing marks all lower levels proficient-or-better (idempotent, NEVER demotes). */
+const PLACEMENT_ITEMS = 16;
+const PLACEMENT_PASS = 0.85;
+const TIERS = [
+  { label: 'Brand new to dictation', desc: 'Start at the very beginning', top: null },
+  { label: 'First degrees', desc: 'I can name 1-2-3 by ear', top: 'm4' },
+  { label: 'Pentascale & minor', desc: 'Degrees 1-5, major vs minor, small skips', top: 'm8' },
+  { label: 'Reading & writing', desc: 'I can notate short melodies on a staff', top: 'm12' },
+  { label: 'Full scale & all minors', desc: 'Octave melodies, three minor forms, 6/8', top: 'm16' },
+  { label: 'Periods & chromatics', desc: '8-bar phrases, chromatic color, modulation', top: 'm19' },
+  { label: 'Advanced', desc: 'Modes, pentatonic/whole-tone, mixed meters', top: 'm26' },
+];
+let placement = null; // {tierIdx, item, correct} while an assessment runs
+
+/* DAILY CHALLENGES (LEVEL_SYSTEM_RESEARCH.md §1: "3/day, date-seeded (FNV-1a
+   hash -> deterministic, no server)") + daily streak with a STREAK-FREEZE
+   (§2's prescribed anxiety slack — one missed day can be absorbed). */
+function fnv1a(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return h >>> 0;
+}
+function todayKey() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function dailyChallenges() {
+  const date = todayKey();
+  const span = Math.max(1, S.levelIdx + 1); // drawn from YOUR unlocked ladder (self-vs-self)
+  // Spec §6: once ≥1 Interval Gym circuit is unlocked, the third daily becomes a
+  // date-seeded Gym station round (its NAME station — present in every circuit,
+  // no mic/timing friction). The other two stay ladder rounds.
+  const circuits = unlockedCircuitIds(curLevel().mIndex);
+  return [0, 1, 2].map((i) => {
+    const h = fnv1a(date + ':' + i);
+    if (i === 2 && circuits.length) {
+      return { type: 'gym', circuitId: circuits[h % circuits.length], stationId: 'name',
+        seed: fnv1a(date + ':gymseed:' + i) % 1000000, i };
+    }
+    return { type: 'ladder', levelIdx: h % span, seed: fnv1a(date + ':seed:' + i) % 1000000, i };
+  });
+}
+function rollDailyDate() {
+  const today = todayKey();
+  if (S.daily.date === today) return;
+  const prev = S.daily.date;
+  const wasComplete = S.daily.done.every(Boolean);
+  if (prev) {
+    const gapDays = Math.round((new Date(today) - new Date(prev)) / 86400000);
+    if (gapDays === 1 && wasComplete) {
+      // streak already counted on completion — nothing to do
+    } else if (S.daily.freeze > 0 && S.daily.streak > 0) {
+      S.daily.freeze--; // the slack: one missed/incomplete day absorbed
+    } else {
+      S.daily.streak = 0;
+    }
+  }
+  S.daily.date = today;
+  S.daily.done = [false, false, false];
+  save(S);
+}
+let dailyActive = null; // index of the daily being played
+function renderDaily() {
+  const host = document.getElementById('dailyRow');
+  host.innerHTML = '';
+  const label = document.createElement('span');
+  label.className = 'melodic-daily__label';
+  label.textContent = 'Today (day streak ' + S.daily.streak + (S.daily.freeze ? ' · freeze ready' : '') + '):';
+  host.appendChild(label);
+  dailyChallenges().forEach((ch, i) => {
+    const b = document.createElement('button');
+    b.className = 'melodic-btn melodic-daily__chip' + (S.daily.done[i] ? ' is-done' : '');
+    const face = ch.type === 'gym' ? 'GYM ' + ch.circuitId : 'Lv ' + (ch.levelIdx + 1);
+    b.textContent = (S.daily.done[i] ? 'Done — ' : '') + face;
+    b.disabled = S.daily.done[i];
+    b.onclick = () => { dailyActive = i; if (ch.type === 'gym') startDailyGym(ch); else startRound(); };
+    host.appendChild(b);
+  });
+  if (!S.daily.freeze) {
+    const buy = document.createElement('button');
+    buy.className = 'melodic-btn melodic-daily__chip';
+    buy.textContent = 'Streak freeze (30 gems)';
+    buy.disabled = S.gems < 30;
+    buy.onclick = () => { S.gems -= 30; S.daily.freeze = 1; save(S); renderDaily(); renderHud(); };
+    host.appendChild(buy);
+  }
+}
+
+/* XP ranks (LEVEL_SYSTEM_RESEARCH.md: XP = +1/correct +50/mastery event; 11 named
+   ranks, Beginner -> Maestro). Untimed by design: the same doc's strongest DON'T is
+   time-based scoring for dictation. */
+const RANKS = [
+  ['Beginner', 0], ['Listener', 50], ['Apprentice', 150], ['Chorister', 350],
+  ['Soloist', 700], ['Ensemble Player', 1200], ['Concertmaster', 2000],
+  ['Virtuoso', 3200], ['Composer', 5000], ['Laureate', 8000], ['Maestro', 12000],
+];
+const STAR_PATH = 'M12 2l2.9 6.2 6.6.8-4.9 4.6 1.3 6.5L12 16.9 6.1 20.1l1.3-6.5L2.5 9l6.6-.8z';
+function starSvg() {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'currentColor');
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', STAR_PATH);
+  svg.appendChild(path);
+  return svg;
+}
+/* Inline-SVG icons for the game chrome (currentColor, theme-adaptive — the
+   no-emoji-in-UI rule is absolute: NEVER glyph/emoji characters, SVG only). */
+const GAME_ICON_PATHS = {
+  play: 'M8 5v14l11-7z',
+  check: 'M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z',
+  flame: 'M12 2c1 3-1 4-2 6-1 1.6-1 3 0 4 .7.7.7 2 0 2.8-.6.6-1.6.6-2.2-.2C6 12 7 8 7 8c-2 2-3 4-3 6a8 8 0 1016 0c0-4-3-6-4-9-.6-1.6-2-2.4-4-3z',
+  // info "i" in a circle — the circle minus the dot+stem via even-odd fill.
+  info: 'M12 2a10 10 0 100 20 10 10 0 000-20zM12 6.2a1.4 1.4 0 110 2.8 1.4 1.4 0 010-2.8zM10.7 10.7h2.6v7h-2.6z',
+};
+function gameIcon(name, px) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('width', px || 16); svg.setAttribute('height', px || 16);
+  svg.setAttribute('fill', 'currentColor');
+  svg.style.verticalAlign = 'text-bottom';
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', GAME_ICON_PATHS[name] || GAME_ICON_PATHS.check);
+  path.setAttribute('fill-rule', 'evenodd'); // lets the info icon knock out its 'i'
+  svg.appendChild(path);
+  return svg;
+}
+/* Per-round star verdict: 3 = clean & perfect, 2 = correct (or 80%+), 1 = half-right,
+   0 = keep working. Accuracy-based, never speed-based. */
+function starsForResult(result) {
+  if (result.correct && result.clean !== false) return 3;
+  if (result.correct || (result.accuracy || 0) >= 80) return 2;
+  if ((result.accuracy || 0) >= 50) return 1;
+  return 0;
+}
+function showStars(n) {
+  const old = document.querySelector('.melodic-stars');
+  if (old) old.remove();
+  const row = document.createElement('div');
+  row.className = 'melodic-stars';
+  for (let i = 0; i < 3; i++) {
+    const sv = starSvg();
+    if (i < n) sv.classList.add('is-earned');
+    row.appendChild(sv);
+  }
+  document.getElementById('toast').before(row);
+}
+function scorePop(pts) {
+  if (!pts) return;
+  const host = document.querySelector('.answer-area');
+  const el = document.createElement('div');
+  el.className = 'melodic-scorepop';
+  el.textContent = '+' + pts;
+  el.style.right = '30px';
+  el.style.top = '18px';
+  host.appendChild(el);
+  setTimeout(() => el.remove(), 1200);
+}
+function achievementBanner(a) {
+  const el = document.createElement('div');
+  el.className = 'melodic-achv';
+  el.appendChild(starSvg());
+  const t = document.createElement('span');
+  t.textContent = 'Achievement — ' + a.name + ': ' + a.desc;
+  el.appendChild(t);
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 4200);
+}
+
+/* CELEBRATION burst on a correct answer (owner: "nothing exciting when a user gets
+   something right"). All custom inline SVG — no emoji, ever. Pieces fly out from the
+   centre of the answer panel and fade; a big star pops in the middle. Festive accents
+   join the established gold-star / green-correct colours already used for feedback. */
+const CONFETTI_PATHS = {
+  star: STAR_PATH,
+  dot: 'M12 7a5 5 0 100 10 5 5 0 000-10z',
+  ring: 'M12 3a9 9 0 100 18 9 9 0 000-18zm0 5a4 4 0 110 8 4 4 0 010-8z',
+  spark: 'M12 2l1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6z',
+  tri: 'M12 3l9 16H3z',
+};
+const CELEBRATE_HUES = ['#f5b301', '#2a9d5c', '#3aa0ff', '#e6547a', '#8a5cf6', '#ff8a3d'];
+function confettiPiece(shape, hue) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', hue);
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', CONFETTI_PATHS[shape] || CONFETTI_PATHS.dot);
+  svg.appendChild(path);
+  return svg;
+}
+function celebrate(big) {
+  const host = document.querySelector('.answer-area');
+  if (!host) return;
+  const layer = document.createElement('div');
+  layer.className = 'melodic-confetti';
+  const shapes = Object.keys(CONFETTI_PATHS);
+  const N = big ? 30 : 18;
+  for (let i = 0; i < N; i++) {
+    const piece = document.createElement('span');
+    const sz = 11 + Math.random() * 15;
+    piece.style.width = sz + 'px'; piece.style.height = sz + 'px';
+    const ang = Math.random() * Math.PI * 2;
+    const dist = 80 + Math.random() * (big ? 200 : 150);
+    const dx = Math.cos(ang) * dist;
+    const dy = Math.sin(ang) * dist - 40; // bias the spray slightly upward
+    piece.style.setProperty('--dx', dx.toFixed(0) + 'px');
+    piece.style.setProperty('--dy', dy.toFixed(0) + 'px');
+    piece.style.setProperty('--rot', (Math.random() * 720 - 360).toFixed(0) + 'deg');
+    piece.style.animation = 'confettiFly ' + (720 + Math.random() * 520).toFixed(0) + 'ms cubic-bezier(.15,.8,.3,1) forwards';
+    piece.style.animationDelay = (Math.random() * 120).toFixed(0) + 'ms';
+    piece.appendChild(confettiPiece(shapes[i % shapes.length], CELEBRATE_HUES[i % CELEBRATE_HUES.length]));
+    layer.appendChild(piece);
+  }
+  host.appendChild(layer);
+  setTimeout(() => layer.remove(), 1600);
+  const pop = document.createElement('div');
+  pop.className = 'melodic-celebrate-pop';
+  const star = starSvg();
+  star.setAttribute('width', big ? 72 : 52); star.setAttribute('height', big ? 72 : 52);
+  pop.appendChild(star);
+  host.appendChild(pop);
+  setTimeout(() => pop.remove(), 950);
+  playSparkle(big);
+}
+/* Short rising sparkle — the audible half of the celebration (distinct from the
+   longer level-up fanfare). Bright, key-independent, so it lands the same everywhere. */
+function playSparkle(big) {
+  if (!lastServices) return;
+  // Bright, ascending MAJOR arpeggio (C major, high register) — unmistakably happy.
+  // Was accidentally E-A-C-E (an A-minor triad); a celebration should never sound sad.
+  const notes = big ? [84, 88, 91, 96] : [84, 88, 91]; // C E G (+ C) = C major
+  notes.forEach((m, i) => setTimeout(() => { try { lastServices.playNote(m, 0.28); } catch (e) {} }, i * 90));
+}
+/* GENTLE try-again cue on a miss — a soft descending whole step (not a harsh buzzer):
+   enough to register "not quite" without discouraging a beginner. */
+function playTryAgain() {
+  if (!lastServices) return;
+  [64, 62].forEach((m, i) => setTimeout(() => { try { lastServices.playNote(m, 0.3); } catch (e) {} }, i * 130));
+}
+/* Short, always-encouraging miss messages (owner: "an encouraging message but a
+   message nonetheless"). Kept to a few words each. Rotates so it never feels canned. */
+const ENCOURAGE = ['So close — listen again', 'Almost! Give it another go', 'Good ear — try once more', 'Nearly there — tap Play', 'Not quite — you’ve got this'];
+function encourage() { return ENCOURAGE[Math.floor(Math.random() * ENCOURAGE.length)]; }
+
+function rankFor(xp) {
+  let r = RANKS[0][0];
+  for (const [name, floor] of RANKS) if (xp >= floor) r = name;
+  return r;
+}
+
+/* Achievements: declarative {id,name,desc,test(stats)} exactly per the research
+   pattern. Tied to mastery/skill events, never to speed; no leaderboards. */
+const ACHIEVEMENTS = [
+  { id: 'first-levelup', name: 'First Rung', desc: 'Advance past your first level', test: (t) => t.levelUps >= 1 },
+  { id: 'streak-5', name: 'Locked In', desc: 'A 5-round clean streak', test: (t) => t.bestStreak >= 5 },
+  { id: 'streak-15', name: 'Unshakeable', desc: 'A 15-round clean streak', test: (t) => t.bestStreak >= 15 },
+  { id: 'score-1000', name: 'Four Digits', desc: 'Reach 1,000 score', test: (t) => t.score >= 1000 },
+  { id: 'notation', name: 'On the Staff', desc: 'Reach M9 — real notation begins', test: (t) => t.maxLevelIdx >= t.m9Idx },
+  { id: 'reviews-5', name: 'Still Sharp', desc: 'Pass 5 spaced reviews', test: (t) => t.reviewsPassed >= 5 },
+  { id: 'clean-level', name: 'Spotless Climb', desc: 'Level up with 95%+ clean rounds', test: (t) => t.cleanLevelUp === true },
+  { id: 'advanced-wing', name: 'Beyond the Book', desc: 'Reach the advanced wing (M21+)', test: (t) => t.maxLevelIdx >= t.m21Idx },
+  // Interval Gym family (INTERVAL_GYM_SPEC §6).
+  { id: 'gym-first', name: 'Circuit Trainer', desc: 'Complete your first Interval Gym circuit', test: (t) => t.gymCircuits >= 1 },
+  { id: 'gym-3-circuits', name: 'Interval Athlete', desc: 'Complete 3 Interval Gym circuits', test: (t) => t.gymCircuits >= 3 },
+  { id: 'gym-singer', name: 'True Voice', desc: 'Sing a mic-graded interval round perfectly', test: (t) => t.gymSinger === true },
+];
+function checkAchievements(extra = {}) {
+  const stats = {
+    score: S.score, xp: S.xp, bestStreak: S.bestStreak, levelUps: S.levelUps,
+    reviewsPassed: S.reviewsPassed, maxLevelIdx: S.levelIdx,
+    m9Idx: PLAYABLE.findIndex((L) => L.id === 'm9'),
+    m21Idx: PLAYABLE.findIndex((L) => L.id === 'm21'),
+    gymCircuits: S.gymCircuits || 0, gymSinger: !!S.gymSinger,
+    ...extra,
+  };
+  const unlocked = [];
+  for (const a of ACHIEVEMENTS) {
+    if (!S.achievements.includes(a.id) && a.test(stats)) {
+      S.achievements.push(a.id);
+      unlocked.push(a);
+    }
+  }
+  return unlocked;
+}
+const PROFICIENT_FLOOR = 80;
+/* The ONE mastery-event gem formula (LEVEL_SYSTEM_RESEARCH.md): 25 base +
+   score/120 + a clean-play bonus. Shared by ladder level-ups AND Interval Gym
+   circuit completions so their reward is identical, not approximated. */
+function masteryEventGems(eventScore, cleanRate) {
+  return 25 + Math.round((eventScore || 0) / 120) + (cleanRate >= 0.95 ? 5 : 0);
+}
+const ADVANCE_STREAK = 3;
+
+function load() {
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) { d = null; }
+  if (!d || typeof d !== 'object') d = {};
+  if (!Number.isInteger(d.levelIdx) || d.levelIdx < 0 || d.levelIdx >= PLAYABLE.length) d.levelIdx = 0;
+  if (!d.items || typeof d.items !== 'object') d.items = {};
+  if (!Number.isInteger(d.streak)) d.streak = 0;
+  if (!Number.isFinite(d.sessionStart)) d.sessionStart = Date.now();
+  // Spaced review (core/review.js Leitner boxes): one entry per PASSED level.
+  if (!d.review || !Array.isArray(d.review.entries)) d.review = { entries: [] };
+  // Gamification (LEVEL_SYSTEM_RESEARCH.md: volatile score + XP ranks + gems +
+  // achievements, decoupled from sticky mastery — score can never cost progress).
+  if (!Number.isFinite(d.score)) d.score = 0;
+  if (!Number.isFinite(d.xp)) d.xp = 0;
+  if (!Number.isFinite(d.gems)) d.gems = 0;
+  if (!Number.isFinite(d.bestStreak)) d.bestStreak = 0;
+  // Interval Gym economy mirror (G4): the gym owns its own melodic-gym-v1 save;
+  // these mirror the reward-bearing facts so achievements + persistence are unified.
+  if (!Number.isInteger(d.gymCircuits)) d.gymCircuits = 0;
+  if (typeof d.gymSinger !== 'boolean') d.gymSinger = false;
+  if (typeof d.onboarded !== 'boolean') d.onboarded = false; // first-run flow shown once
+  if (typeof d.firstCorrectShown !== 'boolean') d.firstCorrectShown = false; // first-win celebration once
+  if (!Number.isFinite(d.levelScore)) d.levelScore = 0;
+  if (!Number.isFinite(d.levelRounds)) d.levelRounds = 0;
+  if (!Number.isFinite(d.levelClean)) d.levelClean = 0;
+  if (!Number.isFinite(d.reviewsPassed)) d.reviewsPassed = 0;
+  if (!Number.isFinite(d.levelUps)) d.levelUps = 0;
+  if (!Array.isArray(d.achievements)) d.achievements = [];
+  if (typeof d.capstoneArmed !== 'boolean') d.capstoneArmed = false;
+  if (!d.stages || typeof d.stages !== 'object') d.stages = {}; // per-level in-level stage (M0: 0..4)
+  if (!Number.isInteger(d.m0StagePass)) d.m0StagePass = 0; // clean rounds banked in the current M0 tile stage
+  if (!Number.isInteger(d.m1StagePass)) d.m1StagePass = 0; // (legacy) M1 clean-round tally
+  if (!Number.isInteger(d.m1FluentStreak)) d.m1FluentStreak = 0; // M1 fluent-in-a-row streak (the gate)
+  if (typeof d.m1ShapeDone !== 'boolean') d.m1ShapeDone = false; // shape stage robustly mastered (gates M1 capstone)
+  if (!Number.isInteger(d.m2Streak)) d.m2Streak = 0; // Level 4 rhythm clean-in-a-row (stage gate)
+  if (!d.stageStreaks || typeof d.stageStreaks !== 'object') d.stageStreaks = {}; // STAGE_LADDERS clean-in-a-row per level
+  if (!Number.isInteger(d.m15Streak)) d.m15Streak = 0; // Level 3 memory-span clean-in-a-row (stage gate)
+  if (!Number.isInteger(d.m15Miss)) d.m15Miss = 0; // Level 3 consecutive misses (drives stage regression)
+  if (typeof d.m15Done !== 'boolean') d.m15Done = false; // Level 3 reverse capstone mastered (gates level capstone)
+  if (!Number.isInteger(d.m1RefRounds)) d.m1RefRounds = 0; // rounds the current two-note reference has been held
+  if (!d.coverage || typeof d.coverage !== 'object') d.coverage = {}; // D2: per-level keys/meters/rounds/longClean
+  if (!d.daily || typeof d.daily !== 'object') d.daily = { date: '', done: [false, false, false], streak: 0, freeze: 0 };
+  return d;
+}
+function save(d) { try { localStorage.setItem(STORE_KEY, JSON.stringify(d)); } catch (e) {} }
+const S = load();
+
+function curLevel() { return PLAYABLE[S.levelIdx]; }
+function itemFor(id) {
+  if (!S.items[id]) S.items[id] = mastery.createItemState();
+  return S.items[id];
+}
+
+/** Display tag for a level id — the expansion rungs use m1_5/m8_5 internally
+ *  (fractional mIndex) but read as "M1.5" / "M8.5" to the student. */
+const URL_FLAGS = new URLSearchParams(location.search);
+const FORCE_INTRO = URL_FLAGS.get('intro') === '1'; // testing: re-show the teaching modal each level entry
+const MQ_TEST = URL_FLAGS.get('mqtest') === '1'; // testing: expose deterministic helpers on window.__mqTest
+function idTag(id) { return id.toUpperCase().replace('_', '.'); } // internal/dev only
+// Student-facing label: a friendly ordinal ("Level 1") — "M0" means nothing to a learner.
+// Position is the level's place in the playable order (inserted half-steps count too).
+function levelLabel(L) { return 'Level ' + (PLAYABLE.findIndex((x) => x.id === L.id) + 1); }
+
+/* MOTIVATION BAR (owner: the gamification exists — LEVEL_SYSTEM_RESEARCH.md — but
+   a beginner can't SEE points/progress/streak). Surfaces them prominently on the
+   card: a live streak badge, the M0 journey (or a level-up progress on other
+   rungs), the running score, and an always-visible NEXT GOAL. Built from state
+   that already exists (S.streak, S.stages.m0, S.m0StagePass, coverage, mastery). */
+let lastMotivStreak = 0;
+function renderMotivation() {
+  const bar = document.getElementById('motivationBar');
+  if (!bar) return;
+  // Only during normal guided rounds — side-modes/daily/review have their own chrome.
+  if (gymReviewCircuit || studioSpec || dailyActive != null || reviewingLevel ||
+      (typeof bookendMount !== 'undefined' && bookendMount) ||
+      (typeof gymMount !== 'undefined' && gymMount) ||
+      (typeof chunkMount !== 'undefined' && chunkMount)) {
+    bar.style.display = 'none';
+    return;
+  }
+  bar.style.display = '';
+  bar.innerHTML = '';
+  const L = curLevel();
+
+  // Streak badge — only appears ONCE you have a streak (owner: fewer words, more visual):
+  // a flame + the number, no "start a streak" prompt, no "in a row!" text.
+  if (S.streak >= 2) {
+    const streak = document.createElement('div');
+    streak.className = 'melodic-motivation__streak is-hot' + (S.streak > lastMotivStreak ? ' bump' : '');
+    streak.appendChild(gameIcon('flame'));
+    streak.appendChild(document.createTextNode(String(S.streak)));
+    bar.appendChild(streak);
+  }
+  lastMotivStreak = S.streak;
+
+  // Journey — M0 shows its own stages; other levels show the mastery climb.
+  const journey = document.createElement('div');
+  journey.className = 'melodic-motivation__journey';
+  // Progress as pure DOTS (owner: no words up here) — colour carries the meaning:
+  // done = solid green · current = solid amber (you-are-here) · upcoming = empty ring.
+  // The stage name lives on the dot as a hover/aria title only, never as visible text.
+  const pip = (label, st, s) => {
+    const el = document.createElement('span');
+    const state = st > s ? 'is-done' : st === s ? 'is-active' : 'is-upcoming';
+    el.className = 'melodic-motivation__pip ' + state;
+    el.title = label;
+    el.setAttribute('aria-label', label + (state === 'is-done' ? ' (done)' : state === 'is-active' ? ' (current)' : ' (upcoming)'));
+    return el;
+  };
+  if (L.id === 'm0') {
+    const st = S.stages.m0 || 0;
+    ['Find home', 'Home — quick', 'Tap home', 'Tap ' + degLabelFor(3), 'Tap ' + degLabelFor(5), 'Home · octaves']
+      .forEach((label, s) => journey.appendChild(pip(label, st, s)));
+  } else if (L.id === 'm1') {
+    const st = S.stages.m1 || 0;
+    ['Up / down', 'Step / skip', 'Shape'].forEach((label, s) => journey.appendChild(pip(label, st, s)));
+  } else if (L.id === 'm1_5') {
+    const st = S.stages['m1_5'] || 0;
+    M15_STAGE_NAMES.forEach((label, s) => journey.appendChild(pip(label, st, s)));
+  } else if (L.id === 'm2') {
+    const st = S.stages.m2 || 0;
+    M2_STAGE_NAMES.forEach((label, s) => journey.appendChild(pip(label, st, s)));
+  } else if (STAGE_LADDERS[L.id]) {
+    const st = S.stages[L.id] || 0;
+    STAGE_LADDERS[L.id].names.forEach((label, s) => journey.appendChild(pip(label, st, s)));
+  } else {
+    const view = mastery.viewItemAsOf(itemFor(L.id), Date.now());
+    const el = document.createElement('span');
+    el.className = 'melodic-motivation__step is-active';
+    el.textContent = mastery.levelFor(view) + ' · ' + Math.round(view.score) + '/100';
+    journey.appendChild(el);
+  }
+  bar.appendChild(journey);
+
+  // Running score (prominent).
+  const score = document.createElement('div');
+  score.className = 'melodic-motivation__score';
+  score.textContent = S.score.toLocaleString() + ' pts';
+  bar.appendChild(score);
+
+  // No goal-text line — the HUD is IDENTICAL on every level (owner: only the middle gameplay
+  // changes). The journey pips show where you are; the toast surfaces what to do next when it
+  // actually matters (capstone armed, coverage gating). nextGoalText() still feeds those toasts.
+}
+
+function nextGoalText(L) {
+  if (L.id === 'm0') {
+    const st = S.stages.m0 || 0;
+    if (st === 0) return 'tap HOME each time you hear it — across a few keys';
+    if (st === 1) return 'now quicker — tap HOME across more keys';
+    const plan = M0_TILE_PLAN[st];
+    if (plan) {
+      const total = plan.normal + plan.speeds.length;
+      const deg = st === 2 ? 'home' : degLabelFor(st === 3 ? 3 : 5);
+      return 'mark every ' + deg + ' in the tiles — ' + (S.m0StagePass || 0) + '/' + total + ' clean rounds';
+    }
+    return 'master this to finish Find Home and move up';
+  }
+  if (L.id === 'm1') {
+    const st = S.stages.m1 || 0;
+    if (st === 2) return 'match the shape — ' + (S.m1FluentStreak || 0) + '/' + M1_SHAPE_K + ' in a row (shapes get harder; a miss resets it)';
+    const what = ['up / down / same', 'step or skip'][st] || 'it';
+    return 'answer ' + what + ' FAST — ' + (S.m1FluentStreak || 0) + '/' + M1_FLUENT_K + ' quick in a row (a slow or wrong one resets it)';
+  }
+  if (S.capstoneArmed) return 'one clean longer melody to LEVEL UP!';
+  const view = mastery.viewItemAsOf(itemFor(L.id), Date.now());
+  if (view.score < PROFICIENT_FLOOR) return 'reach the Proficient band (' + Math.round(view.score) + '/80) to open the level-up gate';
+  if (S.streak < ADVANCE_STREAK) return (ADVANCE_STREAK - S.streak) + ' more clean in a row to open the gate';
+  return 'cover the level (see the checklist) to unlock the capstone';
+}
+function renderHud() {
+  try { renderMotivation(); } catch (e) {} // never let the motivation bar break the HUD
+  // Gym contexts (a spaced-review probe or a daily Gym round) aren't ladder
+  // levels — label them and skip the level-based mastery/coverage readouts.
+  const dailyCh = dailyActive != null ? dailyChallenges()[dailyActive] : null;
+  if (gymReviewCircuit || (dailyCh && dailyCh.type === 'gym')) {
+    const cid = gymReviewCircuit || dailyCh.circuitId;
+    document.getElementById('hudLevelNum').textContent = gymReviewCircuit ? 'Gym review' : 'Daily';
+    document.getElementById('hudLevelTitle').textContent = 'Gym ' + cid;
+    const covG = document.getElementById('hudCoverage'); if (covG) covG.textContent = '';
+    document.getElementById('hudGame').textContent =
+      'Score ' + S.score.toLocaleString() + ' · ' + rankFor(S.xp) + ' (' + S.xp + ' XP) · Gems ' + S.gems;
+    return;
+  }
+  const L = dailyActive != null ? PLAYABLE[dailyChallenges()[dailyActive].levelIdx] : (reviewingLevel || curLevel());
+  const view = mastery.viewItemAsOf(itemFor(L.id), Date.now());
+  // Two-line hierarchy (owner: on small screens the one-liner broke mid-word): a small
+  // "Level N" line, then the title on its own line (the ⓘ lives permanently beside it).
+  document.getElementById('hudLevelNum').textContent =
+    (dailyActive != null ? 'Daily · ' : reviewingLevel ? 'Review · ' : studioSpec ? 'Studio · ' : '') + levelLabel(L);
+  document.getElementById('hudLevelTitle').textContent = L.title;
+  // DECLUTTER the aural beginner screen (owner): the motivation bar already shows
+  // the journey + score, so the verbose coverage line + goal subtitle + daily row
+  // are hidden at M0/M1 — only the exercise stays front and centre.
+  // Gameplay-first on EVERY ladder level (owner: Level 4+ must match the clean Level 1-3 layout —
+  // no coverage line, no goal subtitle, no daily row, no duplicate mastery/score chrome pushing
+  // the exercise off screen). The journey pips + score + toasts carry progress; the coverage
+  // needs surface contextually in the toast when they actually gate advancement.
+  const beginner = dailyActive == null && !reviewingLevel && !studioSpec;
+  const dailyRowEl = document.getElementById('dailyRow');
+  if (dailyRowEl && beginner) dailyRowEl.style.display = 'none';
+  // D2: the coverage checklist is VISIBLE — the level isn't done until the whole
+  // vocabulary is (every key, every meter, real volume, one clean long round).
+  const covEl = document.getElementById('hudCoverage');
+  if (covEl) {
+    if (dailyActive == null && !reviewingLevel && !beginner) {
+      const cov = S.coverage[L.id] || { keys: {}, meters: {}, modes: {}, rounds: 0, longClean: false };
+      const { keysNeeded, metersNeeded, modesNeeded } = coverageNeeds(L);
+      const kGot = Math.min(Object.keys(cov.keys).length, keysNeeded);
+      const mGot = metersNeeded.filter((m) => cov.meters[m]).length;
+      const xGot = modesNeeded.filter((m) => (cov.modes || {})[m]).length;
+      covEl.textContent = 'Coverage — keys ' + kGot + '/' + keysNeeded +
+        ' · meters ' + mGot + '/' + metersNeeded.length +
+        ' · exercises ' + xGot + '/' + modesNeeded.length +
+        ' · rounds ' + Math.min(cov.rounds, MIN_LEVEL_ROUNDS) + '/' + MIN_LEVEL_ROUNDS +
+        ' · long round ' + (cov.longClean ? 'done' : 'not yet');
+    } else {
+      covEl.textContent = '';
+    }
+  }
+  document.getElementById('hudGoal').textContent = beginner ? '' :
+    (S.capstoneArmed && !reviewingLevel ? 'CAPSTONE — one clean longer melody to level up! · ' : '') + L.masteryGoal;
+  document.getElementById('hudBand').textContent = mastery.levelFor(view);
+  document.getElementById('hudScore').textContent = Math.round(view.score);
+  document.getElementById('hudFill').style.width = Math.max(0, Math.min(100, view.score)) + '%';
+  document.getElementById('hudGame').textContent =
+    'Score ' + S.score.toLocaleString() +
+    (S.streak > 1 ? ' · Combo ×' + S.streak : '') +
+    ' · ' + rankFor(S.xp) + ' (' + S.xp + ' XP)' +
+    ' · Gems ' + S.gems;
+  // Beginner declutter: the motivation bar carries score/streak/progress, so hide
+  // the duplicated HUD game line + mastery meter at M0/M1.
+  const masteryEl = document.querySelector('.melodic-hud__mastery');
+  if (masteryEl) masteryEl.style.display = beginner ? 'none' : '';
+  document.getElementById('hudGame').style.display = beginner ? 'none' : '';
+  // Practice modes (Skills Gym, Interval Gym, Pattern drill, Bookends, Practice studio) now live
+  // behind ONE "Practice" button -> a menu (openPracticeMenu), each mode gated per level inside it.
+  // The button reads "Leave studio" while a Practice-studio session is active.
+  const practiceBtn = document.getElementById('practiceBtn');
+  if (practiceBtn) practiceBtn.textContent = studioSpec ? 'Leave studio' : 'Practice';
+}
+
+let currentRenderer = null;
+let currentIsCapstone = false;
+let roundKeyRotation = 0;
+let roundMeterRotation = 0; // D1: meters rotate like keys — the whole set, in turn
+let roundModeRotation = 0;  // conformance: the doc's exercise-mode progression rotates in the middle band
+let roundRefRotation = 0;   // conformance: the doc's Hall chapter RANGE rotates per round
+let studioSpec = null;      // D3: {choice, meter, bars} while the Practice Studio drives rounds
+let currentRoundInfo = null; // D2: what the mounted round actually was (key/meter/bars), for coverage
+let currentLabelCtx = null;  // the live label context (system/key/mode) so HUD text follows the Labels toggle
+function roundAnalysis(round) {
+  const meta = (round && round.metadata) || {};
+  return {
+    recipe: round && (round.recipe || meta.recipe) || null,
+    quality: round && (round.quality || meta.quality) || null,
+    generator: meta.generator || null,
+  };
+}
+/* Name a scale degree in the CURRENT label system (numbers / moveable-do / fixed-do),
+   so HUD pips + goals say "mi"/"sol" when the toggle is on movable-do, not "3̂"/"5̂". */
+function degLabelFor(degree) {
+  const ctx = currentLabelCtx || { key: 'C', mode: 'major', system: document.getElementById('sysSel').value, minorSolfege: 'la' };
+  try { return labelPalette(ctx)[degree - 1]; } catch (e) { return degree + '̂'; }
+}
+/* M0 tile-stage plan (owner): each degree gets several CLEAN rounds. HOME is a light
+   mechanic intro; 3̂ and 5̂ get 5 clean rounds plus a 3-round SPEED ramp (notes faster
+   each round) as the automaticity proof — the ear takes time, so this isn't one-and-done. */
+const M0_TILE_PLAN = {
+  2: { normal: 3, speeds: [] },              // tap HOME — learn the tile mechanic
+  3: { normal: 5, speeds: [560, 460, 380] }, // tap 3̂ — 5 clean + 3 faster (ms between notes)
+  4: { normal: 5, speeds: [560, 460, 380] }, // tap 5̂ — 5 clean + 3 faster
+};
+function m0RoundLabel(stage, done) {
+  const plan = M0_TILE_PLAN[stage];
+  if (!plan) return '';
+  if (done < plan.normal) return 'Round ' + Math.min(done + 1, plan.normal) + ' of ' + plan.normal;
+  const si = done - plan.normal;
+  return 'Speed ' + (si + 1) + ' of ' + plan.speeds.length + ' — faster!';
+}
+function m0RoundStepMs(stage, done) {
+  const plan = M0_TILE_PLAN[stage];
+  if (!plan || done < plan.normal) return 720;
+  return plan.speeds[Math.min(done - plan.normal, plan.speeds.length - 1)];
+}
+// M1 contour stages: 0 up/down/same · 1 step/skip · 2 shape-picker.
+const M1_STAGE_NAMES = ['Up/down', 'Step/skip', 'Shape'];
+// LEVEL 3 (m1_5 "Hold the tune") memory-span ladder — 4 stages, streak-gated like M1:
+//   0 Hold 3 (steps, home) · 1 Hold 4 (skip, home) · 2 Hold 5 (skips + off-home) · 3 Reverse (backward).
+// Tempo (playback gap) and chunking hints are modifiers layered across the stages, not stages.
+const M15_STAGE_NAMES = ['Hold 3', 'Hold 4', 'Hold 5', 'Reverse'];
+const M15_SPAN = [3, 4, 5, 4];                                   // notes per stage (reverse is 4)
+const M15_RULES = [                                              // content difficulty per stage
+  { maxStep: 1, homeStart: true },   // steps only, from home
+  { maxStep: 2, homeStart: true },   // allow a skip (3rd), from home
+  { maxStep: 3, homeStart: false },  // skips + start off home
+  { maxStep: 2, homeStart: true },   // reverse: moderate content, difficulty is the reversal
+];
+const M15_GAP = [640, 560, 500, 560];                           // base playback gap (ms); tightens with streak
+const M15_K = 5;                                                // clean-in-a-row to advance a stage
+const M15_MISS_REGRESS = 3;                                     // consecutive misses that drop a stage
+// LEVEL 4 (m2 "The rhythm IS the melody") — the STACKING build (MELODIC_CURRICULUM.md §1a).
+// Foundation stages (rhythm base, gated by clean-in-a-row so a beginner is never sprung the
+// hardest chapter/meter). The integration stages that fold in L1 (name 1/3/5) and L2 (shape)
+// are added next as their combined renderers land; this array grows then.
+const M2_STAGE_NAMES = ['Steady beat', 'Deeper rhythm', 'Name & shape'];
+const M2_HALLREFS = [['ch1'], ['ch1', 'ch2'], ['ch1', 'ch2']]; // rhythm complexity gated per stage
+const M2_METERS = [['4/4'], ['4/4', '3/4'], ['4/4', '3/4']];   // meters introduced per stage
+// stage 2 stacks L1+L2 onto rhythm (dictate the melody's rhythm, then name 1/3/5 / shape the 2)
+const M2_IDENTITY_STAGE = 2;
+const M2_K = 4;                                                // clean rhythm passes in a row to advance a stage
+const M2_LAST_STAGE = M2_STAGE_NAMES.length - 1;               // capstone gate needs all stages first
+// DATA-DRIVEN STAGE LADDERS for the labeling/recognition/missing-note levels (m2 is separate — it's
+// rhythm-first with an identity phase). Each entry stages the GENERATED vocabulary (degrees/leaps) +
+// rhythm per stage; the RENDERERS are unchanged (generation-agnostic). Generic handlers below read this
+// map for newRound gating, journey pips, clean-in-a-row advancement, and the capstone gate. Every stage
+// must stay within DEGREE/LEAP_INTRO_MINDEX and fold in L1–4 (see LEVELS_4_10_ROBUSTNESS.md stacking spine).
+//   degrees/leaps/hallRefs: per-stage arrays (null = keep the level's own). K: clean-in-a-row to advance.
+const STAGE_LADDERS = {
+  // L7 — the sharpest "too fast" jump: introduce 4̂, then 5̂ + triad skips, then richer rhythm. one at a time.
+  m5: {
+    names: ['Add 4̂', 'Skips to 5̂', 'Full pentascale'],
+    degrees: [[1, 2, 3, 4], [1, 2, 3, 4, 5], [1, 2, 3, 4, 5]],
+    leaps: [['step'], ['step', '3rd', 'P5'], ['step', '3rd', 'P5']],
+    hallRefs: [['ch3'], ['ch3'], ['ch4']],
+    K: 4,
+  },
+  // L9 — new skill is MINOR. Establish it stepwise, then add skips, then richer rhythm (keeps the level's
+  // minor keys + degrees; folds in L7 pentascale-in-minor + L8 minor-home).
+  m6: {
+    names: ['Minor, stepwise', 'Minor + skips', 'Full minor'],
+    degrees: null,
+    leaps: [['step'], ['step', '3rd', 'P5'], ['step', '3rd', 'P5']],
+    hallRefs: [['ch3'], ['ch3'], ['ch4']],
+    K: 4,
+  },
+  // L5 — the first labeling level (1̂-2̂-3̂, already stepwise). A gentle 2-stage rhythm graduation so
+  // degree-naming lands before the rhythm gets busy; folds in L4 rhythm + L1 home.
+  m3: {
+    names: ['First numbers', 'Full rhythm'],
+    degrees: null, leaps: null,
+    hallRefs: [['ch1'], ['ch2']],
+    K: 4,
+  },
+  // L6 — recognition; the level adds the 3rd skip + a 2nd key. Stage the skip IN: steps first, then the
+  // 3rd, then richer rhythm. (The 2nd key stays on throughout — transposition is the level's theme.)
+  m4: {
+    names: ['Steps only', 'Add the 3rd', 'Two keys + rhythm'],
+    degrees: null,
+    leaps: [['step'], ['step', '3rd'], ['step', '3rd']],
+    hallRefs: [['ch2'], ['ch3'], ['ch3']],
+    K: 4,
+  },
+  // L10 — missing-note "hear the gap". Gating the melody's LEAPS stages the GAP difficulty for free: a
+  // stepwise melody => the hidden note is a step from its neighbors; add skips => the gap can be a skip.
+  // Stacks all prior degree-naming + L2 contour to reconstruct the gap. Renderer unchanged.
+  m7: {
+    names: ['Step gaps', 'Skip gaps', 'Full + rhythm'],
+    degrees: null,
+    leaps: [['step'], ['step', '3rd', 'P5'], ['step', '3rd', 'P5']],
+    hallRefs: [['ch3'], ['ch3'], ['ch4']],
+    K: 4,
+  },
+};
+// FLUENCY GATE (owner pilot): advance a stage on K FLUENT-in-a-row answers — correct AND
+// under the stage's time threshold (ms, measured from when the answer became judgeable).
+// Reaction levels only; deliberate levels stay accuracy-only. Tune the thresholds by feel.
+const M1_FLUENT_K = 10;
+// Shape is the MOST important contour skill (owner) — make it robust: MORE correct-in-a-row
+// (K), and the difficulty ramps (longer melodies + more decoy shapes) as the streak builds.
+// Shape-reading is deliberate, so its time window is generous (accuracy-in-a-row, not a snap).
+const M1_SHAPE_K = 14;
+const M1_FLUENT_MS = [2500, 2800, 6500]; // up/down · step/skip · shape (generous)
+// Reference-pitch progression for the TWO-NOTE items (owner): key isn't shown — it's just
+// a starting note, so the point of reference should shift GRADUALLY. Early: hold one
+// reference for a while so the beginner orients. As fluency builds: change per round, then
+// change EVERY example. Any pitch is a valid reference (no key-signature limit). A miss
+// resets the fluent streak, so a struggling student keeps the stable reference.
+const M1_REF_POOL = [55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70];
+function m1TwoNoteRefs(n) {
+  const s = S.m1FluentStreak || 0;
+  const pick = () => M1_REF_POOL[Math.floor(Math.random() * M1_REF_POOL.length)];
+  if (s >= 6) return Array.from({ length: n }, () => pick()); // switches every single example
+  const HOLD = s >= 3 ? 1 : 4; // rounds a reference is held before it moves (start slow)
+  if (!Number.isInteger(S.m1RefBase) || (S.m1RefRounds || 0) >= HOLD) { S.m1RefBase = pick(); S.m1RefRounds = 0; }
+  S.m1RefRounds = (S.m1RefRounds || 0) + 1;
+  return Array.from({ length: n }, () => S.m1RefBase); // one reference for the whole round
+}
+let lastServices = null;   // for the level-up fanfare (playNote lives on services)
+// INSTRUMENT PICKER (Settings) — switch example playback to a real sampled instrument (lazy-loaded on
+// the shared AudioContext; synth is the instant default). Persisted; re-applied once a services exists.
+(() => {
+  const instSel = document.getElementById('instrumentSel');
+  if (!instSel) return;
+  INSTRUMENTS.forEach((n) => { const o = document.createElement('option'); o.value = n; o.textContent = INSTRUMENT_LABELS[n] || n; instSel.appendChild(o); });
+  let saved = 'synth'; try { saved = localStorage.getItem('mq_instrument') || 'synth'; } catch (e) { /* private mode */ }
+  instSel.value = saved;
+  const apply = (name) => {
+    try { localStorage.setItem('mq_instrument', name); } catch (e) { /* private mode */ }
+    if (lastServices && lastServices.setInstrument) {
+      instSel.disabled = true;
+      Promise.resolve(lastServices.setInstrument(name)).finally(() => { instSel.disabled = false; });
+    }
+  };
+  instSel.onchange = () => apply(instSel.value);
+  if (saved !== 'synth') {
+    const t = setInterval(() => { if (lastServices) { clearInterval(t); apply(saved); } }, 400);
+    setTimeout(() => clearInterval(t), 8000);
+  }
+})();
+
+/* DICTATION DEPTH (EXECUTION_PLAN §C3 D2): advancement demands the level's WHOLE
+   vocabulary, not three quick wins — the capstone may not arm until every key
+   (capped at 6 distinct for the huge all-key levels), every meter, a real round
+   count, and one clean LONG round are on the books. Defaults owner-overridable. */
+const MIN_LEVEL_ROUNDS = 10;
+const MAX_KEYS_REQUIRED = 6;
+function covFor(id) {
+  const c = S.coverage[id] = S.coverage[id] || { keys: {}, meters: {}, rounds: 0, longClean: false };
+  if (!c.modes) c.modes = {}; // conformance: every prescribed exercise mode, answered correctly
+  return c;
+}
+function coverageNeeds(L) {
+  // m19 (modulating) and m24's symmetric rounds mount recognition regardless of
+  // the doc's later modes (audit §A5) — need only what can actually mount; for
+  // m24 the pentatonic keys DO mount labeling/notation, so all three stand.
+  return {
+    keysNeeded: Math.min(keyChoices(L).length, MAX_KEYS_REQUIRED),
+    metersNeeded: L.meters || [L.meter],
+    modesNeeded: L.exerciseModes || [L.exerciseMode],
+  };
+}
+function coverageComplete(L) {
+  const cov = S.coverage[L.id];
+  if (!cov) return false;
+  const { keysNeeded, metersNeeded, modesNeeded } = coverageNeeds(L);
+  return Object.keys(cov.keys).length >= keysNeeded
+    && metersNeeded.every((m) => cov.meters[m])
+    && modesNeeded.every((m) => (cov.modes || {})[m])
+    && cov.rounds >= MIN_LEVEL_ROUNDS
+    && cov.longClean;
+}
+let hasGesture = false;    // browsers only allow audio after a user gesture
+document.addEventListener('pointerdown', () => { hasGesture = true; }, { capture: true });
+const AUTOPLAY_KINDS = new Set(['recognition', 'labeling', 'missing-note', 'error-detect']);
+
+/* ---- Session stats (this visit): rounds, correct, best streak, level-ups.
+   Shown in the level-up overlay so progress feels like a session, not a grind. */
+const session = { rounds: 0, correct: 0, bestStreak: 0, levelUps: 0 };
+
+/* ---- Level intro + level-up overlay. The intro copy is the CURRICULUM's own
+   words (title + masteryGoal) — the educational frame comes from the researched
+   ladder, not ad-hoc text. The card reuses .answer-area so every theme styles
+   it exactly like the main panel (no new colors anywhere). */
+function showOverlay({ heading, sub, goal, controls, bullets, strategy, stats, buttonText, onGo, demo, legend }) {
+  const ov = document.createElement('div');
+  ov.className = 'melodic-overlay';
+  const card = document.createElement('div');
+  card.className = 'answer-area melodic-overlay__card';
+  const h = document.createElement('div');
+  h.className = 'melodic-overlay__heading';
+  h.textContent = heading;
+  card.appendChild(h);
+  if (sub) {
+    const s = document.createElement('div');
+    s.className = 'melodic-overlay__sub';
+    s.textContent = sub;
+    card.appendChild(s);
+  }
+  if (controls) {
+    const c = document.createElement('div');
+    c.className = 'melodic-overlay__controls';
+    const lbl = document.createElement('span'); lbl.className = 'melodic-overlay__controls-lbl'; lbl.textContent = 'How to play: ';
+    c.append(lbl, document.createTextNode(controls));
+    card.appendChild(c);
+  }
+  if (goal) {
+    const g = document.createElement('div');
+    g.className = 'melodic-overlay__goal';
+    g.textContent = 'Goal: ' + goal;
+    card.appendChild(g);
+  }
+  if (bullets && bullets.length) {
+    const label = document.createElement('div');
+    label.className = 'melodic-overlay__listen-label';
+    label.textContent = 'Listen for:';
+    card.appendChild(label);
+    const ul = document.createElement('ul');
+    ul.className = 'melodic-overlay__listen';
+    bullets.forEach((b) => {
+      const li = document.createElement('li');
+      li.textContent = b;
+      ul.appendChild(li);
+    });
+    card.appendChild(ul);
+  }
+  if (legend) card.appendChild(legend);
+  if (strategy) {
+    const st2 = document.createElement('div');
+    st2.className = 'melodic-overlay__strategy';
+    st2.textContent = 'Tip: ' + strategy;
+    card.appendChild(st2);
+  }
+  if (stats) {
+    const st = document.createElement('div');
+    st.className = 'melodic-overlay__stats';
+    st.textContent = stats;
+    card.appendChild(st);
+  }
+  const btnRow = document.createElement('div');
+  btnRow.className = 'melodic-overlay__btnrow';
+  if (demo) {
+    const demoBtn = document.createElement('button');
+    demoBtn.className = 'melodic-btn melodic-btn--play'; // transport -> green
+    demoBtn.textContent = 'Hear an example';
+    demoBtn.onclick = demo; // stays open — listen, then Start
+    btnRow.appendChild(demoBtn);
+  }
+  const btn = document.createElement('button');
+  btn.className = 'melodic-btn melodic-btn--primary';
+  btn.textContent = buttonText;
+  btn.onclick = () => { document.body.removeChild(ov); onGo(); };
+  btnRow.appendChild(btn);
+  card.appendChild(btnRow);
+  ov.appendChild(card);
+  document.body.appendChild(ov);
+  btn.focus();
+}
+
+/* Little ascending tonic-triad fanfare on level-up — audible celebration without
+   any new audio machinery (reuses the round services' playNote). */
+function playFanfare() {
+  if (!lastServices) return;
+  const root = 72; // c5 — bright, register-independent of the round's key
+  [[0, 0], [4, 0.12], [7, 0.24], [12, 0.36]].forEach(([semi, at]) => {
+    setTimeout(() => { try { lastServices.playNote(root + semi, 0.4); } catch (e) {} }, at * 1000);
+  });
+}
+
+/* When a review of a PASSED level is due (Leitner schedule), it plays before new
+   material — retention work first, exactly the mastery model's "spaced review
+   refreshes the badge" principle. `reviewingLevel` marks the round so grading
+   feeds the review boxes instead of the advancement gate. */
+let reviewingLevel = null;
+
+/* The intro/teach card for a level: authored teach content when it exists
+   (melodic-teach-content.js — whatsNew, listen-for bullets, strategy), the
+   curriculum goal as the floor when it doesn't. */
+function showLevelIntro(L, buttonText, onGo) {
+  const t = (window.MELODIC_TEACH_CONTENT || {})[L.id] || {};
+  // "Hear an example": a deterministic demo melody of THIS level (fixed seed so
+  // the intro example is stable), played on the overlay button's own gesture.
+  // rhythm-first (m2) has no pitched demo — its example lives in the game itself.
+  let demo = null;
+  if (L.exerciseMode !== 'rhythm-first') {
+    demo = () => {
+      try {
+        const r = buildRound(L, keyChoices(L)[0].value, 12345);
+        const svc = createServices({ labelNoteFn: labelNote, labelPaletteFn: labelPalette,
+          labelCtx: { key: r.key, mode: r.mode, system: 'numbers', minorSolfege: 'la' }, tempoBPM: 92 });
+        svc.play(r.melody);
+      } catch (e) {}
+    };
+  }
+  // Beginner levels get a LEAN modal (owner: "SOOOOOOO wordy") — just how-to + one tip +
+  // Start/example. Drop the goal jargon and the listen-for bullets; sub only if it's real.
+  const lean = L.mIndex < 2;
+  showOverlay({
+    heading: levelLabel(L) + ' · ' + (t.title || L.title),
+    sub: t.whatsNew ? ((kidsActive() ? 'Tock says: ' : '') + t.whatsNew) : undefined,
+    goal: lean ? undefined : L.masteryGoal,
+    controls: t.controls,
+    bullets: lean ? undefined : t.listenFor,
+    strategy: t.strategy,
+    legend: L.id === 'm1' ? buildM1Legend() : undefined,
+    buttonText,
+    onGo,
+    demo,
+  });
+}
+
+/* M1 modal legend (owner: a student wasn't sure what the step/skip icons meant). Shows
+   each move button, what it means, and a Play example of each — so the icon->sound
+   mapping is taught up front. */
+function buildM1Legend() {
+  const svc = createServices({ labelNoteFn: labelNote, labelPaletteFn: labelPalette,
+    labelCtx: { key: 'C', mode: 'major', system: 'numbers', minorSolfege: 'la' }, tempoBPM: 92 });
+  const play = (a, b) => { try { svc.playNote(a, 0.7); if (a !== b || true) setTimeout(() => { try { svc.playNote(b, 0.7); } catch (e) {} }, 520); } catch (e) {} };
+  const wrap = document.createElement('div');
+  wrap.className = 'melodic-legend';
+  const note = document.createElement('div');
+  note.className = 'melodic-legend__note';
+  note.textContent = 'The buttons show the MOVE between two notes: a small step vs a bigger skip, up or down. Tap Play to hear each.';
+  wrap.appendChild(note);
+  [['up-step', 'Step up', [67, 69]], ['up-skip', 'Skip up', [67, 71]],
+   ['down-step', 'Step down', [67, 65]], ['down-skip', 'Skip down', [67, 64]],
+   ['same', 'Same note', [67, 67]]].forEach(([kind, label, midis]) => {
+    const row = document.createElement('div');
+    row.className = 'melodic-legend__row';
+    const ic = document.createElement('span'); ic.className = 'melodic-legend__icon'; ic.appendChild(contourMoveIcon(kind));
+    const lb = document.createElement('span'); lb.className = 'melodic-legend__label'; lb.textContent = label;
+    const pb = document.createElement('button'); pb.type = 'button'; pb.className = 'melodic-btn melodic-btn--play melodic-legend__play';
+    pb.appendChild(gameIcon('play', 13)); pb.append(document.createTextNode(' Play'));
+    pb.onclick = () => play(midis[0], midis[1]);
+    row.append(ic, lb, pb);
+    wrap.appendChild(row);
+  });
+  return wrap;
+}
+
+function offerPlacement() {
+  const ov = document.createElement('div');
+  ov.className = 'melodic-overlay';
+  const card = document.createElement('div');
+  card.className = 'answer-area melodic-overlay__card melodic-placement__card';
+  const h = document.createElement('div');
+  h.className = 'melodic-overlay__heading';
+  h.textContent = 'Where should you start?';
+  card.appendChild(h);
+  const sub = document.createElement('div');
+  sub.className = 'melodic-overlay__sub';
+  sub.textContent = 'Pick the highest description that sounds like you — a short listening check confirms it (you cannot fail; it only finds your level).';
+  card.appendChild(sub);
+  TIERS.forEach((t, i) => {
+    const b = document.createElement('button');
+    b.className = 'melodic-btn melodic-placement__tier';
+    b.innerHTML = '<strong>' + t.label + '</strong><span>' + t.desc + '</span>';
+    b.onclick = () => {
+      document.body.removeChild(ov);
+      S.placed = true; save(S);
+      if (t.top === null) { startRound(); return; }
+      startPlacement(i);
+    };
+    card.appendChild(b);
+  });
+  ov.appendChild(card);
+  document.body.appendChild(ov);
+}
+
+function startPlacement(tierIdx) {
+  placement = { tierIdx, item: 0, correct: 0 };
+  placementRound();
+}
+
+function placementRound() {
+  document.getElementById('dailyRow').style.display = 'none';
+  const L = PLAYABLE.find((P2) => P2.id === TIERS[placement.tierIdx].top);
+  const choices = keyChoices(L).filter((c) => !String(c.value).startsWith('sym:'));
+  const choice = choices[placement.item % choices.length];
+  const round = buildRound(L, choice.value, Math.floor(Math.random() * 1e6));
+  currentRoundInfo = {
+    keyLabel: choice.label,
+    meter: (round.melody && round.melody.meter) || L.meter,
+    bars: (round.recipe && round.recipe.active && round.recipe.active.bars) || L.lengthBars || 2,
+    mode: round.rendererKind,
+    ...roundAnalysis(round),
+  };
+  const labelCtx = { key: round.key, mode: round.mode, system: document.getElementById('sysSel').value, minorSolfege: 'la' };
+  const services = createServices({ labelNoteFn: labelNote, labelPaletteFn: labelPalette, labelCtx, tempoBPM: 92 });
+  lastServices = services;
+  if (currentRenderer) currentRenderer.destroy();
+  document.getElementById('toast').textContent = '';
+  const oldStars = document.querySelector('.melodic-stars');
+  if (oldStars) oldStars.remove();
+  document.getElementById('nextBtn').style.display = 'none';
+  document.getElementById('hudLevelNum').textContent = '';
+  document.getElementById('hudLevelTitle').textContent = 'Placement check';
+  document.getElementById('hudGoal').textContent =
+    TIERS[placement.tierIdx].label + ' · question ' + (placement.item + 1) + ' / ' + PLACEMENT_ITEMS + ' — pick the staff that matches what you hear';
+  const host = document.getElementById('rendererHost');
+  // Assessment uses RECOGNITION regardless of the level's own mode (the doc's
+  // "easiest mode" rule keeps the test about EARS, not interface skill).
+  currentRenderer = RENDERERS.recognition(host, {
+    level: L, melody: round.melody, distractors: round.distractors, labelCtx, services,
+    practice: true, // assessment is NO-FAIL and unhurried — no hearing budget here
+    onResult(result) { placementResult(result); },
+  });
+  if (window.__mqTest) window.__mqTest.lastRound = round;
+  if (hasGesture) services.play(round.melody);
+}
+
+function placementResult(result) {
+  if (result.correct) placement.correct++;
+  placement.item++;
+  if (placement.item < PLACEMENT_ITEMS) { setTimeout(placementRound, 900); return; }
+  // Assessment complete.
+  const rate = placement.correct / PLACEMENT_ITEMS;
+  const tier = TIERS[placement.tierIdx];
+  if (rate >= PLACEMENT_PASS) {
+    // Owner's rule: a passed check means you START AT that level — the tested
+    // tier is where real work begins (everything below is marked proficient).
+    const topIdx = PLAYABLE.findIndex((P2) => P2.id === tier.top);
+    const placedIdx = Math.min(topIdx, PLAYABLE.length - 1);
+    // Mark everything below as proficient-or-better — idempotent, never demotes.
+    for (let i = 0; i < placedIdx; i++) {
+      const id = PLAYABLE[i].id;
+      const item = itemFor(id);
+      if ((item.score || 0) < 85) S.items[id] = { ...item, score: 85, level: 'proficient' };
+    }
+    S.levelIdx = placedIdx;
+    S.xp += 25; // placement completion is a genuine mastery event
+    placement = null;
+    save(S);
+    showOverlay({
+      heading: 'Placed!',
+      sub: 'You start at ' + curLevel().id.toUpperCase() + ' · ' + curLevel().title + ' (' + Math.round(rate * 100) + '% on the check). Everything below is unlocked.',
+      buttonText: 'Begin',
+      onGo: newRound,
+    });
+  } else if (placement.tierIdx > 1) {
+    const downTo = placement.tierIdx - 1;
+    placement = null;
+    showOverlay({
+      heading: 'Close! Let\u2019s check one tier down',
+      sub: 'That level isn\u2019t comfortable yet (' + Math.round(rate * 100) + '%). No worries — quick check of "' + TIERS[downTo].label + '" instead.',
+      buttonText: 'Continue',
+      onGo: () => startPlacement(downTo),
+    });
+  } else {
+    placement = null;
+    S.levelIdx = 0; save(S);
+    showOverlay({
+      heading: 'Starting from the beginning',
+      sub: 'The foundations will go fast — the ladder climbs quickly.',
+      buttonText: 'Begin',
+      onGo: newRound,
+    });
+  }
+}
+
+function newRound() {
+  // Studio drives its own round loop — no review interception, no intro cards
+  // (the student explicitly chose this material; leave via the same button).
+  if (studioSpec) { startRound(); return; }
+  const due = review.dueItems(S.review, Date.now());
+  // Gym spaced-review (spec §2): a due 'gym:<circuit>' surfaces FIRST, as that
+  // circuit's NAME station — a one-station retention probe, not a whole re-grind.
+  const dueGym = due.find((d) => String(d.skillId).startsWith('gym:'));
+  if (dueGym) { startGymReview(String(dueGym.skillId).slice(4)); return; }
+  const dueLadder = due.find((d) => !String(d.skillId).startsWith('gym:'));
+  const dueLevel = dueLadder ? PLAYABLE.find((P) => P.id === dueLadder.skillId) : null;
+  if (dueLevel && dueLevel.id !== curLevel().id) {
+    reviewingLevel = dueLevel;
+    startRound();
+    return;
+  }
+  reviewingLevel = null;
+
+  const L = curLevel();
+  renderHud(); // the header reflects the level IMMEDIATELY (intro card included),
+               // not only once a round mounts — jumping levels showed a stale title.
+  // First visit to a level (this device): show its intro card BEFORE the first
+  // round — the curriculum's own title + goal, so the student knows what skill
+  // this rung teaches. Once per level, persisted.
+  // FORCE_INTRO (?intro=1) — testing aid: show the teaching modal on EVERY level entry,
+  // not just the first time (owner: "for testing can we have modals pop up each time").
+  if (S.introSeen !== L.id && (FORCE_INTRO || !(S.introDone || []).includes(L.id))) {
+    S.introSeen = L.id;
+    (S.introDone = S.introDone || []).push(L.id);
+    save(S);
+    showLevelIntro(L, 'Start', startRound);
+    return;
+  }
+  startRound();
+}
+
+function startRound() {
+  // A new round owns the screen: clear any overlay left from a previous state
+  // (level intro / level-up) — overlays must never stack over a fresh round.
+  document.querySelectorAll('.melodic-overlay').forEach((el) => el.remove());
+  if (gymStationMount) { gymStationMount.destroy(); gymStationMount = null; gymReviewCircuit = null; }
+  if (bookendMount) { bookendMount.destroy(); bookendMount = null; }
+  if (chunkMount) { chunkMount.destroy(); chunkMount = null; }
+  document.getElementById('dailyRow').style.display = '';
+  // A GYM daily runs through startDailyGym, not here — treat it as no ladder daily.
+  const dailyIsLadder = dailyActive != null && dailyChallenges()[dailyActive].type !== 'gym';
+  const L = dailyIsLadder ? PLAYABLE[dailyChallenges()[dailyActive].levelIdx] : (reviewingLevel || curLevel());
+  // Rotate through the level's whole key set (the multi-key research made real):
+  // every key the level allows comes up in turn, not just the primary.
+  const choices = keyChoices(L);
+  let choice = choices[roundKeyRotation % choices.length];
+  roundKeyRotation++;
+  let dailySpec = null;
+  if (dailyActive != null) {
+    dailySpec = dailyChallenges()[dailyActive];
+  }
+  const seed = dailySpec ? dailySpec.seed : Math.floor(Math.random() * 1e6);
+  // CAPSTONE round (mastery-progression-model, LOCKED): once the band+streak gate is
+  // met, advancement demands ONE clean LONGER example of this level's own exercise —
+  // 4 bars (8 from M17, the multi-phrase span). Reviews are never capstones.
+  currentIsCapstone = !reviewingLevel && !studioSpec && S.capstoneArmed;
+  const capstoneBars = L.mIndex >= 17 ? 8 : 4;
+  // DICTATION DEPTH (§C3 D1): rounds rotate through the level's WHOLE meter set
+  // (like keys) and GROW with mastery — 2 bars while learning, alternating 2/4
+  // in the middle band, 4 (8 at M17+) once Proficient. Dailies pin the level's
+  // primary meter + 2 bars (their seed must fully determine the round). The
+  // Studio overrides all three knobs with the student's own picks.
+  const meterSet = L.meters || [L.meter];
+  let meter = meterSet[roundMeterRotation % meterSet.length];
+  roundMeterRotation++;
+  const viewNow = mastery.viewItemAsOf(itemFor(L.id), Date.now());
+  // Length (audit §A3): the level's own MATERIAL length is the standard (doc:
+  // M14 = 4-bar phrases, M17/M26 = 8-bar); below Familiar it scaffolds at half.
+  // 2-bar levels stretch to 4 once Proficient (variety, not a requirement).
+  const baseBars = L.lengthBars || 2;
+  let bars;
+  if (baseBars > 2) bars = viewNow.score < 40 ? Math.max(2, baseBars / 2) : baseBars;
+  // MONOTONIC length ramp (no jarring 2<->4 alternation): stay at 2 bars until the student is near
+  // mastery, then lengthen to 4. Difficulty within a length is handled by the adaptive percentile below.
+  else bars = viewNow.score >= 70 ? 4 : 2;
+  // ADAPTIVE difficulty percentile: buildRound generates several candidate melodies and picks the one
+  // at this percentile, so difficulty CLIMBS with mastery instead of swinging random-easy/random-hard.
+  // Floored (always some challenge) and capped (never punishing); the capstone uses near-max.
+  const diffPct = Math.max(0.12, Math.min(0.95, viewNow.score / 100));
+  // Exercise-mode PROGRESSION (audit §A1, doc §2/§3): below Familiar = the
+  // easiest prescribed mode; the middle band rotates ALL prescribed modes; at
+  // Proficient the hardest leads. The capstone is always the hardest mode.
+  const modes = L.exerciseModes || [L.exerciseMode];
+  let exMode = viewNow.score < 40 ? modes[0]
+    : viewNow.score >= 80 ? modes[modes.length - 1]
+    : modes[roundModeRotation % modes.length];
+  roundModeRotation++;
+  // Hall rhythm chapters (audit §A2): the doc prescribes a RANGE — rotate it.
+  const refs = L.hallRhythmRefs || [L.hallRhythmRef];
+  let hallRef = refs[roundRefRotation % refs.length];
+  roundRefRotation++;
+  // LEVEL 4 (m2): gate rhythm complexity + meter by the STAGE (not mastery rotation), so a
+  // beginner is never sprung the hardest chapter/meter on round 2. Within a stage's UNLOCKED
+  // set we still interleave (good for retention). See stacking-principle / M2_* constants.
+  if (L.id === 'm2') {
+    const st = S.stages.m2 || 0;
+    const sRefs = M2_HALLREFS[st] || M2_HALLREFS[M2_HALLREFS.length - 1];
+    const sMeters = M2_METERS[st] || M2_METERS[M2_METERS.length - 1];
+    hallRef = sRefs[roundRefRotation % sRefs.length];
+    meter = sMeters[roundMeterRotation % sMeters.length];
+    // (mode is always rhythm-identity for m2; the name/shape STEP is gated by identityPhase below)
+  }
+  // STAGE-LADDER GATING (data-driven): for a level in STAGE_LADDERS, stage the generated vocabulary
+  // (opts.degrees / opts.leaps) + rhythm ref by S.stages[id]. Renderer unchanged. Folds in L1–4 per the
+  // stacking spine; every stage stays within DEGREE/LEAP_INTRO_MINDEX (verified in SEMITONES).
+  let stageDegrees = null, stageLeaps = null;
+  const stageLad = STAGE_LADDERS[L.id];
+  if (stageLad) {
+    const st = S.stages[L.id] || 0;
+    const at = (arr) => arr ? (arr[st] || arr[arr.length - 1]) : null;
+    stageDegrees = at(stageLad.degrees);
+    stageLeaps = at(stageLad.leaps);
+    const sRefs = at(stageLad.hallRefs);
+    if (sRefs) hallRef = sRefs[roundRefRotation % sRefs.length];
+  }
+  if (dailySpec) { // dailies stay fully seed-determined: pin every rotating knob
+    meter = L.meter; bars = Math.min(baseBars, 4); exMode = L.exerciseMode; hallRef = L.hallRhythmRef;
+  }
+  if (studioSpec) {
+    choice = studioSpec.choice; meter = studioSpec.meter; bars = studioSpec.bars;
+    exMode = studioSpec.exMode || modes[0];
+  }
+  const capBars = Math.max(capstoneBars, baseBars);
+  const round = buildRound(L, choice.value, seed,
+    currentIsCapstone
+      ? { lengthBars: capBars, meter, exerciseMode: modes[modes.length - 1], hallRhythmRef: hallRef, degrees: stageDegrees, leaps: stageLeaps, difficultyPercentile: 0.92 }
+      : { lengthBars: bars, meter, exerciseMode: exMode, hallRhythmRef: hallRef, degrees: stageDegrees, leaps: stageLeaps, difficultyPercentile: diffPct });
+  currentRoundInfo = {
+    keyLabel: choice.label,
+    meter: (round.melody && round.melody.meter) || meter,
+    bars: currentIsCapstone ? capBars : bars,
+    // coverage records what ACTUALLY mounted (sym/modulating force recognition);
+    // m20's three rungs are all faces of its single 'two-part' mode.
+    mode: L.exerciseMode === 'two-part' ? 'two-part' : round.rendererKind,
+    ...roundAnalysis(round),
+  };
+
+  const isDiatonic = !String(choice.value).startsWith('sym:');
+  const labelCtx = {
+    key: round.key, mode: isDiatonic ? round.mode : 'major',
+    system: document.getElementById('sysSel').value, minorSolfege: 'la',
+  };
+  currentLabelCtx = labelCtx; // HUD pips/goals read this so they follow the Labels toggle
+  const services = createServices({ labelNoteFn: labelNote, labelPaletteFn: labelPalette, labelCtx, tempoBPM: 92 });
+  lastServices = services;
+
+  if (currentRenderer) currentRenderer.destroy();
+  document.getElementById('toast').textContent = '';
+  const oldStars = document.querySelector('.melodic-stars');
+  if (oldStars) oldStars.remove();
+  document.getElementById('nextBtn').style.display = 'none';
+
+  const host = document.getElementById('rendererHost');
+  const m0Stage = S.stages[L.id] || 0;
+  // For M0 tile stages, tell the renderer this round's PACE + label (normal vs the
+  // faster speed-ramp rounds) based on how many clean rounds are already banked.
+  let tileStepMs, tileRoundLabel, tileRoundDone, tileRoundTotal, tileSpeed;
+  if (L.id === 'm0' && m0Stage >= 2) {
+    const done = S.m0StagePass || 0;
+    const plan = M0_TILE_PLAN[m0Stage];
+    tileStepMs = m0RoundStepMs(m0Stage, done);
+    tileRoundLabel = m0RoundLabel(m0Stage, done);
+    if (plan) { tileRoundDone = done; tileRoundTotal = plan.normal + plan.speeds.length; tileSpeed = done >= plan.normal; }
+  }
+  // M1 stage 2 (shape-picker) grows BOTH the melody length (3->6 notes) AND the number of
+  // decoy shapes (3->6 options) as the fluent streak builds — robust, not a quick pass.
+  let shapeLen, shapeOptions;
+  if (L.id === 'm1' && m0Stage === 2) {
+    const fs = S.m1FluentStreak || 0;
+    shapeLen = Math.min(6, 3 + Math.floor(fs / 3));
+    shapeOptions = Math.min(6, 3 + Math.floor(fs / 4));
+  }
+  // Two-note stages get a progressive REFERENCE schedule (stable -> shifting -> every example).
+  let m1Refs;
+  if (L.id === 'm1' && m0Stage < 2) { m1Refs = m1TwoNoteRefs(6); save(S); }
+  // LEVEL 3 (m1_5) memory-span ladder: span + content rule + tempo + reverse per stage.
+  let spanCount, spanGapMs, spanReverse, spanRule;
+  if (L.id === 'm1_5') {
+    const st = m0Stage; // S.stages['m1_5']
+    spanCount = M15_SPAN[st]; spanReverse = st === 3; spanRule = M15_RULES[st];
+    spanGapMs = Math.max(360, M15_GAP[st] - (S.m15Streak || 0) * 30); // tempo tightens as the streak builds
+  }
+  currentRenderer = RENDERERS[round.rendererKind](host, {
+    level: L, melody: round.melody, distractors: round.distractors, labelCtx, services,
+    practice: !!(S.practice),
+    progress: mastery.viewItemAsOf(itemFor(L.id), Date.now()),
+    stage: m0Stage, // EXPLICIT in-level stage (M0: 0 live · 1 live-quick · 2 tap-1̂ · 3 tap-3̂ · 4 tap-5̂)
+    tileStepMs, tileRoundLabel, tileRoundDone, tileRoundTotal, tileSpeed, shapeLen, shapeOptions, m1Refs,
+    spanCount, spanGapMs, spanReverse, spanRule,
+    identityPhase: L.id === 'm2' && (S.stages.m2 || 0) >= M2_IDENTITY_STAGE, // Level 4 stage 3 adds name/shape
+    onResult(result) { onRoundResult(L, result); },
+  });
+  // Test seam only (?mqtest=1): expose the round truth so automated tests can
+  // answer CORRECTLY through the real UI (mirrors the rhythm game's __levTest).
+  if (window.__mqTest) window.__mqTest.lastRound = round;
+  renderHud();
+  // The round OPENS by sounding its melody (hear-then-answer modes only, and only
+  // once a user gesture has unlocked audio) — a dictation game must never sit
+  // silent waiting for the student to discover a Play button (owner-reported).
+  // In graded mode the 3-hearing budget must be exact, so the round no longer
+  // auto-plays — the student spends hearing #1 deliberately. Practice mode keeps
+  // the friendlier auto-play.
+  if (hasGesture && S.practice && AUTOPLAY_KINDS.has(round.rendererKind)) {
+    services.play(round.melody);
+  }
+}
+
+// One daily's reward bookkeeping — shared by ladder dailies and the Gym daily
+// (spec §6) so both grant the identical +10 gems / +5 XP / +150 and streak.
+function applyDailyResult(i, result) {
+  const toastEl = document.getElementById('toast');
+  if (result.correct) {
+    S.daily.done[i] = true;
+    S.gems += 10; S.xp += 5; S.score += 150;
+    const allDone = S.daily.done.every(Boolean);
+    if (allDone) { S.daily.streak++; playFanfare(); }
+    toastEl.className = 'melodic-toast is-correct';
+    toastEl.textContent = allDone
+      ? 'All three dailies done — day streak ' + S.daily.streak + '!  (+10 gems · +5 XP · +150)'
+      : 'Daily complete!  +10 gems · +5 XP · +150';
+  } else {
+    toastEl.className = 'melodic-toast is-wrong';
+    toastEl.textContent = encourage() + ' — dailies stay open all day';
+  }
+  save(S); renderDaily(); renderHud();
+  if (result.correct) celebrate(result.clean !== false); else playTryAgain();
+  document.getElementById('nextBtn').style.display = '';
+}
+
+function onRoundResult(L, result) {
+  const now = Date.now();
+  if (dailyActive != null) {
+    const i = dailyActive;
+    dailyActive = null;
+    applyDailyResult(i, result);
+    return;
+  }
+  S.items[L.id] = mastery.recordAnswer(itemFor(L.id), !!result.correct, { now, sessionStart: S.sessionStart });
+
+  // DICTATION DEPTH (§C3 D2): every graded round feeds the level's coverage map —
+  // which keys and meters have been answered CORRECTLY, how many rounds total,
+  // and whether one long (4-bar+) round was clean. Advancement reads this.
+  const cov = covFor(L.id);
+  cov.rounds++;
+  if (result.correct && currentRoundInfo) {
+    if (currentRoundInfo.keyLabel) cov.keys[currentRoundInfo.keyLabel] = true;
+    if (currentRoundInfo.meter) cov.meters[currentRoundInfo.meter] = true;
+    if (currentRoundInfo.mode) cov.modes[currentRoundInfo.mode] = true;
+    if (currentRoundInfo.bars >= 4 && result.clean !== false) cov.longClean = true;
+  }
+
+  // STUDIO rounds (§C3 D3): mastery + coverage + score, but NEVER the advancement
+  // streak or capstone — the guided ladder owns progression.
+  if (studioSpec) {
+    let pts0 = 0;
+    if (result.correct) pts0 = 100;
+    else if (Number.isFinite(result.accuracy) && result.accuracy > 0) pts0 = Math.round(result.accuracy);
+    S.score += pts0;
+    if (result.correct) S.xp += 1;
+    session.rounds++;
+    if (result.correct) session.correct++;
+    save(S);
+    renderHud();
+    if (pts0) scorePop(pts0);
+    if (result.correct) celebrate(result.clean !== false); else playTryAgain();
+    const toastEl = document.getElementById('toast');
+    toastEl.className = 'melodic-toast ' + (result.correct ? 'is-correct' : 'is-wrong');
+    toastEl.textContent = (result.correct ? 'Studio round correct' : encourage()) +
+      ' · ' + currentRoundInfo.bars + ' bars · ' + currentRoundInfo.keyLabel + ' · ' + currentRoundInfo.meter;
+    document.getElementById('nextBtn').style.display = '';
+    return;
+  }
+
+  // REVIEW rounds feed the Leitner boxes + refresh the level's mastery decay —
+  // they never touch the CURRENT level's advancement streak (a retention lapse
+  // demotes the review box; it shouldn't also punish today's new-skill progress).
+  if (reviewingLevel) {
+    S.review.entries = S.review.entries.map((e) =>
+      e.skillId === L.id ? review.applyResult(e, !!result.correct, now) : e);
+    if (result.correct) { S.reviewsPassed++; S.score += 50; S.xp += 1; checkAchievements(); celebrate(result.clean !== false); } else playTryAgain();
+    save(S);
+    renderHud();
+    session.rounds++;
+    if (result.correct) session.correct++;
+    const toastEl = document.getElementById('toast');
+    toastEl.className = 'melodic-toast ' + (result.correct ? 'is-correct' : 'is-wrong');
+    toastEl.textContent = result.correct
+      ? 'Review passed — ' + levelLabel(L) + ' stays sharp'
+      : 'Review lapse — ' + levelLabel(L) + ' will come around again sooner';
+    document.getElementById('nextBtn').style.display = '';
+    return;
+  }
+
+  S.streak = result.correct && result.clean !== false ? S.streak + 1 : 0;
+  S.bestStreak = Math.max(S.bestStreak, S.streak);
+  // M0's FIVE-stage progression (owner redesign): 0 live find-home · 1 live find-home
+  // (quick) · 2 tap HOME in tiles · 3 tap 3̂ · 4 tap 5̂. The two LIVE stages own their
+  // reps internally, so each completion (one clean result) advances. The TILE stages
+  // need several clean rounds (M0_TILE_PLAN) — home is a light mechanic intro; 3̂/5̂ ask
+  // 5 clean rounds + a 3-round speed ramp so the skill is real, not one lucky round.
+  // A missed round never RESETS the tally; it just doesn't count (kept encouraging).
+  let stageAdvanced = false;
+  let tileProgress = null; // {done,total,label} when a clean tile round doesn't yet advance
+  if (L.id === 'm0' && !currentIsCapstone && result.correct && result.clean !== false) {
+    const cur2 = S.stages.m0 || 0;
+    if (cur2 <= 1 || cur2 === 5) {
+      // LIVE stages clear on one clean session: 0/1 find-home, 5 octave-equivalence.
+      if (cur2 < 5) { S.stages.m0 = cur2 + 1; S.m0StagePass = 0; stageAdvanced = true; }
+      // cur2 === 5 cleared: final stage done — the capstone gate takes it from here.
+    } else {
+      const plan = M0_TILE_PLAN[cur2];
+      const total = plan ? plan.normal + plan.speeds.length : 1;
+      S.m0StagePass = (S.m0StagePass || 0) + 1;
+      if (S.m0StagePass >= total && cur2 < 4) {
+        S.stages.m0 = cur2 + 1; S.m0StagePass = 0; stageAdvanced = true;
+      } else if (S.m0StagePass >= total && cur2 === 4) {
+        S.stages.m0 = 5; S.m0StagePass = 0; stageAdvanced = true; // tiles done -> octave-equivalence stage
+      } else if (S.m0StagePass < total) {
+        tileProgress = { done: S.m0StagePass, total, label: m0RoundLabel(cur2, S.m0StagePass) };
+      }
+    }
+  }
+  // M1 CONTOUR — FLUENCY GATE (owner, pilot): advance a stage only after K FLUENT hits
+  // IN A ROW, where fluent = correct AND answered within the stage's time threshold. A
+  // slow OR wrong answer resets the streak (mastery = automaticity, not just accuracy).
+  // Runs on EVERY M1 round (even wrong ones) so a miss can reset the streak. The per-
+  // answer times ride in result.meta.prompts = [{correct, rt}], processed in order.
+  if (L.id === 'm1' && !currentIsCapstone) {
+    const c1 = S.stages.m1 || 0;
+    const K = (c1 === 2) ? M1_SHAPE_K : M1_FLUENT_K;
+    const thr = M1_FLUENT_MS[c1] || 3000;
+    const seq = (result.meta && result.meta.prompts) || [];
+    for (const pr of seq) {
+      if (pr.correct && pr.rt <= thr) S.m1FluentStreak = (S.m1FluentStreak || 0) + 1;
+      else S.m1FluentStreak = 0;
+      if (c1 < 2 && S.m1FluentStreak >= K) { S.stages.m1 = c1 + 1; S.m1FluentStreak = 0; stageAdvanced = true; break; }
+      if (c1 === 2 && S.m1FluentStreak >= K) { S.m1ShapeDone = true; } // shape mastered; capstone can arm
+    }
+    if (!stageAdvanced) {
+      const inRow = c1 === 2 ? ' shapes in a row' : ' fast in a row';
+      tileProgress = { done: Math.min(S.m1FluentStreak || 0, K), total: K, label: M1_STAGE_NAMES[c1] + ' — ' + (S.m1FluentStreak || 0) + '/' + K + inRow };
+    }
+  }
+  // LEVEL 3 (m1_5) MEMORY-SPAN LADDER — advance a stage on K clean echoes IN A ROW; a miss
+  // resets the streak and, after M15_MISS_REGRESS misses, steps the stage back down (so a
+  // student who slips to a harder span isn't stranded). Stage 3 (reverse) mastered = m15Done,
+  // which arms the level capstone.
+  if (L.id === 'm1_5' && !currentIsCapstone) {
+    const cs = S.stages['m1_5'] || 0;
+    if (result.correct) {
+      S.m15Streak = (S.m15Streak || 0) + 1; S.m15Miss = 0;
+      if (cs < 3 && S.m15Streak >= M15_K) { S.stages['m1_5'] = cs + 1; S.m15Streak = 0; stageAdvanced = true; }
+      else if (cs === 3 && S.m15Streak >= M15_K) { S.m15Done = true; }
+    } else {
+      S.m15Streak = 0; S.m15Miss = (S.m15Miss || 0) + 1;
+      if (cs > 0 && S.m15Miss >= M15_MISS_REGRESS) { S.stages['m1_5'] = cs - 1; S.m15Miss = 0; }
+    }
+    if (!stageAdvanced) {
+      const cur = S.stages['m1_5'] || 0;
+      tileProgress = { done: Math.min(S.m15Streak || 0, M15_K), total: M15_K, label: M15_STAGE_NAMES[cur] + ' — ' + (S.m15Streak || 0) + '/' + M15_K + ' in a row' };
+    }
+  }
+  // LEVEL 4 (m2) RHYTHM LADDER — advance a stage on M2_K clean rhythm passes IN A ROW; a wrong
+  // pass resets the streak (mastery = automaticity). Caps at the last built stage; the capstone
+  // gate takes over there. (Integration stages fold in L1/L2 as their renderers land.)
+  if (L.id === 'm2' && !currentIsCapstone) {
+    const cs = S.stages.m2 || 0;
+    if (result.correct && result.clean !== false) {
+      S.m2Streak = (S.m2Streak || 0) + 1;
+      if (cs < M2_LAST_STAGE && S.m2Streak >= M2_K) { S.stages.m2 = cs + 1; S.m2Streak = 0; stageAdvanced = true; }
+    } else {
+      S.m2Streak = 0;
+    }
+    if (!stageAdvanced) {
+      const cur = S.stages.m2 || 0;
+      tileProgress = { done: Math.min(S.m2Streak || 0, M2_K), total: M2_K, label: M2_STAGE_NAMES[cur] + ' — ' + (S.m2Streak || 0) + '/' + M2_K + ' in a row' };
+    }
+  }
+  // STAGE-LADDER ADVANCEMENT (data-driven) — advance a stage on K clean answers IN A ROW; a wrong pass
+  // resets the streak (mastery = automaticity). Caps at the last stage; the capstone gate takes over.
+  const advLad = STAGE_LADDERS[L.id];
+  if (advLad && !currentIsCapstone) {
+    const last = advLad.names.length - 1;
+    const cs = S.stages[L.id] || 0;
+    S.stageStreaks = S.stageStreaks || {};
+    if (result.correct && result.clean !== false) {
+      S.stageStreaks[L.id] = (S.stageStreaks[L.id] || 0) + 1;
+      if (cs < last && S.stageStreaks[L.id] >= advLad.K) { S.stages[L.id] = cs + 1; S.stageStreaks[L.id] = 0; stageAdvanced = true; }
+    } else {
+      S.stageStreaks[L.id] = 0;
+    }
+    if (!stageAdvanced) {
+      const cur = S.stages[L.id] || 0;
+      const n = S.stageStreaks[L.id] || 0;
+      tileProgress = { done: Math.min(n, advLad.K), total: advLad.K, label: advLad.names[cur] + ' — ' + n + '/' + advLad.K + ' in a row' };
+    }
+  }
+  // VOLATILE SCORE (BeatQuest's economy, per LEVEL_SYSTEM_RESEARCH.md's decoupled
+  // currencies): accuracy-scaled base + a clean-streak combo bonus. Untimed —
+  // never speed-scored. A wrong answer earns nothing but never subtracts (mastery
+  // already applies the learning penalty; score is the thrill meter, not the gate).
+  let pts = 0;
+  if (result.correct) {
+    pts = 100 + (result.clean !== false ? (S.streak - 1) * 20 : 0);
+  } else if (Number.isFinite(result.accuracy) && result.accuracy > 0) {
+    pts = Math.round(result.accuracy); // partial credit for per-note modes
+  }
+  S.score += pts;
+  S.levelScore += pts;
+  S.levelRounds++;
+  if (result.correct && result.clean !== false) S.levelClean++;
+  if (result.correct) S.xp += 1; // XP: +1 per correct (mastery events add +50)
+  // Session stats read the streak NOW — before the advancement gate resets it.
+  session.rounds++;
+  if (result.correct) session.correct++;
+  session.bestStreak = Math.max(session.bestStreak, S.streak);
+  const roundUnlocks = checkAchievements();
+  scorePop(pts);
+  if (result.correct) celebrate(result.clean !== false); // confetti + sparkle on every win
+  roundUnlocks.forEach((a, i) => setTimeout(() => achievementBanner(a), i * 900));
+  // EARLY REWARD (pre-student polish): make the very FIRST correct answer feel
+  // like an event, so a brand-new student gets a win in their first minute.
+  if (result.correct && !S.firstCorrectShown) {
+    S.firstCorrectShown = true; save(S);
+    achievementBanner({ name: 'First one right', desc: 'you’re already hearing it!' });
+  }
+
+  const view = mastery.viewItemAsOf(S.items[L.id], now);
+  const toast = document.getElementById('toast');
+  let advanced = false;
+  let capstoneArmedNow = false;
+  const clean = result.correct && result.clean !== false;
+  if (currentIsCapstone) {
+    if (clean) {
+      advanced = S.levelIdx < PLAYABLE.length - 1;
+      S.capstoneArmed = false;
+      if (advanced) { S.levelIdx++; S.streak = 0; }
+    } else {
+      // Capstone missed: the gate resets — rebuild the streak, earn another shot
+      // (one lucky run can't pass you; that's the locked model's whole point).
+      S.capstoneArmed = false;
+      S.streak = 0;
+    }
+  } else if (!S.capstoneArmed && view.score >= PROFICIENT_FLOOR && S.streak >= ADVANCE_STREAK
+             && S.levelIdx < PLAYABLE.length - 1
+             && (L.id !== 'm0' || (S.stages.m0 || 0) >= 5) // M0: all six stages first (incl. octave equivalence)
+             && (L.id !== 'm1' || ((S.stages.m1 || 0) >= 2 && S.m1ShapeDone)) // M1: all 3 stages + shape robustly mastered
+             && (L.id !== 'm1_5' || ((S.stages['m1_5'] || 0) >= 3 && S.m15Done)) // Level 3: all 4 stages incl. reverse
+             && (L.id !== 'm2' || (S.stages.m2 || 0) >= M2_LAST_STAGE) // Level 4: all rhythm stages first
+             && (!STAGE_LADDERS[L.id] || (S.stages[L.id] || 0) >= STAGE_LADDERS[L.id].names.length - 1) // staged levels: all stages first
+             && coverageComplete(L)) { // D2: the WHOLE vocabulary, not 3 quick wins
+    S.capstoneArmed = true;
+    capstoneArmedNow = true;
+  }
+  // Band + streak met but coverage still open: say exactly what's left, so the
+  // demand reads as a checklist, not a mystery stall.
+  let coverageHint = null;
+  if (!S.capstoneArmed && !currentIsCapstone && result.correct
+      && view.score >= PROFICIENT_FLOOR && S.streak >= ADVANCE_STREAK && !coverageComplete(L)) {
+    const { keysNeeded, metersNeeded, modesNeeded } = coverageNeeds(L);
+    const missing = [];
+    const kGot = Object.keys(cov.keys).length;
+    if (kGot < keysNeeded) missing.push('keys ' + kGot + '/' + keysNeeded);
+    const mGot = metersNeeded.filter((m) => cov.meters[m]).length;
+    if (mGot < metersNeeded.length) missing.push('meters ' + mGot + '/' + metersNeeded.length);
+    const xGot = modesNeeded.filter((m) => (cov.modes || {})[m]).length;
+    if (xGot < modesNeeded.length) missing.push('exercises ' + xGot + '/' + modesNeeded.length);
+    if (cov.rounds < MIN_LEVEL_ROUNDS) missing.push('rounds ' + cov.rounds + '/' + MIN_LEVEL_ROUNDS);
+    if (!cov.longClean) missing.push('one clean long round');
+    coverageHint = 'Skill band met — now cover the level: ' + missing.join(' · ');
+  }
+  save(S);
+  renderHud();
+  if (typeof syncLevelJump === 'function') syncLevelJump();
+
+  if (advanced) {
+    session.levelUps++;
+    S.levelUps++;
+    // MASTERY EVENT rewards (the doc's formulas): +50 XP; gems = 25 + score/120
+    // for the level's run + 5 clean-play bonus at >=95% clean rounds.
+    S.xp += 50;
+    const cleanRate = S.levelRounds ? S.levelClean / S.levelRounds : 0;
+    const gemsEarned = masteryEventGems(S.levelScore, cleanRate);
+    S.gems += gemsEarned;
+    const levelUnlocks = checkAchievements({ cleanLevelUp: cleanRate >= 0.95 });
+    levelUnlocks.forEach((a, i) => setTimeout(() => achievementBanner(a), 600 + i * 900));
+    const earnedLine = '+50 XP · +' + gemsEarned + ' gems' +
+      (levelUnlocks.length ? ' · Achievement: ' + levelUnlocks.map((a) => a.name).join(', ') : '');
+    S.levelScore = 0; S.levelRounds = 0; S.levelClean = 0;
+    celebrate(true);
+    playFanfare();
+    // The PASSED level enters the spaced-review rotation (one entry per level).
+    // createEntry marks a skill due IMMEDIATELY (built for session composition);
+    // here the level was literally just answered, so its FIRST review belongs a
+    // full box-1 interval out (1 day) — not interrupting the very next round.
+    if (!S.review.entries.some((e) => e.skillId === L.id)) {
+      S.review.entries.push({ ...review.createEntry(L.id, now), dueAt: now + review.BOX_INTERVALS_MS[1] });
+    }
+    const NL = curLevel();
+    // The level-up overlay doubles as the NEW level's intro (so it isn't shown twice).
+    (S.introDone = S.introDone || []).push(NL.id);
+    save(S);
+    const nt = (window.MELODIC_TEACH_CONTENT || {})[NL.id] || {};
+    // Announce any PRACTICE mode that just unlocked at this new level (it used to appear silently).
+    const newlyUnlocked = practiceModes().filter((m) => m.gate > L.mIndex && m.gate <= NL.mIndex).map((m) => m.name);
+    showOverlay({
+      heading: 'Level up!',
+      sub: 'Next: ' + levelLabel(NL) + ' · ' + (nt.title || NL.title) +
+        (nt.whatsNew ? ' — ' + nt.whatsNew : ''),
+      goal: NL.masteryGoal,
+      bullets: nt.listenFor,
+      strategy: nt.strategy,
+      stats: (newlyUnlocked.length ? 'New in Practice: ' + newlyUnlocked.join(', ') + '\n' : '') +
+        earnedLine + '\nThis session: ' + session.correct + '/' + session.rounds + ' correct · best streak ' +
+        session.bestStreak + ' · ' + session.levelUps + ' level-up' + (session.levelUps === 1 ? '' : 's'),
+      buttonText: 'Keep going',
+      onGo: startRound,
+    });
+    return;
+  }
+  if (currentIsCapstone && !advanced) {
+    toast.className = 'melodic-toast is-wrong';
+    toast.textContent = 'Capstone missed — rebuild your streak';
+  } else if (capstoneArmedNow) {
+    toast.className = 'melodic-toast is-correct';
+    toast.textContent = 'Capstone next — one clean melody to level up  +' + pts;
+  } else if (tileProgress) {
+    toast.className = 'melodic-toast is-correct';
+    toast.textContent = 'Clean! ' + tileProgress.done + ' of ' + tileProgress.total + ' — ' + tileProgress.label + '  +' + pts;
+  } else if (stageAdvanced) {
+    toast.className = 'melodic-toast is-correct';
+    const sIdx = (L.id === 'm1' ? (S.stages.m1 || 0) : (S.stages.m0 || 0)) + 1;
+    toast.textContent = 'Stage ' + sIdx + ' of ' + (L.id === 'm1' ? 3 : 6) + '  +' + pts;
+  } else if (coverageHint) {
+    toast.className = 'melodic-toast is-correct';
+    toast.textContent = coverageHint + '  +' + pts;
+  } else if (result.correct) {
+    toast.className = 'melodic-toast is-correct';
+    toast.textContent = '+' + pts + (S.streak > 1 ? '  ·  ×' + S.streak : '');
+  } else {
+    toast.className = 'melodic-toast is-wrong';
+    toast.textContent = (pts > 0 ? '+' + pts + ' · ' : '') + encourage();
+    playTryAgain();
+  }
+  // AUTO-ADVANCE on EVERY level (owner: "we don't need a Next melody button — once correct
+  // it can auto-advance"). Correct: a quick beat to enjoy the win. Wrong: a longer pause so
+  // the student can read the correction before the next example. Level-ups already returned
+  // above via their own overlay. (Daily/gym/studio have their own handlers + Next button.)
+  document.getElementById('nextBtn').style.display = 'none';
+  const advDelay = (result.correct && result.clean !== false) ? 1500 : 3400;
+  setTimeout(() => { if (curLevel().id === L.id && !document.querySelector('.melodic-overlay')) newRound(); }, advDelay);
+}
+
+/* KIDS-MODE PARITY (kids-mode-design-principles memory + solo-mode's own rule):
+   a young learner must never land in free-play with adult controls — under the
+   kids theme the melodic game is GUIDED-ONLY: the free level picker and practice
+   toggle hide, and Tock (the mascot — placeholder text presence until real art,
+   per the plan's documented default) greets on intro cards. */
+function kidsActive() {
+  // The theme class lands when suite-theme.js initializes (AFTER this module) —
+  // the first intro overlay renders before that, so also read the persisted choice.
+  if (document.body.classList.contains('theme-kids')) return true;
+  try { return localStorage.getItem('beatquest-theme') === 'kids'; } catch (e) { return false; }
+}
+function applyKidsChrome() {
+  const kids = kidsActive();
+  const lvlLabel = document.getElementById('levelJump') && document.getElementById('levelJump').closest('label');
+  if (lvlLabel) lvlLabel.style.display = kids ? 'none' : '';
+  const practiceLabel = document.getElementById('practiceChk') && document.getElementById('practiceChk').closest('label');
+  if (practiceLabel) practiceLabel.style.display = kids ? 'none' : '';
+}
+new MutationObserver(applyKidsChrome).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+setTimeout(applyKidsChrome, 300); // after suite-theme applies the saved theme
+
+document.getElementById('nextBtn').style.display = 'none'; // hidden until a round is graded
+document.getElementById('nextBtn').onclick = newRound;
+
+/* FREE LEVEL JUMP — mirrors BeatQuest's level select: explore any rung without
+   grinding the guided gate (owners/teachers preview; students can too — the
+   guided mastery gate still governs ADVANCEMENT from wherever you are, and
+   each level's mastery record is per-level, so jumping never corrupts progress. */
+const levelJump = document.getElementById('levelJump');
+const m0Index = PLAYABLE.findIndex((L) => L.id === 'm0');
+const m1Index = PLAYABLE.findIndex((L) => L.id === 'm1');
+// M0/M1 sub-stages are each jumpable so every step can be tested independently.
+const M0_SUBS = [
+  ['m0:0', 'Level 1 · Stage 1 Find home (live)'],
+  ['m0:1', 'Level 1 · Stage 2 Find home (quick)'],
+  ['m0:2', 'Level 1 · Stage 3 Tap home (tiles)'],
+  ['m0:3', 'Level 1 · Stage 4 Tap 3̂'],
+  ['m0:4', 'Level 1 · Stage 5 Tap 5̂'],
+  ['m0:5', 'Level 1 · Stage 6 Home in any octave'],
+];
+const M1_SUBS = [
+  ['m1:0', 'Level 2 · Stage 1 Up / down / same'],
+  ['m1:1', 'Level 2 · Stage 2 Step or skip'],
+  ['m1:2', 'Level 2 · Stage 3 Match the shape'],
+];
+PLAYABLE.forEach((L, i) => {
+  const subs = L.id === 'm0' ? M0_SUBS : L.id === 'm1' ? M1_SUBS : null;
+  if (subs) {
+    subs.forEach(([val, label]) => {
+      const o = document.createElement('option');
+      o.value = val; o.textContent = label;
+      levelJump.appendChild(o);
+    });
+    return;
+  }
+  const o = document.createElement('option');
+  o.value = String(i);
+  o.textContent = 'Level ' + (i + 1) + ' · ' + L.title;
+  levelJump.appendChild(o);
+});
+function syncLevelJump() {
+  levelJump.value = (S.levelIdx === m0Index) ? ('m0:' + (S.stages.m0 || 0))
+    : (S.levelIdx === m1Index) ? ('m1:' + (S.stages.m1 || 0))
+    : String(S.levelIdx);
+}
+levelJump.onchange = () => {
+  const v = levelJump.value;
+  if (v.slice(0, 3) === 'm0:') {
+    const stage = Number(v.slice(3)) || 0;
+    S.levelIdx = m0Index;
+    S.stages.m0 = stage;
+    S.m0StagePass = 0; // jumping into a tile stage starts its clean-round tally fresh
+  } else if (v.slice(0, 3) === 'm1:') {
+    const stage = Number(v.slice(3)) || 0;
+    S.levelIdx = m1Index;
+    S.stages.m1 = stage;
+    S.m1StagePass = 0; S.m1FluentStreak = 0;
+    if (stage < 2) S.m1ShapeDone = false; // re-testing an earlier stage clears shape mastery
+  } else {
+    S.levelIdx = Number(v);
+  }
+  S.streak = 0; // a jump is a new context — streaks don't carry across levels
+  save(S);
+  reviewingLevel = null;
+  // the Studio's picks belong to the level they were chosen for
+  studioSpec = null;
+  { const pb = document.getElementById('practiceBtn'); if (pb) pb.textContent = 'Practice'; }
+  newRound();
+};
+syncLevelJump();
+// Placement is offered at new-student intake (the first-run onboarding), not as a
+// gameplay button (owner). offerPlacement() stays available for a future profile
+// "retest if you feel misplaced" entry point.
+
+/* A single Gym station mounted in the round area — used by the spaced-review
+   probe (spec §2) and the daily Gym challenge (spec §6). Distinct from the full
+   board (gymMount). */
+let gymStationMount = null;
+let gymReviewCircuit = null; // circuit id while a Gym spaced-review is showing
+
+function gymSideServices() {
+  const kp = (curLevel().keys || [])[0] || { key: 'C', mode: 'major' };
+  const labelCtx = { key: kp.key, mode: kp.mode, system: document.getElementById('sysSel').value, minorSolfege: 'la' };
+  const services = createServices({ labelNoteFn: labelNote, labelPaletteFn: labelPalette, labelCtx, tempoBPM: 92 });
+  lastServices = services;
+  return { services, kp };
+}
+function clearForGymStation() {
+  if (currentRenderer) { currentRenderer.destroy(); currentRenderer = null; }
+  if (gymMount) { gymMount.destroy(); gymMount = null; }
+  if (chunkMount) { chunkMount.destroy(); chunkMount = null; }
+  if (gymStationMount) { gymStationMount.destroy(); gymStationMount = null; }
+  document.querySelectorAll('.melodic-overlay').forEach((el) => el.remove());
+  document.getElementById('dailyRow').style.display = '';
+  document.getElementById('nextBtn').style.display = 'none';
+  document.getElementById('toast').textContent = '';
+}
+
+// Spaced-review probe (spec §2): a due circuit surfaces as its NAME station.
+function startGymReview(circuitId) {
+  reviewingLevel = null;
+  gymReviewCircuit = circuitId;
+  clearForGymStation();
+  const { services, kp } = gymSideServices();
+  gymStationMount = mountGymStation(document.getElementById('rendererHost'), {
+    circuitId, stationId: 'name', services, key: kp.key, mode: kp.mode,
+    onResult(result) { onGymReviewResult(circuitId, result); },
+  });
+  renderHud();
+}
+function onGymReviewResult(circuitId, result) {
+  const now = Date.now();
+  S.review.entries = S.review.entries.map((e) =>
+    e.skillId === 'gym:' + circuitId ? review.applyResult(e, !!result.correct, now) : e);
+  if (result.correct) { S.reviewsPassed++; S.score += 50; S.xp += 1; checkAchievements(); }
+  save(S);
+  session.rounds++; if (result.correct) session.correct++;
+  gymReviewCircuit = null;
+  renderHud();
+  const toastEl = document.getElementById('toast');
+  toastEl.className = 'melodic-toast ' + (result.correct ? 'is-correct' : 'is-wrong');
+  toastEl.textContent = result.correct
+    ? 'Gym review passed — ' + circuitId + ' stays sharp'
+    : 'Gym review lapse — ' + circuitId + ' comes around sooner';
+  document.getElementById('nextBtn').style.display = '';
+}
+
+// Daily Gym challenge (spec §6): a date-seeded NAME station round.
+function startDailyGym(ch) {
+  clearForGymStation();
+  const { services, kp } = gymSideServices();
+  gymStationMount = mountGymStation(document.getElementById('rendererHost'), {
+    circuitId: ch.circuitId, stationId: ch.stationId, seed: ch.seed,
+    services, key: kp.key, mode: kp.mode, recordMastery: false, // a daily probe, like ladder dailies, doesn't move mastery
+    onResult(result) {
+      const i = ch.i; dailyActive = null;
+      applyDailyResult(i, result);
+    },
+  });
+  renderHud();
+}
+
+/* INTERVAL GYM (INTERVAL_GYM_SPEC §6): a side-mode, not a ladder rung — the
+   button appears once the ladder reaches its first leap vocabulary (M7) and
+   the whole circuit board is mounted in place of the round. Its progress lives
+   in its own melodic-gym-v1 save; leaving the Gym resumes the ladder cleanly. */
+let gymMount = null;
+function closeGym() {
+  if (gymMount) { gymMount.destroy(); gymMount = null; }
+  document.getElementById('rendererHost').classList.remove('melodic-gym');
+  newRound();
+}
+function openGym() {
+  if (currentRenderer) { currentRenderer.destroy(); currentRenderer = null; }
+  if (gymMount) { gymMount.destroy(); gymMount = null; }
+  document.querySelectorAll('.melodic-overlay').forEach((el) => el.remove());
+  document.getElementById('dailyRow').style.display = 'none';
+  document.getElementById('nextBtn').style.display = 'none';
+  document.getElementById('toast').textContent = '';
+  // Gym items live in real key context (the research's whole point). Use the
+  // student's current level's first diatonic key; symmetric collections can't
+  // host degree pairs, so fall back to C major if a level has none.
+  const kp = (curLevel().keys || [])[0] || { key: 'C', mode: 'major' };
+  const labelCtx = { key: kp.key, mode: kp.mode, system: document.getElementById('sysSel').value, minorSolfege: 'la' };
+  const services = createServices({ labelNoteFn: labelNote, labelPaletteFn: labelPalette, labelCtx, tempoBPM: 92 });
+  lastServices = services;
+  gymMount = mountGym(document.getElementById('rendererHost'), {
+    mIndex: curLevel().mIndex,
+    services,
+    key: kp.key,
+    mode: kp.mode,
+    onStationStart() { document.getElementById('toast').textContent = ''; },
+    onStationResult(circuitId, stationId, result) {
+      const toastEl = document.getElementById('toast');
+      toastEl.className = 'melodic-toast ' + (result.correct ? 'is-correct' : 'is-wrong');
+      toastEl.textContent = result.correct
+        ? 'Station passed — ' + Math.round(result.accuracy) + '%. Pick the next station or circuit.'
+        : 'Not yet (' + Math.round(result.accuracy) + '%) — hear them again and retry the station.';
+      // 'True Voice' achievement: a perfect MIC-graded SING round (not self-checked).
+      if (result.meta && result.meta.station === 'sing' && result.clean && !result.meta.selfGraded && !S.gymSinger) {
+        S.gymSinger = true; save(S);
+        checkAchievements().forEach((a, i) => setTimeout(() => achievementBanner(a), i * 900));
+      }
+    },
+    onCircuitComplete(circuitId, capstoneScore) {
+      // MASTERY-EVENT economy (INTERVAL_GYM_SPEC §6: "+50 XP and gems per the
+      // standard mastery-event formula") — the IDENTICAL formula the ladder uses,
+      // fed by the capstone's accumulated score; a clean capstone earns the
+      // clean-play bonus (cleanRate = 1). Volatile score gets the capstone points.
+      S.gymCircuits = (S.gymCircuits || 0) + 1;
+      S.xp += 50;
+      const gemsEarned = masteryEventGems(capstoneScore, 1);
+      S.gems += gemsEarned;
+      S.score += (capstoneScore || 0);
+      // SPACED REVIEW (spec §2): one entry per completed circuit, keyed 'gym:<id>',
+      // first review a box-1 interval out (the same rule the ladder uses). A due
+      // gym review surfaces in newRound() as that circuit's NAME station (§2).
+      if (!S.review.entries.some((e) => e.skillId === 'gym:' + circuitId)) {
+        S.review.entries.push({ ...review.createEntry('gym:' + circuitId, Date.now()), dueAt: Date.now() + review.BOX_INTERVALS_MS[1] });
+      }
+      const unlocked = checkAchievements();
+      save(S); renderHud();
+      playFanfare();
+      const toastEl = document.getElementById('toast');
+      toastEl.className = 'melodic-toast is-correct';
+      toastEl.textContent = 'CIRCUIT COMPLETE! +50 XP · +' + gemsEarned + ' gems' +
+        (unlocked.length ? ' · Achievement: ' + unlocked.map((a) => a.name).join(', ') : '');
+      unlocked.forEach((a, i) => setTimeout(() => achievementBanner(a), 600 + i * 900));
+    },
+    onExit: closeGym,
+  });
+}
+// Interval Gym opens from the Practice menu (openPracticeMenu).
+
+/* SKILLS GYM (SKILLS_GYM_PLAN.md) — endless, auto-tuning practice of the M0/M1 foundation.
+   Refreshes retention (mastery + due reviews) but never advances the ladder. */
+let skillsGymMount = null;
+function closeSkillsGym() {
+  if (skillsGymMount) { skillsGymMount.destroy(); skillsGymMount = null; }
+  document.getElementById('rendererHost').classList.remove('melodic-skillsgym-host');
+  newRound();
+}
+function openSkillsGym() {
+  if (currentRenderer) { currentRenderer.destroy(); currentRenderer = null; }
+  if (gymMount) { gymMount.destroy(); gymMount = null; }
+  if (skillsGymMount) { skillsGymMount.destroy(); skillsGymMount = null; }
+  document.querySelectorAll('.melodic-overlay').forEach((el) => el.remove());
+  document.getElementById('dailyRow').style.display = 'none';
+  document.getElementById('nextBtn').style.display = 'none';
+  document.getElementById('toast').textContent = '';
+  document.getElementById('rendererHost').classList.add('melodic-skillsgym-host');
+  skillsGymMount = mountSkillsGym(document.getElementById('rendererHost'), {
+    S, save,
+    reachedLevelId: (id) => curLevel().mIndex >= melodicLevel(id).mIndex,
+    onExit: closeSkillsGym,
+  });
+}
+// Skills Gym opens from the Practice menu (openPracticeMenu).
+
+/* PATTERN DRILL (MELODIC_LADDER_EXPANSION_PLAN NEW-B): a side-mode that drills the
+   frequency-common tonal chunks the ear reuses in every dictation. Own save; never
+   touches the ladder's streak/capstone. */
+let chunkMount = null;
+function closeChunk() {
+  if (chunkMount) { chunkMount.destroy(); chunkMount = null; }
+  document.getElementById('rendererHost').classList.remove('melodic-chunks');
+  newRound();
+}
+function openChunkDrill() {
+  if (currentRenderer) { currentRenderer.destroy(); currentRenderer = null; }
+  if (chunkMount) { chunkMount.destroy(); chunkMount = null; }
+  document.querySelectorAll('.melodic-overlay').forEach((el) => el.remove());
+  document.getElementById('dailyRow').style.display = 'none';
+  document.getElementById('nextBtn').style.display = 'none';
+  document.getElementById('toast').textContent = '';
+  const kp = (curLevel().keys || [])[0] || { key: 'C', mode: 'major' };
+  const labelCtx = { key: kp.key, mode: kp.mode, system: document.getElementById('sysSel').value, minorSolfege: 'la' };
+  const services = createServices({ labelNoteFn: labelNote, labelPaletteFn: labelPalette, labelCtx, tempoBPM: 92 });
+  lastServices = services;
+  chunkMount = mountChunkDrill(document.getElementById('rendererHost'), {
+    services, key: kp.key, mode: kp.mode, mIndex: curLevel().mIndex, onExit: closeChunk,
+  });
+}
+// Pattern drill opens from the Practice menu (openPracticeMenu).
+
+/* BOOKEND drill (MELODIC_LADDER_EXPANSION_PLAN NEW-D): a side-mode teaching the
+   anchor-the-ends-first strategy on the current level's own material. Own save;
+   never touches the ladder's streak/capstone. */
+let bookendMount = null;
+function closeBookend() {
+  if (bookendMount) { bookendMount.destroy(); bookendMount = null; }
+  document.getElementById('rendererHost').classList.remove('melodic-bookend');
+  newRound();
+}
+function openBookend() {
+  if (currentRenderer) { currentRenderer.destroy(); currentRenderer = null; }
+  if (gymMount) { gymMount.destroy(); gymMount = null; }
+  if (chunkMount) { chunkMount.destroy(); chunkMount = null; }
+  if (bookendMount) { bookendMount.destroy(); bookendMount = null; }
+  document.querySelectorAll('.melodic-overlay').forEach((el) => el.remove());
+  document.getElementById('dailyRow').style.display = 'none';
+  document.getElementById('nextBtn').style.display = 'none';
+  document.getElementById('toast').textContent = '';
+  const L = curLevel();
+  const choices = keyChoices(L);
+  let rot = 0;
+  const buildMelody = () => {
+    const choice = choices[rot++ % choices.length];
+    const seed = Math.floor(Math.random() * 1e6);
+    // A real phrase (>=3 notes) so both ends AND a middle exist to fill.
+    const round = buildRound(L, choice.value, seed, { lengthBars: Math.max(2, L.lengthBars || 2) });
+    return round.melody;
+  };
+  const kp = (L.keys || [])[0] || { key: 'C', mode: 'major' };
+  const labelCtx = { key: kp.key, mode: kp.mode, system: document.getElementById('sysSel').value, minorSolfege: 'la' };
+  const services = createServices({ labelNoteFn: labelNote, labelPaletteFn: labelPalette, labelCtx, tempoBPM: 92 });
+  lastServices = services;
+  bookendMount = mountBookendDrill(document.getElementById('rendererHost'), {
+    levelId: L.id, level: L, services, buildMelody, onExit: closeBookend,
+  });
+}
+// Bookends opens from the Practice menu (openPracticeMenu).
+
+/* PRACTICE STUDIO (§C3 D3): the extensive drill engine — the student picks the
+   length (2, 4, or 8 measures), any key from the level's own key set, and any
+   of its meters, then drills endless generated dictations. Studio rounds build
+   mastery + coverage (they ARE the practice the coverage gate demands) but
+   never arm or play a capstone — guided rounds own advancement. */
+function leaveStudio() {
+  studioSpec = null;
+  { const pb = document.getElementById('practiceBtn'); if (pb) pb.textContent = 'Practice'; }
+  newRound();
+}
+function openStudio() {
+  if (studioSpec) { leaveStudio(); return; }
+  const L = curLevel();
+  document.querySelectorAll('.melodic-overlay').forEach((el) => el.remove());
+  const ov = document.createElement('div');
+  ov.className = 'melodic-overlay';
+  const card = document.createElement('div');
+  card.className = 'answer-area melodic-overlay__card';
+  const h = document.createElement('div');
+  h.className = 'melodic-overlay__heading';
+  h.textContent = 'Practice studio — ' + levelLabel(L) + ' · ' + L.title;
+  card.appendChild(h);
+  const sub = document.createElement('div');
+  sub.className = 'melodic-overlay__goal';
+  sub.textContent = 'Endless dictation drills with this level’s own vocabulary. Pick your material — every correct round counts toward the level’s coverage, but only guided rounds level you up.';
+  card.appendChild(sub);
+
+  const mkSelect = (labelText, options) => {
+    const label = document.createElement('label');
+    label.style.cssText = 'display:flex;gap:8px;align-items:center;justify-content:space-between;margin:8px 0;';
+    label.append(labelText);
+    const sel = document.createElement('select');
+    options.forEach(([v, t]) => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = t;
+      sel.appendChild(o);
+    });
+    label.appendChild(sel);
+    card.appendChild(label);
+    return sel;
+  };
+  const lenSel = mkSelect('Length', [['2', '2 measures'], ['4', '4 measures'], ['8', '8 measures']]);
+  const choices = keyChoices(L);
+  const keySel = mkSelect('Key', choices.map((c, i) => [String(i), c.label]));
+  const meterSet = L.meters || [L.meter];
+  const meterSel = mkSelect('Meter', meterSet.map((m) => [m, m]));
+  const modes = L.exerciseModes || [L.exerciseMode];
+  const MODE_LABELS = {
+    'tonic-contour': 'Listen & answer', 'rhythm-first': 'Rhythm dictation',
+    labeling: 'Name the degrees', recognition: 'Pick the notation',
+    'missing-note': 'Fill the hidden note', 'error-detect': 'Find the wrong note',
+    'notation-entry': 'Full notation', 'two-part': 'Two-part',
+  };
+  const exSel = mkSelect('Exercise', modes.map((m) => [m, MODE_LABELS[m] || m]));
+
+  const btnRow = document.createElement('div');
+  btnRow.className = 'melodic-overlay__btnrow';
+  const go = document.createElement('button');
+  go.className = 'melodic-btn melodic-btn--primary';
+  go.textContent = 'Start drilling';
+  go.onclick = () => {
+    studioSpec = {
+      choice: choices[Number(keySel.value)],
+      meter: meterSel.value,
+      bars: Number(lenSel.value),
+      exMode: exSel.value,
+    };
+    { const pb = document.getElementById('practiceBtn'); if (pb) pb.textContent = 'Leave studio'; }
+    ov.remove();
+    startRound();
+  };
+  const cancel = document.createElement('button');
+  cancel.className = 'melodic-btn';
+  cancel.textContent = 'Cancel';
+  cancel.onclick = () => ov.remove();
+  btnRow.append(go, cancel);
+  card.appendChild(btnRow);
+  ov.appendChild(card);
+  document.body.appendChild(ov);
+}
+/* EAR ARCADE — a whack-a-degree GAME (Practice mode). Standalone; its own save-free session; never
+   touches the ladder's streak/capstone. Progresses 1̂ -> 3̂ -> 1̂vs3̂ -> triad -> up the scale. */
+let arcadeMount = null;
+function closeEarArcade() {
+  if (arcadeMount) { arcadeMount.destroy(); arcadeMount = null; }
+  newRound();
+}
+function openEarArcade() {
+  if (currentRenderer) { currentRenderer.destroy(); currentRenderer = null; }
+  if (arcadeMount) { arcadeMount.destroy(); arcadeMount = null; }
+  document.querySelectorAll('.melodic-overlay').forEach((el) => el.remove());
+  document.getElementById('dailyRow').style.display = 'none';
+  document.getElementById('nextBtn').style.display = 'none';
+  document.getElementById('toast').textContent = '';
+  const labelCtx = { key: 'C', mode: 'major', system: document.getElementById('sysSel').value, minorSolfege: 'la' };
+  const services = createServices({ labelNoteFn: labelNote, labelPaletteFn: labelPalette, labelCtx, tempoBPM: 92 });
+  lastServices = services;
+  arcadeMount = mountEarArcade(document.getElementById('rendererHost'), { services, onExit: closeEarArcade });
+}
+
+// ---- ARCADE DRAWER: a sub-menu of the new playable game prototypes (Simon / Sky Hop / Note
+// Invaders). Each is a standalone HTML file opened full-screen in an iframe so its own audio +
+// game loop stay fully isolated from the ladder (like Ear Arcade, it never touches streak/capstone).
+const ARCADE_GAMES = [
+  { file: 'game-simon.html', name: 'Simon', blurb: 'Say the melody back — hear a growing tune by ear, tap the degrees in order.' },
+  { file: 'game-runner.html', name: 'Contour Runner', blurb: 'Run the shape of the tune — hop to each pitch height; your path is the melody.' },
+  { file: 'game-jump.html', name: 'Sky Hop', blurb: "Hop to the note's pitch height — high note, high ledge." },
+  { file: 'game-invaders.html', name: 'Note Invaders', blurb: 'Shoot the invader whose degree matches the note you hear.' },
+];
+function openArcadeGame(file) {
+  const ov = document.createElement('div'); ov.className = 'melodic-arcade-frame';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#04040c;display:flex;flex-direction:column;';
+  const bar = document.createElement('div');
+  bar.style.cssText = 'flex:0 0 auto;display:flex;justify-content:flex-end;padding:8px 10px;background:#04040c;';
+  const close = document.createElement('button'); close.className = 'melodic-btn'; close.textContent = 'Close';
+  close.style.cssText = 'min-width:96px;';
+  close.onclick = () => ov.remove();
+  bar.appendChild(close);
+  const fr = document.createElement('iframe'); fr.src = file; fr.setAttribute('allow', 'autoplay');
+  fr.style.cssText = 'flex:1 1 auto;width:100%;border:0;';
+  ov.append(bar, fr); document.body.appendChild(ov);
+}
+function openArcadeDrawer() {
+  document.querySelectorAll('.melodic-overlay').forEach((el) => el.remove());
+  const ov = document.createElement('div'); ov.className = 'melodic-overlay';
+  const card = document.createElement('div'); card.className = 'answer-area melodic-overlay__card';
+  const h = document.createElement('div'); h.className = 'melodic-overlay__heading'; h.textContent = 'Arcade'; card.appendChild(h);
+  const sub = document.createElement('div'); sub.className = 'melodic-overlay__goal';
+  sub.textContent = 'Playable game prototypes — each trains degree-by-ear a different way. For testing.';
+  card.appendChild(sub);
+  ARCADE_GAMES.forEach((g) => {
+    const b = document.createElement('button'); b.className = 'melodic-btn melodic-practice-item';
+    const nm = document.createElement('div'); nm.className = 'melodic-practice-item__name'; nm.textContent = g.name;
+    const bl = document.createElement('div'); bl.className = 'melodic-practice-item__blurb'; bl.textContent = g.blurb;
+    b.append(nm, bl);
+    b.onclick = () => { ov.remove(); openArcadeGame(g.file); };
+    card.appendChild(b);
+  });
+  const back = document.createElement('button'); back.className = 'melodic-btn'; back.textContent = 'Back';
+  back.onclick = () => { ov.remove(); openPracticeMenu(); }; card.appendChild(back);
+  ov.appendChild(card); document.body.appendChild(ov);
+}
+
+// ---- PRACTICE MENU: ONE neutral "Practice" button opens a menu of the practice modes, each gated
+// by level and labelled with a one-line "when to use". Consolidates what used to be 5 look-alike
+// buttons (owner: "4 buttons that seem to do the same thing"). Modes still open their existing UIs.
+function practiceModes() {
+  return [
+    { name: 'Arcade', blurb: 'Playable game prototypes — Simon, Sky Hop, Note Invaders.', gate: 0, open: openArcadeDrawer },
+    { name: 'Ear Arcade', blurb: 'Fast game — tap the scale degree you hear. (In progress)', gate: 0, open: openEarArcade },
+    { name: 'Practice studio', blurb: 'Endless drills of this level — you pick length, key & meter.', gate: 0, open: openStudio },
+    { name: 'Pattern drill', blurb: 'Learn recurring melodic shapes (chunks) as one unit.', gate: melodicLevel('m3').mIndex, open: openChunkDrill },
+    { name: 'Bookends', blurb: 'Anchor the first & last notes, then fill the middle.', gate: melodicLevel('m4').mIndex, open: openBookend },
+    { name: 'Skills Gym', blurb: 'Drill one isolated skill at a time.', gate: 0, open: openSkillsGym },
+    { name: 'Interval Gym', blurb: 'Focused interval-hearing circuits.', gate: melodicLevel('m7').mIndex, open: openGym },
+  ];
+}
+function openPracticeMenu() {
+  document.querySelectorAll('.melodic-overlay').forEach((el) => el.remove());
+  const ov = document.createElement('div'); ov.className = 'melodic-overlay';
+  const card = document.createElement('div'); card.className = 'answer-area melodic-overlay__card';
+  const h = document.createElement('div'); h.className = 'melodic-overlay__heading'; h.textContent = 'Practice'; card.appendChild(h);
+  const sub = document.createElement('div'); sub.className = 'melodic-overlay__goal';
+  sub.textContent = 'Extra ways to train. These build mastery and coverage, but only guided rounds level you up.';
+  card.appendChild(sub);
+  const mi = curLevel().mIndex;
+  practiceModes().filter((m) => mi >= m.gate).forEach((m) => {
+    const b = document.createElement('button'); b.className = 'melodic-btn melodic-practice-item';
+    const nm = document.createElement('div'); nm.className = 'melodic-practice-item__name'; nm.textContent = m.name;
+    const bl = document.createElement('div'); bl.className = 'melodic-practice-item__blurb'; bl.textContent = m.blurb;
+    b.append(nm, bl);
+    b.onclick = () => { ov.remove(); m.open(); };
+    card.appendChild(b);
+  });
+  const back = document.createElement('button'); back.className = 'melodic-btn'; back.textContent = 'Back';
+  back.onclick = () => ov.remove(); card.appendChild(back);
+  ov.appendChild(card); document.body.appendChild(ov);
+}
+// While a studio session is live the button LEAVES it (its label reads "Leave studio"); otherwise it
+// opens the menu.
+document.getElementById('practiceBtn').onclick = () => { if (studioSpec) leaveStudio(); else openPracticeMenu(); };
+// "About this level" is now a small info icon beside the title (owner) — click it
+// only if you're unsure what the level is about.
+(function wireAboutIcon() {
+  const el = document.getElementById('aboutIcon');
+  if (!el) return;
+  el.appendChild(gameIcon('info', 18));
+  el.onclick = () => { showLevelIntro(reviewingLevel || curLevel(), 'Back to the round', () => {}); };
+})();
+document.getElementById('sysSel').onchange = newRound;
+const practiceChk = document.getElementById('practiceChk');
+practiceChk.checked = !!S.practice;
+practiceChk.onchange = () => { S.practice = practiceChk.checked; save(S); newRound(); };
+
+// RETURN DECAY (mastery-progression-model, LOCKED): coming back after time away, step
+// the working level back to the highest rung whose DECAYED mastery is still at least
+// Familiar — so a LONG layoff (several faded skills) lands you where you're actually
+// still solid, not one rung down from rust. Records are untouched; never a reset.
+(function returnDecayStepBack() {
+  let stepped = 0;
+  while (S.levelIdx > 0) {
+    const item = S.items[curLevel().id];
+    if (!item || !Array.isArray(item.recent) || !item.recent.length) break; // no history here — stop
+    const v = mastery.viewItemAsOf(item, Date.now());
+    if (v.score < 50) { S.levelIdx--; stepped++; } else break; // faded below Familiar -> back up
+  }
+  if (stepped > 0) {
+    S.capstoneArmed = false;
+    S.streak = 0;
+    save(S);
+    setTimeout(() => {
+      const toastEl = document.getElementById('toast');
+      toastEl.className = 'melodic-toast';
+      toastEl.textContent = 'Welcome back — warming up ' + (stepped === 1 ? 'one level' : stepped + ' levels') +
+        ' down (' + curLevel().id.toUpperCase() + '). Your progress is safe.';
+    }, 400);
+  }
+})();
+
+// Test seam — ONLY with ?mqtest=1: drive rounds/grading deterministically.
+if (MQ_TEST) {
+  window.__mqTest = { S, PLAYABLE, newRound, curLevel, mastery, review, save, openGym, closeGym,
+    openStudio, leaveStudio, coverageComplete, covFor, openChunkDrill, closeChunk,
+    startGymReview, startDailyGym, dailyChallenges, renderDaily, openBookend, closeBookend,
+    openSkillsGym, closeSkillsGym,
+    setStudio(spec) { studioSpec = spec; }, getRoundInfo() { return currentRoundInfo; },
+    setInstrument: (name) => lastServices && lastServices.setInstrument(name),
+    currentInstrument: () => (lastServices ? lastServices.currentInstrument() : 'synth') };
+}
+
+// Safari policy-muted audio: the services watchdog fires this ONCE when sound was
+// scheduled into a running context but the measured output stayed at zero.
+window.addEventListener('melodic-audio-silent', () => {
+  const toastEl = document.getElementById('toast');
+  toastEl.className = 'melodic-toast is-wrong';
+  toastEl.textContent = 'Your browser is blocking this page\u2019s sound. In Safari: Safari menu \u2192 Settings for This Website \u2192 Auto-Play \u2192 "Allow All Auto-Play", then reload.';
+});
+
+/* FIRST-RUN ONBOARDING (impress + de-risk before a cold student's first minute):
+   a warm welcome -> a real AUDIO CHECK (the historical #1 failure is silent audio;
+   catch it here and route to the fix instead of leaving the student staring at a
+   mute page) -> a plain "how it works" -> hand off to placement or the first rung.
+   Shown once (S.onboarded), and only for a brand-new device. */
+function firstRunOnboarding(done) {
+  const labelCtx = { key: 'C', mode: 'major', system: document.getElementById('sysSel').value, minorSolfege: 'la' };
+  const svc = createServices({ labelNoteFn: labelNote, labelPaletteFn: labelPalette, labelCtx, tempoBPM: 92 });
+  lastServices = svc;
+
+  const ov = document.createElement('div');
+  ov.className = 'melodic-overlay';
+  const card = document.createElement('div');
+  card.className = 'answer-area melodic-overlay__card';
+  ov.appendChild(card);
+  document.body.appendChild(ov);
+  const finish = () => { S.onboarded = true; save(S); if (ov.parentNode) ov.remove(); done(); };
+
+  function screenWelcome() {
+    card.innerHTML = '';
+    const h = document.createElement('div'); h.className = 'melodic-overlay__heading'; h.textContent = 'Welcome to MelodyQuest';
+    const s = document.createElement('div'); s.className = 'melodic-overlay__sub';
+    s.textContent = 'Learn to hear music and write it down — from your very first note to full melodies.';
+    const g = document.createElement('div'); g.className = 'melodic-overlay__goal';
+    g.textContent = 'It only takes a minute to get set up. First, let’s make sure your sound is working.';
+    const row = document.createElement('div'); row.className = 'melodic-overlay__btnrow';
+    const go = document.createElement('button'); go.className = 'melodic-btn melodic-btn--primary'; go.textContent = 'Start';
+    go.onclick = screenAudio;
+    row.append(go);
+    card.append(h, s, g, row);
+  }
+
+  function screenAudio() {
+    card.innerHTML = '';
+    const h = document.createElement('div'); h.className = 'melodic-overlay__heading'; h.textContent = 'Can you hear this?';
+    const s = document.createElement('div'); s.className = 'melodic-overlay__sub'; s.textContent = 'Tap the button — you should hear a clear note. Turn your volume up first.';
+    const row = document.createElement('div'); row.className = 'melodic-overlay__btnrow';
+    const playBtn = document.createElement('button'); playBtn.className = 'melodic-btn melodic-btn--play'; // transport -> green
+    playBtn.append(svc.icon('play'), document.createTextNode(' Play a note'));
+    let played = false;
+    playBtn.onclick = async () => { await svc.playNote(60, 1.2); setTimeout(() => svc.playNote(64, 1.2), 700); played = true; ansRow.style.display = ''; };
+    row.append(playBtn);
+    const ansRow = document.createElement('div'); ansRow.className = 'melodic-overlay__btnrow'; ansRow.style.display = 'none';
+    const yes = document.createElement('button'); yes.className = 'melodic-btn'; yes.append(svc.icon('check'), document.createTextNode(' I heard it'));
+    yes.onclick = screenHow;
+    const no = document.createElement('button'); no.className = 'melodic-btn'; no.textContent = 'I heard nothing';
+    no.onclick = screenNoSound;
+    ansRow.append(yes, no);
+    card.append(h, s, row, ansRow);
+  }
+
+  function screenNoSound() {
+    card.innerHTML = '';
+    const h = document.createElement('div'); h.className = 'melodic-overlay__heading'; h.textContent = 'Let’s fix the sound';
+    const ul = document.createElement('ul'); ul.className = 'melodic-overlay__listen';
+    [
+      'Check your device volume isn’t muted, and unplug/replug headphones if you use them.',
+      'On Safari: Safari menu > Settings for This Website > Auto-Play > “Allow All Auto-Play”, then reload.',
+      'Some browsers need one tap on the page before audio starts — tap Play again.',
+    ].forEach((t) => { const li = document.createElement('li'); li.textContent = t; ul.appendChild(li); });
+    const row = document.createElement('div'); row.className = 'melodic-overlay__btnrow';
+    const retry = document.createElement('button'); retry.className = 'melodic-btn melodic-btn--primary'; retry.textContent = 'Try the sound again';
+    retry.onclick = screenAudio;
+    const skip = document.createElement('button'); skip.className = 'melodic-btn'; skip.textContent = 'Continue anyway';
+    skip.onclick = screenHow;
+    row.append(retry, skip);
+    card.append(h, ul, row);
+  }
+
+  function screenHow() {
+    card.innerHTML = '';
+    const h = document.createElement('div'); h.className = 'melodic-overlay__heading'; h.textContent = 'How it works';
+    const s = document.createElement('div'); s.className = 'melodic-overlay__sub'; s.textContent = 'Melodic dictation = hearing music and writing it down. We build it up one skill at a time:';
+    const ul = document.createElement('ul'); ul.className = 'melodic-overlay__listen';
+    [
+      'First you find “home” — the note everything settles to.',
+      'Then the rhythm — how long each note lasts.',
+      'Then the scale-degrees or solfège — which notes they are.',
+      'Finally, writing a melody on the staff — rhythm first, then the notes.',
+    ].forEach((t) => { const li = document.createElement('li'); li.textContent = t; ul.appendChild(li); });
+    const tip = document.createElement('div'); tip.className = 'melodic-overlay__strategy'; tip.textContent = 'You’ll never do it all at once — each level adds just one new thing.';
+    const nudge = document.createElement('div'); nudge.className = 'melodic-overlay__stats';
+    nudge.textContent = 'Anytime: switch the look (top-right) or choose Numbers vs. Do-Re-Mi at the bottom.';
+    const row = document.createElement('div'); row.className = 'melodic-overlay__btnrow';
+    // A 20-second demo: hear a real short melody (with the warm voice) before starting.
+    const demoBtn = document.createElement('button'); demoBtn.className = 'melodic-btn melodic-btn--play'; demoBtn.append(svc.icon('play'), document.createTextNode(' Hear an example')); // transport -> green
+    demoBtn.onclick = async () => {
+      demoBtn.disabled = true;
+      const phrase = [60, 64, 67, 64, 62, 60]; // do-mi-sol-mi-re-do, an easy tonal shape
+      for (let i = 0; i < phrase.length; i++) setTimeout(() => svc.playNote(phrase[i], 0.6), i * 560);
+      setTimeout(() => { demoBtn.disabled = false; }, phrase.length * 560 + 300);
+    };
+    const go = document.createElement('button'); go.className = 'melodic-btn melodic-btn--primary'; go.textContent = 'Choose where to start';
+    go.onclick = screenStart;
+    row.append(demoBtn, go);
+    card.append(h, s, ul, tip, nudge, row);
+  }
+
+  function screenStart() {
+    card.innerHTML = '';
+    const h = document.createElement('div'); h.className = 'melodic-overlay__heading'; h.textContent = 'Where should you start?';
+    const row = document.createElement('div'); row.className = 'melodic-overlay__btnrow';
+    const beginner = document.createElement('button'); beginner.className = 'melodic-btn melodic-btn--primary'; beginner.textContent = 'New to this — start at the beginning';
+    beginner.onclick = () => { finish(); }; // done() -> newRound() opens M0's own intro
+    const placed = document.createElement('button'); placed.className = 'melodic-btn'; placed.textContent = 'Done ear training before — place me';
+    placed.onclick = () => { S.onboarded = true; save(S); if (ov.parentNode) ov.remove(); offerPlacement(); };
+    row.append(beginner, placed);
+    card.append(h, row);
+  }
+
+  screenWelcome();
+}
+
+rollDailyDate();
+renderDaily();
+if (!S.onboarded && S.levelIdx === 0 && !Object.keys(S.items).length) {
+  firstRunOnboarding(() => { newRound(); });
+} else if (!S.placed && S.levelIdx === 0 && !Object.keys(S.items).length) {
+  S.placed = true; // legacy path for devices onboarded before this flow existed
+  offerPlacement();
+} else {
+  newRound();
+}
+</script>
+<script src="suite-theme.js?v=20260701-kidsmode"></script>
+<script>
+  /* Theme dropdown (in the controls) drives the shared theme engine; the old floating
+     chip bar is hidden. Reflects the saved choice and applies changes live. */
+  (function () {
+    var sel = document.getElementById('themeSel');
+    if (!sel) return;
+    try { sel.value = localStorage.getItem('beatquest-theme') || 'mpc'; } catch (e) {}
+    sel.addEventListener('change', function () {
+      if (window.BeatQuestTheme) window.BeatQuestTheme.apply(sel.value);
+    });
+  })();
+
+  /* Settings drawer: cog opens it, scrim / close button / Esc dismiss it. */
+  (function () {
+    var cog = document.getElementById('cogBtn');
+    var drawer = document.getElementById('settingsDrawer');
+    var scrim = document.getElementById('settingsScrim');
+    var closeBtn = document.getElementById('settingsClose');
+    if (!cog || !drawer || !scrim) return;
+    function open() { scrim.hidden = false; drawer.hidden = false; }
+    function close() { scrim.hidden = true; drawer.hidden = true; }
+    cog.addEventListener('click', open);
+    scrim.addEventListener('click', close);
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !drawer.hidden) close(); });
+  })();
+</script>
+<!-- Dev-only version tag (confirms which build deployed). Kept tiny + faint; the changelog lives in
+     git + LEVELS_4_10_ROBUSTNESS.md, NOT on the student's screen. -->
+<div id="buildStamp" style="position:fixed;bottom:4px;right:8px;opacity:.28;font:10px -apple-system,sans-serif;z-index:998;pointer-events:none;">2026-07-05-DQ</div>
+</body>
+</html>

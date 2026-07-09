@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>SingQuest — sing in tune</title>
+<!-- VexFlow is loaded because melodic-shell-services.js binds Vex.Flow at module top-level
+     (staff rendering — UNUSED in Phase 0; SingQuest Phase 0 is OFF THE STAFF). -->
+<script src="vendor/vexflow.js"></script>
+<!--
+  SingQuest — Phase 0 "first lesson" (REBUILT to the owner-approved mockups:
+  singquest-mockup.html landing, singquest-coarse.html Playful, singquest-adult.html
+  Studio+Minimal). Scope (trimmed): Landing -> Find-your-voice -> S1 Match a note.
+
+  NON-NEGOTIABLE house rules baked in:
+    - THREE selectable themes in the cog drawer: Playful, Studio, Minimal.
+      Default = Studio. Theme is pure CSS/skin over ONE engine. Persisted.
+    - COARSE feedback ONLY: matched / close / way-off — by color + a short human
+      phrase. NO cents, NO needle, NO numeric pitch readout anywhere.
+    - OFF THE STAFF — no notation. Pure hear-and-sing-back.
+    - Teach-then-do: Listen -> Sing-with-me (unison guide) -> Your turn.
+    - No emoji — inline currentColor SVG only. ONE accent CTA per screen. Every
+      color per-theme. Constant HUD; settings behind the top-right cog.
+-->
+<style>
+  /* ==================================================================
+     THREE THEMES. Each has its OWN complete palette (no universal colors
+     except the note-placement geometry). Default = Studio (dark).
+     Variables are consumed by the shared engine's class names.
+     ================================================================== */
+  :root, body.theme-studio {
+    --bg:radial-gradient(120% 90% at 50% -10%, #1c2233, #0d0f16 70%);
+    --ink:#e9edf7; --ink-soft:#828ba6; --line:#262d3d;
+    --card:linear-gradient(180deg,#171c28,#10131c); --card-solid:#151a26;
+    --brand1:#7cc9ff; --brand2:#8ea2ff;
+    --accent:#5a7bff; --accent-grad:linear-gradient(135deg,#3f8ee0,#6f6ee6); --accent-ink:#fff;
+    --ghost-bg:#1a1f2c; --ghost-ink:#aab3cc; --ghost-line:#2a3142;
+    --groove:#5fe0a8; --groove-track:#2a3142; --groove-glow:rgba(95,224,168,.22);
+    --flame:#ff9a52; --pip:#333a4d; --pip-on:#7cc9ff;
+    --matched:#5fe0a8; --matched-soft:rgba(95,224,168,.16);
+    --close:#f2c14e; --close-soft:rgba(242,193,78,.14);
+    --wayoff:#e2726e; --wayoff-soft:rgba(226,114,110,.14);
+    --coach:#ffb877;
+    --step-bg:#191e2a; --step-on:linear-gradient(135deg,#7cc9ff,#8ea2ff); --step-on-ink:#08111e;
+    --shadow:rgba(0,0,0,.45);
+    --field-bg:linear-gradient(180deg,#131722,#0e1119);
+    --font:"Inter",ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --frame-radius:22px;
+  }
+  body.theme-minimal {
+    --bg:linear-gradient(180deg,#f7f8fb,#eef1f7);
+    --ink:#232838; --ink-soft:#8a93ab; --line:#eaedf5;
+    --card:#ffffff; --card-solid:#ffffff;
+    --brand1:#4b64d8; --brand2:#6d7ff0;
+    --accent:#4b64d8; --accent-grad:#4b64d8; --accent-ink:#fff;
+    --ghost-bg:#fff; --ghost-ink:#5b657f; --ghost-line:#e6eaf3;
+    --groove:#3aa981; --groove-track:#e5e9f2; --groove-glow:rgba(58,169,129,.16);
+    --flame:#f0872e; --pip:#dde2ee; --pip-on:#4b64d8;
+    --matched:#1f9c6d; --matched-soft:rgba(31,156,109,.12);
+    --close:#c98314; --close-soft:rgba(201,131,20,.12);
+    --wayoff:#d8524d; --wayoff-soft:rgba(216,82,77,.1);
+    --coach:#c07a1a;
+    --step-bg:#f2f4fa; --step-on:#4b64d8; --step-on-ink:#fff;
+    --shadow:rgba(70,90,150,.12);
+    --field-bg:linear-gradient(180deg,#fbfcfe,#f4f6fc);
+    --font:"Inter",ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --frame-radius:22px;
+  }
+  body.theme-playful {
+    --bg:linear-gradient(165deg,#eaf3ff,#f3edff 55%,#ffeef6);
+    --ink:#33405e; --ink-soft:#8791ad; --line:#e7ecfb;
+    --card:#ffffff; --card-solid:#ffffff;
+    --brand1:#5b6ee1; --brand2:#8a6ee6;
+    --accent:#5b6ee1; --accent-grad:linear-gradient(135deg,#5b6ee1,#8a6ee6); --accent-ink:#fff;
+    --ghost-bg:#fff; --ghost-ink:#5a6488; --ghost-line:#e2e8f6;
+    --groove:#22b083; --groove-track:#e2e8f6; --groove-glow:rgba(52,201,135,.2);
+    --flame:#ff8c42; --pip:#dfe4f7; --pip-on:#f2b134;
+    --matched:#1f9c6d; --matched-soft:rgba(52,201,135,.16);
+    --close:#d79820; --close-soft:rgba(242,177,52,.16);
+    --wayoff:#d8524d; --wayoff-soft:rgba(226,114,110,.16);
+    --coach:#cf7b3c;
+    --step-bg:#f3f5fd; --step-on:linear-gradient(135deg,#5b6ee1,#8a6ee6); --step-on-ink:#fff;
+    --shadow:rgba(90,110,180,.16);
+    --field-bg:linear-gradient(180deg,#f7f9ff,#eef2ff);
+    --font:ui-rounded,"SF Pro Rounded","Nunito","Segoe UI",system-ui,sans-serif;
+    --frame-radius:26px;
+  }
+
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; }
+  body {
+    font-family:var(--font); color:var(--ink); background:var(--bg);
+    min-height:100dvh; display:flex; flex-direction:column; align-items:center;
+    padding:12px; padding-top:calc(env(safe-area-inset-top,0) + 12px);
+  }
+
+  /* ===== shared wordmark / HUD ===== */
+  .sq-header { width:100%; max-width:480px; display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; }
+  .sq-brand { display:flex; align-items:center; gap:8px; font-weight:800; font-size:1.05rem; letter-spacing:.02em; }
+  body.theme-studio .sq-brand { letter-spacing:.14em; }
+  .sq-brand .ic { width:22px; height:22px; }
+  .sq-brand .ic path { stroke:var(--brand1); }
+  .sq-wordmark { background:linear-gradient(92deg,var(--brand1),var(--brand2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  body.theme-studio .sq-wordmark, body.theme-minimal .sq-wordmark { color:var(--ink); background:none; -webkit-background-clip:border-box; }
+  .sq-cog { background:var(--ghost-bg); border:1px solid var(--ghost-line); border-radius:12px; width:40px; height:40px; display:flex; align-items:center; justify-content:center; color:var(--ink-soft); cursor:pointer; box-shadow:0 1px 6px var(--shadow); }
+  .sq-cog .ic { width:22px; height:22px; }
+
+  /* ===== LANDING ===== */
+  .sq-landing { width:100%; max-width:440px; display:flex; flex-direction:column; align-items:stretch; margin-top:6px; }
+  .sq-landing.hide { display:none; }
+  .landing-brand { display:flex; align-items:center; justify-content:center; gap:10px; padding:18px 0 2px; }
+  .landing-brand .ic { width:30px; height:30px; }
+  .landing-brand h1 { margin:0; font-size:2rem; font-weight:900; letter-spacing:-.02em; }
+  .landing-tag { text-align:center; color:var(--ink-soft); font-weight:700; font-size:.92rem; margin:2px 0 16px; }
+  .landing-tabs { background:var(--card-solid); border:1px solid var(--line); border-radius:16px; padding:6px; display:flex; margin-bottom:14px; box-shadow:0 6px 20px var(--shadow); }
+  .landing-tabs button { flex:1; border:0; background:transparent; font-family:inherit; font-weight:800; font-size:.95rem; color:var(--ink-soft); padding:12px; border-radius:11px; cursor:pointer; }
+  .landing-tabs button.on { background:var(--matched-soft); color:var(--accent); }
+  body.theme-studio .landing-tabs button.on { background:#1a2130; color:var(--brand1); }
+  .landing-card { background:var(--card-solid); border:1px solid var(--line); border-radius:20px; padding:18px; box-shadow:0 10px 30px var(--shadow); }
+  .landing-card .lead { margin:0 0 14px; font-size:.95rem; line-height:1.5; font-weight:600; color:var(--ink); }
+  .landing-card .lead b { font-weight:800; }
+  .landing-kicker { font-size:.68rem; font-weight:900; letter-spacing:.08em; color:var(--ink-soft); margin-bottom:10px; }
+  .landing-chips { display:flex; gap:10px; }
+  .landing-chip { flex:1; background:var(--field-bg); border:1px solid var(--line); border-radius:14px; padding:12px 6px; text-align:center; }
+  .landing-chip .ic { width:26px; height:26px; margin:0 auto 6px; color:var(--accent); display:block; }
+  .landing-chip small { display:block; font-weight:800; font-size:.72rem; color:var(--ink); line-height:1.25; }
+  .landing-chip b { display:block; font-size:.66rem; color:var(--ink-soft); font-weight:800; margin-top:3px; }
+  .landing-cta { margin-top:18px; }
+  .landing-cta button { width:100%; border:0; border-radius:16px; padding:16px; font-family:inherit; font-weight:900; font-size:1.05rem; color:#fff; background:linear-gradient(135deg,#34d17f,#22b083); box-shadow:0 10px 24px rgba(34,176,131,.32); display:flex; align-items:center; justify-content:center; gap:9px; cursor:pointer; }
+  .landing-cta button .ic { width:20px; height:20px; }
+  .landing-foot { text-align:center; font-size:.68rem; color:var(--ink-soft); font-weight:800; letter-spacing:.04em; margin-top:14px; }
+
+  /* ===== the answer frame (Quest sibling: groove ring, Level/Score tabs, cog) ===== */
+  .sq-play { width:100%; max-width:480px; display:flex; flex-direction:column; align-items:stretch; flex:1 1 auto; }
+  .sq-play.hide { display:none; }
+  .sq-tabrow { display:flex; justify-content:space-between; padding:6px 6px 0; }
+  .frame-tab { display:flex; align-items:center; gap:9px; padding:5px 12px; font-weight:800; background:var(--ghost-bg); border:1px solid var(--ghost-line); border-radius:11px; box-shadow:0 1px 6px var(--shadow); }
+  .frame-tab .tab-k { font-size:.6rem; color:var(--ink-soft); letter-spacing:.06em; text-transform:uppercase; }
+  .frame-tab .tab-v { font-size:.95rem; color:var(--accent); }
+  body.theme-studio .frame-tab .tab-v { color:var(--brand1); }
+  .frame-tab .qs { display:flex; align-items:center; gap:5px; }
+  .frame-tab .qs .ic { width:16px; height:16px; color:var(--flame); }
+  .frame-tab .qs b { color:var(--accent); font-size:.9rem; }
+  .sm-pips { display:flex; gap:4px; }
+  .sm-pips i { width:8px; height:8px; border-radius:50%; background:var(--pip); display:inline-block; }
+  .sm-pips i.on { background:var(--pip-on); }
+  body.theme-studio .sm-pips i.on { box-shadow:0 0 6px var(--pip-on); }
+
+  .sq-frame { position:relative; flex:1 1 auto; min-height:420px; margin-top:14px; background:var(--card); border:1px solid var(--line); border-radius:var(--frame-radius); box-shadow:0 0 22px var(--groove-glow), 0 12px 30px var(--shadow); display:flex; flex-direction:column; padding:16px 16px 22px; }
+  .sq-frame .groove-ring { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible; z-index:0; }
+  .sq-frame .gr-track { fill:none; stroke:var(--groove-track); stroke-width:5; }
+  .sq-frame .gr-fill { fill:none; stroke:var(--groove); stroke-width:5; stroke-linecap:round; transition:stroke-dashoffset .35s ease, stroke .25s ease; }
+  .groove-badge { position:absolute; right:16px; bottom:-12px; display:flex; align-items:center; gap:6px; font-size:.66rem; font-weight:800; letter-spacing:.05em; color:var(--groove); background:var(--card-solid); padding:3px 11px; border-radius:10px; border:1px solid var(--line); box-shadow:0 1px 6px var(--shadow); z-index:3; }
+  .groove-badge .ic { width:14px; height:14px; color:var(--groove); }
+
+  .sq-stage { position:relative; z-index:1; flex:1 1 auto; display:flex; flex-direction:column; }
+  .sq-why { flex:0 0 auto; text-align:center; color:var(--ink-soft); font-size:.78rem; line-height:1.35; margin:2px 8px 14px; }
+  .sq-stage > #mount { flex:1 1 auto; display:flex; flex-direction:column; }
+
+  /* ===== the shared engine's rendered UI (class names from singquest-renderers.js) ===== */
+  .sq-lesson { text-align:center; display:flex; flex-direction:column; flex:1 1 auto; }
+  .sq-steps-host { margin-bottom:8px; }
+  .sq-steps { display:flex; gap:6px; justify-content:center; }
+  .sq-step { display:flex; align-items:center; gap:6px; font-size:.68rem; font-weight:800; color:var(--ink-soft); background:var(--step-bg); padding:6px 10px; border-radius:16px; }
+  .sq-step__n { width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.62rem; background:rgba(128,128,128,.18); }
+  .sq-step.on { color:var(--step-on-ink); background:var(--step-on); }
+  .sq-step.done { color:var(--matched); background:var(--matched-soft); }
+  .sq-prompt { font-size:1.15rem; font-weight:800; margin:4px 8px 3px; }
+  .sq-sub { color:var(--ink-soft); font-size:.84rem; line-height:1.4; margin:0 10px 8px; }
+
+  /* ---- the COARSE FIELD (no ticks / scale / numbers) ---- */
+  .sq-field-wrap { position:relative; flex:1 1 auto; min-height:230px; margin:6px 2px; border-radius:18px; background:var(--field-bg); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .sq-target { position:absolute; display:flex; align-items:center; justify-content:center; }
+  .sq-note { font-weight:900; letter-spacing:.02em; }
+  .sq-voice { position:absolute; border-radius:50%; }
+  .sq-burst { position:absolute; width:150px; height:150px; border-radius:50%; opacity:0; }
+
+  /* live meter (I-hear-you), NOT a pitch readout */
+  .sq-meter { position:absolute; left:50%; bottom:12px; transform:translateX(-50%); width:60%; max-width:220px; height:7px; background:var(--groove-track); border-radius:6px; overflow:hidden; }
+  .sq-meter span { display:block; height:100%; width:0; background:var(--groove); transition:width .06s linear; }
+
+  .sq-verdict { min-height:22px; margin:10px 6px 2px; font-weight:800; font-size:.98rem; }
+  .sq-verdict.is-matched { color:var(--matched); }
+  .sq-verdict.is-close { color:var(--close); }
+  .sq-verdict.is-way-off { color:var(--wayoff); }
+  .sq-verdict.is-coach { color:var(--coach); }
+
+  .sq-actions { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:12px; }
+  .sq-actions--judge { margin-top:8px; }
+
+  /* safety-net "Too low / Too high for me" — small, muted, off the main CTA line */
+  .sq-shiftbar { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:10px; min-height:0; }
+  .sq-shiftbar:empty { display:none; }
+  .sq-shiftbtn.melodic-btn { flex:0 0 auto; padding:7px 12px; font-size:.74rem; font-weight:700; border-radius:11px; color:var(--ink-soft); background:transparent; border:1px solid var(--ghost-line); opacity:.85; }
+  .sq-shiftbtn.melodic-btn:hover { opacity:1; }
+
+  /* buttons (services.button -> .melodic-btn / --primary / --ghost) */
+  .melodic-btn { font:inherit; font-weight:800; border-radius:14px; padding:13px 18px; cursor:pointer; border:1px solid var(--ghost-line); background:var(--ghost-bg); color:var(--ghost-ink); display:inline-flex; align-items:center; gap:8px; }
+  .melodic-btn svg { width:18px; height:18px; }
+  .melodic-btn--primary { flex:1; justify-content:center; background:var(--accent-grad); color:var(--accent-ink); border-color:transparent; box-shadow:0 8px 20px var(--groove-glow); }
+  .melodic-btn--primary:disabled { opacity:.55; cursor:not-allowed; box-shadow:none; }
+  .melodic-btn--ghost { flex:0 0 auto; }
+
+  /* ===================================================================
+     PLAYFUL theme: the friendly BUDDY in a field. The voice orb has a face
+     and slides; matched -> merges onto the note with a burst.
+     =================================================================== */
+  body.theme-playful .sq-target { width:92px; height:92px; border-radius:50%; border:3px dashed var(--matched); background:radial-gradient(circle at 50% 50%, var(--matched-soft), transparent); top:24px; }
+  body.theme-playful .sq-target .sq-note { font-size:1.5rem; color:var(--matched); }
+  body.theme-playful .sq-voice { width:58px; height:58px; bottom:24px; background:radial-gradient(circle at 38% 34%,#8fa6ff,#5b6ee1); box-shadow:0 8px 18px rgba(91,110,225,.4); }
+  body.theme-playful .sq-voice::before, body.theme-playful .sq-voice::after { content:''; position:absolute; width:7px; height:7px; border-radius:50%; background:#fff; top:20px; }
+  body.theme-playful .sq-voice::before { left:16px; } body.theme-playful .sq-voice::after { right:16px; }
+  body.theme-playful .sq-field-wrap.is-close .sq-voice { bottom:auto; top:78px; background:radial-gradient(circle at 38% 34%,#ffd98a,#f2b134); }
+  body.theme-playful .sq-field-wrap.is-way-off .sq-voice { bottom:20px; background:radial-gradient(circle at 38% 34%,#f2a3a0,#e2726e); }
+  body.theme-playful .sq-field-wrap.is-matched .sq-voice { top:38px; bottom:auto; background:radial-gradient(circle at 38% 34%,#7fe3b4,#2fbf87); }
+  body.theme-playful .sq-field-wrap.is-matched .sq-target { border-style:solid; background:radial-gradient(circle at 50% 45%,#7fe3b4,#2fbf87); }
+  body.theme-playful .sq-field-wrap.is-matched .sq-target .sq-note { color:#fff; }
+  body.theme-playful .sq-field-wrap.is-matched .sq-burst { opacity:1; border:3px solid rgba(52,201,135,.5); animation:sq-burst 1.1s ease-out; }
+  @keyframes sq-burst { from { transform:scale(.4); opacity:.8; } to { transform:scale(1.3); opacity:0; } }
+
+  /* ===================================================================
+     STUDIO + MINIMAL: the LOCK-ON RING. A voice ring converges on the target
+     ring; matched -> locks green, concentric. No character.
+     =================================================================== */
+  body.theme-studio .sq-target, body.theme-minimal .sq-target { width:150px; height:150px; border-radius:50%; }
+  body.theme-studio .sq-target { border:2px solid rgba(95,224,168,.55); box-shadow:0 0 30px rgba(95,224,168,.18), inset 0 0 30px rgba(95,224,168,.08); }
+  body.theme-minimal .sq-target { border:2.5px dashed #d9b25e; }
+  .sq-note { color:var(--matched); }
+  body.theme-studio .sq-target .sq-note { text-shadow:0 0 14px rgba(95,224,168,.5); font-size:1.9rem; }
+  body.theme-minimal .sq-target .sq-note { color:#cf8f24; font-size:1.9rem; }
+  body.theme-studio .sq-voice, body.theme-minimal .sq-voice { border-radius:50%; }
+  /* idle: voice ring large + offset (searching) */
+  body.theme-studio .sq-voice { width:210px; height:210px; border:2px solid rgba(124,201,255,.7); transform:translateY(46px); box-shadow:0 0 26px rgba(124,201,255,.25); transition:transform .25s, width .25s, height .25s, border-color .25s; }
+  body.theme-minimal .sq-voice { width:180px; height:180px; border:3px solid #e6a23c; transform:translateY(40px); box-shadow:0 0 0 6px rgba(230,162,60,.1); transition:transform .25s, width .25s, height .25s; }
+  /* close: converging */
+  body.theme-studio .sq-field-wrap.is-close .sq-voice { width:178px; height:178px; transform:translateY(24px); }
+  body.theme-minimal .sq-field-wrap.is-close .sq-voice { width:150px; height:150px; transform:translateY(24px); }
+  /* way-off: pushed out */
+  body.theme-studio .sq-field-wrap.is-way-off .sq-voice { width:230px; height:230px; transform:translateY(60px); border-color:rgba(226,114,110,.7); }
+  body.theme-minimal .sq-field-wrap.is-way-off .sq-voice { width:210px; height:210px; transform:translateY(56px); border-color:#d8524d; }
+  /* matched: LOCKED — concentric on the target, green */
+  body.theme-studio .sq-field-wrap.is-matched .sq-voice { width:150px; height:150px; transform:translateY(0); border-color:rgba(95,224,168,.9); box-shadow:0 0 26px rgba(95,224,168,.5); }
+  body.theme-minimal .sq-field-wrap.is-matched .sq-voice { width:150px; height:150px; transform:translateY(0); border-color:#2fbf87; }
+  body.theme-minimal .sq-field-wrap.is-matched .sq-target { border-style:solid; border-color:#2fbf87; }
+  body.theme-studio .sq-field-wrap.is-matched .sq-target { border-color:rgba(95,224,168,.9); }
+
+  /* ===== cog drawer ===== */
+  .sq-drawer[hidden] { display:none; }
+  .sq-drawer { position:fixed; inset:0; z-index:40; background:rgba(10,12,20,.5); display:flex; justify-content:flex-end; }
+  .sq-drawer__panel { width:min(320px,86vw); height:100%; background:var(--card-solid); padding:20px; box-shadow:-8px 0 30px var(--shadow); display:flex; flex-direction:column; gap:18px; overflow-y:auto; }
+  .sq-drawer__head { display:flex; justify-content:space-between; align-items:center; }
+  .sq-drawer__head b { font-size:1.1rem; }
+  .sq-drawer__close { background:none; border:none; color:var(--ink-soft); cursor:pointer; }
+  .sq-drawer__close .ic { width:22px; height:22px; }
+  .sq-field-row { display:flex; flex-direction:column; gap:6px; }
+  .sq-field-row > label { font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); font-weight:800; }
+  .sq-seg { display:flex; gap:6px; flex-wrap:wrap; }
+  .sq-seg button { font:inherit; font-weight:700; padding:9px 12px; border-radius:10px; cursor:pointer; border:1px solid var(--line); background:transparent; color:var(--ink); }
+  .sq-seg button[aria-pressed="true"] { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  .sq-note-txt { font-size:.76rem; color:var(--ink-soft); line-height:1.4; }
+
+  /* ===== level-complete ===== */
+  .sq-celebrate[hidden] { display:none; }
+  .sq-celebrate { position:fixed; inset:0; z-index:50; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; text-align:center; padding:24px; background:var(--bg); }
+  .sq-celebrate .ic { width:56px; height:56px; color:var(--matched); }
+  .sq-celebrate h2 { margin:0; font-size:1.5rem; }
+  .sq-celebrate p { color:var(--ink-soft); max-width:340px; }
+</style>
+</head>
+<body class="theme-studio">
+
+<!-- ===================== HEADER (constant HUD) ===================== -->
+<div class="sq-header">
+  <div class="sq-brand">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v4"/></svg>
+    <span class="sq-wordmark">SingQuest</span>
+  </div>
+  <button class="sq-cog" id="cogBtn" aria-label="Settings">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.3 1a7 7 0 0 0-1.7-1l-.4-2.5H10l-.4 2.5a7 7 0 0 0-1.7 1l-2.3-1-2 3.4 2 1.6a7 7 0 0 0 0 2l-2 1.6 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"/></svg>
+  </button>
+</div>
+
+<!-- ===================== SCREEN 1: LANDING ===================== -->
+<div class="sq-landing" id="landing">
+  <div class="landing-brand">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="url(#brandg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><defs><linearGradient id="brandg" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#7cc9ff"/><stop offset="1" stop-color="#8ea2ff"/></linearGradient></defs><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v4"/><path d="M9 21h6"/></svg>
+    <h1 class="sq-wordmark" style="background:linear-gradient(92deg,var(--brand1),var(--brand2));-webkit-background-clip:text;background-clip:text;color:transparent;">SingQuest</h1>
+  </div>
+  <div class="landing-tag">Learn to sing in tune — from your very first note</div>
+
+  <div class="landing-tabs" id="journeyTabs">
+    <button class="on" data-tab="journey">Guided Journey</button>
+    <button data-tab="free">Free Play</button>
+  </div>
+
+  <div class="landing-card">
+    <p class="lead">We <b>find your voice</b>, then teach one note at a time — <b>listen, sing along, then solo</b>. No music reading needed to start.</p>
+    <div class="landing-kicker">YOUR FIRST LESSON · LEVEL 1</div>
+    <div class="landing-chips">
+      <div class="landing-chip">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v4"/></svg>
+        <small>Find your voice</small><b>where you're comfy</b>
+      </div>
+      <div class="landing-chip">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.4"/></svg>
+        <small>Match a note</small><b>hit the target</b>
+      </div>
+      <div class="landing-chip">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 9l7-6 7 6"/></svg>
+        <small>Sing it in tune</small><b>your first win</b>
+      </div>
+    </div>
+  </div>
+
+  <div class="landing-cta">
+    <button id="startBtn">Start singing
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+    </button>
+  </div>
+  <div class="landing-foot">nothing recorded · analysed live &amp; discarded</div>
+</div>
+
+<!-- ===================== SCREEN 2: THE LESSON ===================== -->
+<div class="sq-play hide" id="play">
+  <div class="sq-tabrow">
+    <div class="frame-tab left"><span class="tab-k">Level</span><span class="tab-v" id="levelNum">1</span><span class="sm-pips" id="pips"></span></div>
+    <div class="frame-tab right">
+      <span class="qs"><svg class="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2s5 4 5 9a5 5 0 0 1-10 0c0-1 .3-2 .8-2.6C7 10 8 12 9 12c0-3 3-4 3-10Z"/></svg><b id="streak">0</b></span>
+      <span class="qs" style="margin-left:8px"><span class="tab-k">Score</span>&nbsp;<b id="score">0</b></span>
+    </div>
+  </div>
+
+  <div class="sq-frame">
+    <svg class="groove-ring" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <rect class="gr-track" x="3" y="3" width="94" height="94" rx="12" ry="12"/>
+      <rect class="gr-fill" id="grFill" x="3" y="3" width="94" height="94" rx="12" ry="12"/>
+    </svg>
+    <div class="sq-stage">
+      <div class="sq-why" id="whyLine">Find where your voice is comfy.</div>
+      <div id="mount"></div>
+    </div>
+    <div class="groove-badge"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg><span>GROOVE</span></div>
+  </div>
+</div>
+
+<!-- cog drawer -->
+<div class="sq-drawer" id="drawer" hidden>
+  <div class="sq-drawer__panel">
+    <div class="sq-drawer__head">
+      <b>Settings</b>
+      <button class="sq-drawer__close" id="drawerClose" aria-label="Close">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="sq-field-row">
+      <label>Theme</label>
+      <div class="sq-seg" id="themeSeg">
+        <button data-theme="playful" aria-pressed="false">Playful</button>
+        <button data-theme="studio" aria-pressed="true">Studio</button>
+        <button data-theme="minimal" aria-pressed="false">Minimal</button>
+      </div>
+    </div>
+    <div class="sq-field-row">
+      <label>Solfège labels</label>
+      <div class="sq-seg" id="labelSeg">
+        <button data-sys="movable-do" aria-pressed="true">Movable do</button>
+        <button data-sys="numbers" aria-pressed="false">Numbers</button>
+        <button data-sys="fixed-do" aria-pressed="false">Fixed do</button>
+      </div>
+    </div>
+    <div class="sq-field-row">
+      <label>Microphone</label>
+      <div class="sq-seg" id="micSeg">
+        <button data-mic="ask" aria-pressed="true">Ask each time</button>
+        <button data-mic="off" aria-pressed="false">Self-check only</button>
+      </div>
+      <div class="sq-note-txt">Nothing is recorded or uploaded. Your voice is analysed live in your browser and discarded.</div>
+    </div>
+  </div>
+</div>
+
+<!-- level-complete celebration -->
+<div class="sq-celebrate" id="celebrate" hidden>
+  <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>
+  <h2 id="celebrateTitle">Nice singing!</h2>
+  <p id="celebrateBody">You found your voice and matched your first note in tune. That is where every singer starts.</p>
+  <button class="melodic-btn melodic-btn--primary" id="celebrateNext" style="max-width:220px">Sing it again</button>
+</div>
+
+<script type="module">
+import { labelNote, labelPalette } from './core/melodic.js';
+import { createServices } from './melodic-shell-services.js';
+import { createVoiceProbe, createSingLesson } from './singquest-renderers.js';
+import { buildVoiceRange } from './core/singquest.js';
+
+// Truth seam for headless fake-media tests.
+if (!window.__sqTest) window.__sqTest = {};
+
+const THEMES = ['playful', 'studio', 'minimal'];
+const DEFAULT_THEME = 'studio';
+
+// ---- local progress (Phase 0: in-memory + theme persisted in localStorage) ----
+const progress = {
+  voice: { lowMidi: 55, highMidi: 67, tonicMidi: 60, tonicOctave: 4, matchedMidi: 60 },
+  score: 0, streak: 0, groove: 100,
+  theme: DEFAULT_THEME,
+  labelSystem: 'movable-do',
+  micMode: 'ask',
+  consent: null,
+};
+
+const $ = (id) => document.getElementById(id);
+const mount = $('mount');
+
+// ---- theme (persisted) ----
+function loadTheme() {
+  try {
+    const t = localStorage.getItem('singquest.theme');
+    if (t && THEMES.includes(t)) return t;
+  } catch (e) {}
+  return DEFAULT_THEME;
+}
+function applyTheme(t) {
+  if (!THEMES.includes(t)) t = DEFAULT_THEME;
+  progress.theme = t;
+  document.body.className = 'theme-' + t;
+  try { localStorage.setItem('singquest.theme', t); } catch (e) {}
+  $('themeSeg').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.getAttribute('data-theme') === t)));
+}
+
+function makeServices() {
+  const labelCtx = { key: 'C', mode: 'major', system: progress.labelSystem, minorSolfege: 'la' };
+  return createServices({ labelNoteFn: labelNote, labelPaletteFn: labelPalette, labelCtx, tempoBPM: 92 });
+}
+
+// ---- groove ring ----
+const GR_PERIM = 4 * 94;
+function setGroove(v) {
+  progress.groove = Math.max(0, Math.min(100, v));
+  const fill = $('grFill');
+  fill.style.strokeDasharray = GR_PERIM;
+  fill.style.strokeDashoffset = GR_PERIM * (1 - progress.groove / 100);
+  fill.style.stroke = progress.groove < 25 ? 'var(--wayoff)' : 'var(--groove)';
+  if (progress.groove <= 0) gameOver();
+}
+function bumpGroove(d) { setGroove(progress.groove + d); }
+function setHUD() { $('score').textContent = progress.score; $('streak').textContent = progress.streak; }
+function setPips(done, total) {
+  const p = $('pips'); p.innerHTML = '';
+  for (let i = 0; i < total; i++) { const d = document.createElement('i'); if (i < done) d.className = 'on'; p.append(d); }
+}
+
+// ---- the lesson label for the coarse field (movable-do 'do' for the tonic) ----
+function noteLabelFor(midi) {
+  try { return makeServices().label({ midi }); } catch (e) { return 'do'; }
+}
+
+// ---- Phase 0 flow (trimmed): probe -> S1 ----
+const FLOW = ['probe', 's1'];
+let step = 0;
+let renderer = null;
+
+function consentArg() {
+  if (progress.micMode === 'off') return false;
+  return progress.consent;
+}
+function rememberConsent(v) { progress.consent = v; }
+
+function onWin({ coachedFix }) {
+  progress.score += coachedFix ? 6 : 12;
+  progress.streak = coachedFix ? 0 : progress.streak + 1;
+  bumpGroove(coachedFix ? +6 : +14);
+  setHUD();
+  setTimeout(nextStep, 1300);
+}
+
+function mountStep() {
+  if (renderer) { try { renderer.destroy(); } catch (e) {} renderer = null; }
+  mount.innerHTML = '';
+  const services = makeServices();
+  // SingQuest is COARSE — trade fine-pitch accuracy for SENSITIVITY so a phone/iPad
+  // actually hears the singer: auto-gain ON + a software boost + a low silence floor
+  // (paired with detectPitch rmsFloor in singquest-renderers.js).
+  try { services.configureMic({ autoGainControl: true, gain: 2.5 }); } catch (e) {}
+  setPips(step, FLOW.length + 1); // probe + S1 + (the win) = 3 pips of arc
+  const which = FLOW[step];
+
+  if (which === 'probe') {
+    $('levelNum').textContent = '·';
+    $('whyLine').textContent = 'First, find where your voice is comfy — no score.';
+    renderer = createVoiceProbe(mount, {
+      services,
+      consent: consentArg(), onConsent: rememberConsent,
+      onResult: (voice) => { progress.voice = voice; setTimeout(nextStep, 1000); },
+    });
+  } else if (which === 's1') {
+    $('levelNum').textContent = '1';
+    $('whyLine').textContent = 'Match one note in tune — your first win.';
+    // Comfortable centre of the student's range — guaranteed within [low,high]
+    // by buildVoiceRange(), so no fragile clamp needed.
+    const target = progress.voice.tonicMidi;
+    renderer = createSingLesson(mount, {
+      services, level: 1, targetMidi: target, tonicMidi: target,
+      noteLabel: noteLabelFor(target),
+      listenPrompt: "Here's your note. Hear how it sits.",
+      prompt: 'Now sing it on your own — anywhere near it counts.',
+      consent: consentArg(), onConsent: rememberConsent,
+      onResult: (r) => { r.pass ? onWin(r) : bumpGroove(-10); },
+    });
+  }
+}
+
+function nextStep() {
+  step++;
+  if (step >= FLOW.length) { celebrate(); return; }
+  mountStep();
+}
+
+function gameOver() {
+  $('celebrateTitle').textContent = 'Give it another go';
+  $('celebrateBody').textContent = "Your groove ran out — that's fine, everyone warms up. Let's start fresh.";
+  $('celebrateNext').textContent = 'Restart';
+  $('celebrate').hidden = false;
+}
+function celebrate() {
+  $('celebrateTitle').textContent = 'You did it!';
+  $('celebrateBody').textContent = 'You found your voice and matched your first note in tune. That is where every singer starts — next you can hold it, then step to a new note.';
+  $('celebrateNext').textContent = 'Sing it again';
+  $('celebrate').hidden = false;
+}
+$('celebrateNext').onclick = () => {
+  $('celebrate').hidden = true;
+  step = 0; progress.score = 0; progress.streak = 0; setGroove(100); setHUD();
+  mountStep();
+};
+
+// ---- landing -> play ----
+function startLesson() {
+  $('landing').classList.add('hide');
+  $('play').classList.remove('hide');
+  step = 0; setGroove(100); setHUD();
+  mountStep();
+}
+$('startBtn').onclick = startLesson;
+$('journeyTabs').querySelectorAll('button').forEach((b) => {
+  b.onclick = () => {
+    $('journeyTabs').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+  };
+});
+
+// ---- cog drawer ----
+$('cogBtn').onclick = () => { $('drawer').hidden = false; };
+$('drawerClose').onclick = () => { $('drawer').hidden = true; };
+$('drawer').addEventListener('click', (e) => { if (e.target === $('drawer')) $('drawer').hidden = true; });
+
+function wireSeg(seg, attr, onPick) {
+  seg.querySelectorAll('button').forEach((b) => {
+    b.onclick = () => {
+      seg.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', 'false'));
+      b.setAttribute('aria-pressed', 'true');
+      onPick(b.getAttribute(attr));
+    };
+  });
+}
+$('themeSeg').querySelectorAll('button').forEach((b) => { b.onclick = () => applyTheme(b.getAttribute('data-theme')); });
+wireSeg($('labelSeg'), 'data-sys', (s) => { progress.labelSystem = s; });
+wireSeg($('micSeg'), 'data-mic', (m) => { progress.micMode = m; progress.consent = m === 'off' ? false : null; });
+
+// ---- DEV level-skip (testing build only; enabled with ?dev=1) -------------
+// Jump straight to any FLOW entry without singing through the intake. It seeds
+// progress.voice with a sensible default range so a level can mount without the
+// probe, then mounts that step directly. Enumerates FLOW dynamically, so future
+// levels (S2, S3, ...) appear automatically. Hidden + inert without ?dev=1.
+function devEnabled() {
+  try { return new URLSearchParams(location.search).get('dev') === '1'; } catch (e) { return false; }
+}
+function devSetVoice(range) {
+  progress.voice = range && Number.isFinite(range.tonicMidi) ? range : buildVoiceRange({});
+}
+function devJump(stepIdOrIndex) {
+  // Ensure we're on the play screen with a fresh HUD.
+  $('landing').classList.add('hide');
+  $('play').classList.remove('hide');
+  $('celebrate').hidden = true;
+  // Seed a default voice range so any level can mount without the probe.
+  if (!progress.voice || !Number.isFinite(progress.voice.tonicMidi)) devSetVoice(buildVoiceRange({}));
+  let idx = typeof stepIdOrIndex === 'number'
+    ? stepIdOrIndex
+    : FLOW.indexOf(String(stepIdOrIndex));
+  if (idx < 0 || idx >= FLOW.length) return false;
+  step = idx;
+  setGroove(100); setHUD();
+  mountStep();
+  return true;
+}
+function buildDevBar() {
+  if (!devEnabled()) return;
+  const bar = document.createElement('div');
+  bar.id = 'devBar';
+  bar.style.cssText = 'position:fixed;top:6px;left:6px;z-index:60;display:flex;gap:4px;flex-wrap:wrap;align-items:center;background:rgba(20,24,36,.82);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:4px 6px;font:600 10px/1.2 ui-sans-serif,system-ui,sans-serif;color:#cfd6e6;box-shadow:0 2px 8px rgba(0,0,0,.4);';
+  const tag = document.createElement('span');
+  tag.textContent = 'DEV'; tag.style.cssText = 'letter-spacing:.08em;opacity:.7;margin-right:2px;';
+  bar.append(tag);
+  FLOW.forEach((id, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = id;
+    b.style.cssText = 'font:inherit;cursor:pointer;padding:3px 7px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;';
+    b.onclick = () => { devSetVoice(buildVoiceRange({})); devJump(i); };
+    bar.append(b);
+  });
+  document.body.append(bar);
+}
+
+// Programmatic seam for headless drivers (and the owner).
+window.__sqDev = { jump: devJump, flow: FLOW, setVoice: devSetVoice };
+
+// ---- boot ----
+applyTheme(loadTheme());
+setGroove(100); setHUD();
+buildDevBar();
+
+// expose for tests
+window.__sq = { progress, startLesson, nextStep, mountStep, get step() { return step; } };
+</script>
+</body>
+</html>

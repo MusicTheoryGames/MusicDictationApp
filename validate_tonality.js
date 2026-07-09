@@ -1,13 +1,15 @@
 /**
  * TONALITY VALIDATION SCRIPT
- * Validates that melodies use proper C major or A minor scale degrees
+ * Validates that melodies use proper scale degrees for their key
  * Ensures classical tonal integrity for educational purposes
  */
 
 /**
- * Define scale degrees for each key and mode
+ * Define scale degrees for each key and mode.
+ * The original 4 entries (C major, A minor x3) are kept EXACTLY as authored below —
+ * every question ever validated against them keeps behaving identically.
  */
-const SCALE_DEFINITIONS = {
+const LEGACY_SCALE_DEFINITIONS = {
     'C_major': {
         natural: ['c', 'd', 'e', 'f', 'g', 'a', 'b'],
         accidentals: [], // No accidentals in C major
@@ -29,6 +31,65 @@ const SCALE_DEFINITIONS = {
         description: 'A Minor (melodic)'
     }
 };
+
+/**
+ * Generalized scale spelling (circle-of-fifths transposition), so the validator can judge
+ * melodies in ANY of the 15 major / 15 relative-minor keys, not just C major / A minor.
+ * Mirrors the verified spelling logic in core/melodic generator — same math, so a melody
+ * the generator considers "in G major" and this validator considers "in G major" agree.
+ */
+const LETTER_SEQ = ['c', 'd', 'e', 'f', 'g', 'a', 'b'];
+const LETTER_PC = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+const MODE_OFFSETS = {
+    'major':          [0, 2, 4, 5, 7, 9, 11],
+    'natural-minor':  [0, 2, 3, 5, 7, 8, 10],
+    'harmonic-minor': [0, 2, 3, 5, 7, 8, 11],
+    'melodic-minor':  [0, 2, 3, 5, 7, 9, 11], // ascending form
+};
+function spellScaleDegrees(tonicSpell, mode) {
+    const base = tonicSpell[0].toLowerCase();
+    let tacc = 0;
+    for (let i = 1; i < tonicSpell.length; i++) tacc += tonicSpell[i] === '#' ? 1 : tonicSpell[i] === 'b' ? -1 : 0;
+    const tonicPc = (LETTER_PC[base] + tacc + 120) % 12;
+    const startIdx = LETTER_SEQ.indexOf(base);
+    const offs = MODE_OFFSETS[mode];
+    const scale = [];
+    for (let i = 0; i < 7; i++) {
+        const letter = LETTER_SEQ[(startIdx + i) % 7];
+        const naturalPc = LETTER_PC[letter];
+        const desiredPc = (tonicPc + offs[i]) % 12;
+        let d = ((desiredPc - naturalPc + 18) % 12) - 6;
+        if (d > 2) d -= 12;
+        if (d < -2) d += 12;
+        const accStr = d === 0 ? '' : (d > 0 ? '#'.repeat(d) : 'b'.repeat(-d));
+        scale.push({ letter, acc: d, spell: letter + accStr });
+    }
+    return scale;
+}
+function keyLabel(spell) { return spell[0].toUpperCase() + spell.slice(1); }
+function scaleToDefinition(scale, description) {
+    return {
+        natural: scale.filter((s) => s.acc === 0).map((s) => s.spell),
+        accidentals: scale.filter((s) => s.acc !== 0).map((s) => s.spell),
+        description
+    };
+}
+const MAJOR_KEYS = ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'C#', 'F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb', 'Cb'];
+function buildGeneratedScaleDefinitions() {
+    const defs = {};
+    for (const tonic of MAJOR_KEYS) {
+        const majorScale = spellScaleDegrees(tonic, 'major');
+        defs[`${keyLabel(tonic)}_major`] = scaleToDefinition(majorScale, `${keyLabel(tonic)} Major`);
+        const minorTonic = majorScale[5].spell; // scale degree 6 of the major key = its relative minor tonic
+        defs[`${keyLabel(minorTonic)}_minor_natural`] = scaleToDefinition(spellScaleDegrees(minorTonic, 'natural-minor'), `${keyLabel(minorTonic)} Minor (natural)`);
+        defs[`${keyLabel(minorTonic)}_minor_harmonic`] = scaleToDefinition(spellScaleDegrees(minorTonic, 'harmonic-minor'), `${keyLabel(minorTonic)} Minor (harmonic)`);
+        defs[`${keyLabel(minorTonic)}_minor_melodic`] = scaleToDefinition(spellScaleDegrees(minorTonic, 'melodic-minor'), `${keyLabel(minorTonic)} Minor (melodic)`);
+    }
+    return defs;
+}
+// Generated keys first, legacy 4 spread LAST so they win on any naming collision —
+// guarantees byte-identical behavior for every question validated before this change.
+const SCALE_DEFINITIONS = { ...buildGeneratedScaleDefinitions(), ...LEGACY_SCALE_DEFINITIONS };
 
 /**
  * Extract note name from VexFlow key notation
@@ -156,19 +217,39 @@ function validateOptionTonality(option, tonality, questionNumber, optionIndex) {
  * @param {Object} option - Question option to analyze
  * @returns {string} Most likely tonality
  */
-function detectTonality(option) {
+/**
+ * Detect tonality using ALL given options together (not just one). A single option — e.g. the
+ * "correct answer" — often doesn't use every note that distinguishes its key from a coincidental
+ * look-alike (a raised-leading-tone distractor might be the only option using g#, which is the
+ * one note that rules out C major in favor of A minor). More evidence = fewer misdetections.
+ */
+function detectTonalityFromOptions(options) {
     const tonalities = Object.keys(SCALE_DEFINITIONS);
     const scores = {};
-    
-    // Try each tonality and count how many notes fit
+
     for (const tonality of tonalities) {
-        const result = validateOptionTonality(option, tonality, 0, 0); // Use dummy numbers for detection
-        const validNoteCount = result.allUsedNotes.length - result.allInvalidNotes.length;
+        let validNoteCount = 0;
+        for (const option of options) {
+            const result = validateOptionTonality(option, tonality, 0, 0); // dummy numbers for detection
+            validNoteCount += result.allUsedNotes.length - result.allInvalidNotes.length;
+        }
         scores[tonality] = validNoteCount;
     }
-    
-    // Return the tonality with the highest score
-    return Object.keys(scores).reduce((a, b) => scores[a] > scores[b] ? a : b);
+
+    // Return the tonality with the highest score. On a TIE — common for short/sparse melodies,
+    // since many keys' scales overlap on any given small subset of notes (e.g. C major and F
+    // melodic minor both spell {c,d,e,f,g} with zero accidentals) — prefer the SIMPLER key
+    // (fewer accidentals). Don't guess an exotic key when a plainer one explains the notes
+    // equally well; this is what keeps 30-key detection from misfiring on legacy short melodies
+    // that were written/validated back when only C major / A minor existed as candidates.
+    return Object.keys(scores).reduce((a, b) => {
+        if (scores[b] !== scores[a]) return scores[b] > scores[a] ? b : a;
+        return SCALE_DEFINITIONS[b].accidentals.length < SCALE_DEFINITIONS[a].accidentals.length ? b : a;
+    });
+}
+
+function detectTonality(option) {
+    return detectTonalityFromOptions([option]);
 }
 
 /**
@@ -188,7 +269,7 @@ function validateQuestionSetTonality(questionSet, questionNumber, expectedTonali
     
     // Auto-detect tonality from first option if not provided
     if (!detectedTonality) {
-        detectedTonality = detectTonality(questionSet[0]);
+        detectedTonality = detectTonalityFromOptions(questionSet);
     }
     
     // Validate each option
@@ -221,6 +302,7 @@ if (typeof module !== 'undefined' && module.exports) {
         validateOptionTonality,
         validateQuestionSetTonality,
         detectTonality,
+        detectTonalityFromOptions,
         SCALE_DEFINITIONS
     };
 }

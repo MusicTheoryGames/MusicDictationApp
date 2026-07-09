@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Melodic Dictation - Easy (Modular)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 12px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #ffffff;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 16px;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+        }
+
+        .question-header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 16px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .question-header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+            background: linear-gradient(135deg, #fff 0%, #e8f4fd 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        #questionCounter {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 500;
+        }
+
+        .loading-container {
+            text-align: center;
+            padding: 40px;
+        }
+
+        #loadingIndicator {
+            display: none;
+            font-size: 1.1rem;
+            color: #4CAF50;
+            background: rgba(76, 175, 80, 0.1);
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            margin: 20px auto;
+            max-width: 400px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .play-button, .submit-button, .nav-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            font-family: inherit;
+        }
+
+        .play-button:hover, .submit-button:hover, .nav-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .submit-button:disabled {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.5);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .options-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            flex: 1;
+            align-content: start;
+            perspective: 1000px;
+            margin: 20px 0;
+            padding: 0;
+        }
+
+        .option {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid transparent;
+            border-radius: 16px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .option:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .option.selected {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.15);
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .option.correct {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.15);
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
+        }
+
+        .option.incorrect {
+            border-color: #f44336;
+            background: rgba(244, 67, 54, 0.15);
+            box-shadow: 0 0 20px rgba(244, 67, 54, 0.3);
+        }
+
+        .notation {
+            min-height: 130px;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            background: #fefefe;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .feedback-overlay {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .feedback-overlay.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: all;
+        }
+
+        .feedback-overlay.correct {
+            border-color: #4CAF50;
+            box-shadow: 0 0 30px rgba(76, 175, 80, 0.5);
+        }
+
+        .feedback-overlay.incorrect {
+            border-color: #f44336;
+            box-shadow: 0 0 30px rgba(244, 67, 54, 0.5);
+        }
+
+        #feedbackIcon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        #feedbackText {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .feedback-overlay.correct #feedbackIcon,
+        .feedback-overlay.correct #feedbackText {
+            color: #4CAF50;
+        }
+
+        .feedback-overlay.incorrect #feedbackIcon,
+        .feedback-overlay.incorrect #feedbackText {
+            color: #f44336;
+        }
+
+        .dev-controls {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .go-to-question {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .go-to-question input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            width: 80px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .go-to-question button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .info-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .info-panel h3 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+            font-size: 1.1rem;
+        }
+
+        .info-panel p {
+            margin: 5px 0;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="question-header">
+            <h1>Melodic Dictation - Easy (Modular System)</h1>
+            <span id="questionCounter">Loading questions...</span>
+        </div>
+
+        <div class="loading-container">
+            <div id="loadingIndicator">Initializing modular question system...</div>
+        </div>
+
+        <div class="controls">
+            <button class="nav-button" onclick="previousQuestion()">◀ Previous</button>
+            <button class="play-button" onclick="playAudio()">🎵 Play Melody</button>
+            <button class="submit-button" id="submitButton" onclick="checkAnswer()" disabled>Submit Answer</button>
+            <button class="nav-button" onclick="nextQuestion()">Next ▶</button>
+        </div>
+
+        <div class="options-container" id="optionsContainer">
+            <!-- Question options will be loaded here -->
+        </div>
+
+        <div class="dev-controls">
+            <div class="go-to-question">
+                <label for="questionInput">Go to Question:</label>
+                <input type="number" id="questionInput" min="1" max="60" placeholder="1-60">
+                <button onclick="goToQuestion()">Go</button>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <h3>🔧 Modular System Status</h3>
+            <p>This version loads questions from separate modular files:</p>
+            <p>📁 6 files × 10 questions each = 60 total questions</p>
+            <p>🎯 A-minor questions include G# leading tone fixes</p>
+            <p>⚡ Dynamic loading with browser compatibility</p>
+        </div>
+    </div>
+
+    <!-- Feedback overlay -->
+    <div class="feedback-overlay" id="feedbackOverlay">
+        <div id="feedbackIcon">✓</div>
+        <div id="feedbackText">Correct!</div>
+    </div>
+
+    <!-- VexFlow library -->
+    <script src="https://unpkg.com/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+
+    <!-- Load modular question files -->
+    <script src="questions_4-4_2m_C-major_simple.js"></script>
+    <script src="questions_4-4_2m_C-major_complex.js"></script>
+    <script src="questions_4-4_2m_A-minor_simple.js"></script>
+    <script src="questions_4-4_2m_A-minor_complex.js"></script>
+    <script src="questions_4-4_4m_C-major_simple.js"></script>
+    <script src="questions_6-8_2m_C-major_simple.js"></script>
+
+    <!-- Main application -->
+    <script src="app_modular.js"></script>
+
+    <script>
+        function goToQuestion() {
+            const input = document.getElementById('questionInput');
+            const questionNum = parseInt(input.value);
+
+            if (questionNum >= 1 && questionNum <= allQuestionSets.length) {
+                skipToQuestionSet(questionNum - 1);
+                generateOptions();
+                updateQuestionCounter();
+            } else {
+                alert(`Please enter a number between 1 and ${allQuestionSets.length}`);
+            }
+        }
+    </script>
+</body>
+</html>

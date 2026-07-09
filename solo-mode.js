@@ -12,12 +12,15 @@
   var S = {
     target: null, measures: 2, difficulty: 'medium', tempo: 100,
     groove: 100, score: 0, streak: 0, bonus: 0,
-    correctionMode: true, metronome: false, beatGuide: false,
+    bonusBoost: false,   // armed by the "one more" exit nudge; DOUBLES the next earned bonus (session-only, not persisted)
+    tapOrient: 'BL',     // tapping hand orientation: 'BL' = Beat-Left/Rhythm-Right (default), 'BR' = swapped. Set per round.
+    correctionMode: true, metronome: false, beatGuide: false, quiet: false,
+    keyBeat: 'z', keyRhythm: '/',   // keyboard shortcut keys for tapping (far-side defaults)
     level: 1,                                  // tier number within the family, or 'all'
     ts: '4/4', family: 'quarter',              // selected meter -> beat-unit family
     meter: 'simple', beatsPerMeasure: 4, speed: 'medium',
     changing: false, changePool: null, curMeters: null,  // changing-meter mode
-    hintsThisRound: 0, wrongThisRound: false, solved: false,
+    hintsThisRound: 0, wrongThisRound: false, solved: false, listensThisRound: 0, bonusRound: false, tapAlongDone: false,
     /* mode: 'dictation' (build-the-answer, the original solo loop) or 'tapping'
        (the standalone TAPPING / performance game). Tapping reuses EVERYTHING in
        this file — the same level ladder (L_STEPS / FAMILIES / generateTarget),
@@ -37,7 +40,28 @@
     guided: true, guidedIdx: 0, guidedFigures: null, ramp: 2
   };
   var GROOVE_PER_WRONG = 12, GROOVE_HINT_MISTAKES = 8, GROOVE_HINT_COUNT = 5, GROOVE_HINT_NARROW = 10, GROOVE_HINT_PLAY = 6, GROOVE_GAIN_CLEAN = 15;
+  // LISTEN CAP — how many times a student may press Play and still have the round count
+  // as "clean" (over the cap = same effect as using a hint: the answer can still be
+  // correct, but it won't advance the ramp/level). This turns "how many hearings" into a
+  // real difficulty lever, the way graded dictation limits playings. Levels 1-2 are
+  // UNCAPPED (beginners need as many hearings as it takes to hold a rhythm); after that it
+  // tightens with the example length. A SINGLE listen (<=1) is the fast-track signal that
+  // accelerates the 2->4->8 ramp (see recordRound). Tune here only.
+  function listenCapFor(bars) {
+    if ((S.guidedIdx || 0) <= 1) return Infinity;   // Levels 1-2: unlimited hearings
+    return bars <= 2 ? 3 : bars <= 4 ? 4 : 5;
+  }
   var SPEEDS = { slow: 72, medium: 100, fast: 132 };   // beat BPM (dotted-quarter in compound)
+  // TEMPO -> POINTS ONLY (never groove). Faster playback = less time to process each beat =
+  // harder, so it earns more; slowing it down (a listening aid) earns fewer points. Groove
+  // is deliberately left untouched so slowing down never LOOKS like a penalty — it just
+  // lowers your point ceiling for that round. Levels 1-2 are lenient (slow is free while
+  // you're still learning to hold a rhythm). Tune here only.
+  function tempoMult() {
+    var m = S.speed === 'fast' ? 1.3 : S.speed === 'slow' ? 0.75 : 1.0;
+    if ((S.guidedIdx || 0) <= 1 && m < 1) m = 1;
+    return m;
+  }
 
   /* Level ladder — figures unlocked in the order Hall's "Studying Rhythm"
      introduces them (simple-meter arc). Cumulative. "Classic" = all figures
@@ -241,6 +265,8 @@
     // guided spine overrides the figure pool; everything downstream (patternsFor,
     // filterBank) reads levelIds() so it flows through unchanged.
     if (S.guided && S.guidedFigures) return S.guidedFigures.slice();
+    // FREE-PLAY custom set (casual menu): use exactly the figures the student selected.
+    if (!S.guided && S.freeFigures && S.freeFigures.length) return S.freeFigures.slice();
     if (S.level === 'all') return null;                       // every figure in the family
     var steps = curFamily().steps, acc = [], i;
     for (i = 0; i < S.level && i < steps.length; i++) acc = acc.concat(steps[i]);
@@ -278,6 +304,14 @@
     var GROOVE_PASS = 80;          // groove threshold for a capstone pass (matches mastery ADVANCE_CAPSTONE_PASS 0.8)
     var CAPSTONE_BARS = 8;         // a clean 8-measure example passes the level
     var RAMP = [2, 4, 8];          // the within-level measure ramp
+    // ADVANCEMENT GATE (replaces the old one-clean-capstone shortcut): to master a
+    // level you must (1) reach the PROFICIENT mastery band, (2) turn in a clean
+    // capstone, (3) hold a short clean STREAK (so one lucky capstone can't pass you),
+    // and — for single-line TAPPING — (4) clear the capstone in BOTH hand orientations.
+    // Reps emerge naturally from needing band-80 (+20 clean / -30 miss). True MASTERED
+    // (95 + multi-session spacing) stays a retention badge, not an advancement gate.
+    var PROFICIENT_FLOOR = 80;     // mastery score needed to advance (core/mastery Proficient band)
+    var STREAK_TO_PASS = 2;        // consecutive clean rounds required at the moment of the capstone pass
     // Per-game persisted progress: ladder index, per-level mastery item state, the
     // set of mastered level ids, and the current session start (for the Mastered
     // spacing gate). Keyed by mode so dictation and tapping progress independently
@@ -297,7 +331,7 @@
          rampAt      — the ramp bar-count rampFails is counting at (detect a step change).
          figMiss     — { figureId: consecutiveMisses } for the level's NEW figures; a new
                        figure missed twice running is one escalation trigger. */
-    function freshTeach() { return { seenQuick: false, skipped: false, escalated: false, rampFails: 0, rampAt: 0, figMiss: {} }; }
+    function freshTeach() { return { seenQuick: false, skipped: false, escalated: false, rampFails: 0, rampAt: 0, figMiss: {}, cleanStreak: 0 }; }
     function key() { return 'beatquest-guided-' + (S.mode || 'dictation'); }
     function core() { return window.LevelCore || null; }
     function avail() { return !!(core() && core().ladder && core().mastery); }
@@ -312,6 +346,9 @@
         items: (d.items && typeof d.items === 'object') ? d.items : {},
         mastered: Array.isArray(d.mastered) ? d.mastered : [],
         teach: (d.teach && typeof d.teach === 'object') ? d.teach : {},
+        // { levelId: ['BL','BR'] } — which hand orientations have cleared a clean
+        // capstone for a level (tapping hand-swap gate). Cleared when the level is mastered.
+        capstoneOrients: (d.capstoneOrients && typeof d.capstoneOrients === 'object') ? d.capstoneOrients : {},
         // One stable session start per browser session for the Mastered spacing gate.
         sessionStart: Date.now()
       };
@@ -324,7 +361,8 @@
     function persist() {
       try {
         localStorage.setItem(key(), JSON.stringify({
-          idx: data.idx, items: data.items, mastered: data.mastered, teach: data.teach
+          idx: data.idx, items: data.items, mastered: data.mastered, teach: data.teach,
+          capstoneOrients: data.capstoneOrients
         }));
       } catch (e) {}
     }
@@ -429,7 +467,7 @@
       var tch = teachFor(level.id);
       // 1) Consecutive wrong rounds at the SAME ramp bar-count. A ramp change (or any
       //    correct round) resets the streak; two running fails at one step escalates.
-      if (tch.rampAt !== S.ramp) { tch.rampAt = S.ramp; tch.rampFails = 0; }
+      if (tch.rampAt !== S.ramp) { tch.rampAt = S.ramp; tch.rampFails = 0; tch.rampCleans = 0; tch.rampSingles = 0; }
       if (correct) { tch.rampFails = 0; }
       else { tch.rampFails += 1; }
       // 2) Per-NEW-figure consecutive misses. Only the figures THIS level introduces
@@ -441,30 +479,71 @@
         else if (wrongFigs.indexOf(id) !== -1) { tch.figMiss[id] = (tch.figMiss[id] || 0) + 1; }
       });
 
+      // Clean STREAK for the gate: consecutive clean+correct rounds (a miss breaks it).
+      if (clean && correct) tch.cleanStreak = (tch.cleanStreak || 0) + 1;
+      else tch.cleanStreak = 0;
+
+      // RAMP EFFICIENCY counters (reset above when the ramp bar-count changes). A clean
+      // round accrues one clean; a SINGLE-LISTEN clean also accrues a "single". These drive
+      // the fast-track ramp below: 2-bar needs 2 single-listen cleans (or 3 normal cleans)
+      // to climb; 4-bar needs 1 single-listen (or 2 normal). Efficiency = fewer rounds up.
+      if (clean && correct) {
+        tch.rampCleans = (tch.rampCleans || 0) + 1;
+        if (meta && meta.singleListen) tch.rampSingles = (tch.rampSingles || 0) + 1;
+      }
+
       var leveledUp = false, advanced = false, rampedFrom = S.ramp, rampedTo = S.ramp;
-      // CAPSTONE GATE: pass the level with ONE clean capstone example —
-      //   at the capstone bar count (8), answered correctly, at/above the groove
-      //   threshold. 16 bars are a bonus (never required) so >=8 qualifies.
-      var capstonePassed = correct && atCapstone() && S.measures >= CAPSTONE_BARS && groovePct >= GROOVE_PASS;
-      if (capstonePassed) {
-        if (data.mastered.indexOf(level.id) === -1) data.mastered.push(level.id);
-        // Advance to the next PLAYABLE level (skip not-yet-built chapters but keep the
-        // matched index so dictation/tapping stay on the same chapter sequence).
-        var lad = ladder();
-        var next = data.idx;
-        for (var n = data.idx + 1; n < lad.length; n++) { next = n; if (playable(lad[n])) break; }
-        if (next !== data.idx) { data.idx = next; S.guidedIdx = next; leveledUp = true; }
-        advanced = true;
-        applyLevel();   // re-point vocabulary/meter at the (new) current level, ramp->2
-        rampedTo = S.ramp;
-      } else if (clean && correct) {
-        // Clean but not yet at capstone bars -> climb the 2->4->8 ramp.
-        advanceRamp();
-        rampedTo = S.ramp;
+      var capstonePassed = false;   // did the FULL advancement gate open this round?
+      var needOtherHand = false;    // tapping: cleared ONE orientation, the other still owed
+      // A clean capstone ATTEMPT this round: at capstone bars, correct, clean, groove ok.
+      var capstoneClean = correct && clean && atCapstone() && S.measures >= CAPSTONE_BARS && groovePct >= GROOVE_PASS;
+      if (capstoneClean) {
+        // Hand-swap gate (single-line TAPPING only): record this round's orientation;
+        // both 'BL' and 'BR' must have cleared a clean capstone before the level passes.
+        var bothHands = true;
+        if (S.mode === 'tapping') {
+          var set = data.capstoneOrients[level.id] || (data.capstoneOrients[level.id] = []);
+          var o = (S.tapOrient === 'BR') ? 'BR' : 'BL';
+          if (set.indexOf(o) === -1) set.push(o);
+          bothHands = set.indexOf('BL') !== -1 && set.indexOf('BR') !== -1;
+          needOtherHand = !bothHands;
+        }
+        var score = (data.items[level.id] && data.items[level.id].score) || 0;
+        // -0.5 epsilon: time-decay nudges an exact 4×(+20) to 79.9999, which would
+        // otherwise cost a needless 5th clean round. The band is still ~Proficient.
+        var proficient = score >= PROFICIENT_FLOOR - 0.5;   // reached the Proficient band
+        var streakOk = (tch.cleanStreak || 0) >= STREAK_TO_PASS;
+        if (proficient && streakOk && bothHands) {
+          capstonePassed = true; needOtherHand = false;
+          if (data.mastered.indexOf(level.id) === -1) data.mastered.push(level.id);
+          delete data.capstoneOrients[level.id];            // reset (in case of replay)
+          // Advance to the next PLAYABLE level (skip not-yet-built chapters but keep the
+          // matched index so dictation/tapping stay on the same chapter sequence).
+          var lad = ladder();
+          var next = data.idx;
+          for (var n = data.idx + 1; n < lad.length; n++) { next = n; if (playable(lad[n])) break; }
+          if (next !== data.idx) { data.idx = next; S.guidedIdx = next; leveledUp = true; }
+          advanced = true;
+          applyLevel();   // re-point vocabulary/meter at the (new) current level, ramp->2
+          rampedTo = S.ramp;
+        }
+        // else: gate not fully open yet -> stay at capstone, keep accruing band/streak/hands.
+      } else if (clean && correct && !atCapstone()) {
+        // Clean but not yet at capstone bars -> climb the 2->4->8 ramp. Efficiency decides
+        // HOW FAST: a run of SINGLE-LISTEN cleans promotes in the fewest rounds (2-bar needs
+        // 2, 4-bar needs 1); otherwise the student climbs at the normal, more-thorough pace
+        // (2-bar needs 3 cleans, 4-bar needs 2). Owner design: no 2->8 skip — every length
+        // gets touched; nailing it in one listen just means fewer reps at that length.
+        var singles = tch.rampSingles || 0, cleans = tch.rampCleans || 0;
+        var fastOk = (S.ramp <= 2) ? (singles >= 2) : (singles >= 1);
+        var normOk = (S.ramp <= 2) ? (cleans >= 3) : (cleans >= 2);
+        if (fastOk || normOk) { advanceRamp(); rampedTo = S.ramp; }
       }
       persist();
       return { advanced: advanced, leveledUp: leveledUp, capstonePassed: capstonePassed,
-               rampedUp: rampedTo > rampedFrom && !capstonePassed, rampBars: rampedTo };
+               rampedUp: rampedTo > rampedFrom && !capstonePassed, rampBars: rampedTo,
+               needOtherHand: needOtherHand,
+               masteryScore: (data.items[level.id] && data.items[level.id].score) || 0 };
     }
 
     /* TEACH DECISION (functional core of the adaptive teach system) — decides what,
@@ -549,11 +628,23 @@
                mastered: data.mastered.indexOf(level.id) !== -1 };
     }
 
+    // Hand-swap forcing: at the capstone, once ONE orientation has cleared, force the
+    // OTHER one on the next round so the student can't finish a level one-handed.
+    // Returns 'BL'/'BR' to force, or null to let the caller alternate freely.
+    function neededOrient() {
+      if (!avail() || S.mode !== 'tapping') return null;
+      if (!atCapstone()) return null;
+      var level = curLevel();
+      var set = (data.capstoneOrients && data.capstoneOrients[level.id]) || [];
+      if (set.length === 1) return set[0] === 'BL' ? 'BR' : 'BL';
+      return null;
+    }
+
     return {
       avail: avail, load: load, persist: persist,
       curLevel: curLevel, levelCount: levelCount, ladder: ladder,
       applyLevel: applyLevel, playable: playable,
-      rampBars: rampBars, atCapstone: atCapstone,
+      rampBars: rampBars, atCapstone: atCapstone, neededOrient: neededOrient,
       recordRound: recordRound, masteryView: masteryView, maybeTeach: maybeTeach,
       // teach system
       teachDecision: teachDecision, registerTeacher: registerTeacher,
@@ -570,9 +661,136 @@
         var isMastered = data.mastered.indexOf(lad[i].id) !== -1;
         if (i > frontier && !isMastered) return false;
         data.idx = i; S.guidedIdx = i; applyLevel(); persist(); return true;
+      },
+      /* PLACEMENT result (the seam noted in load()): set the working level with
+         no frontier guard and mark everything below proficient-equivalent —
+         idempotent, never lowers an existing item. */
+      place: function (i, markBelow) {
+        if (!avail()) return false;
+        var lad = ladder();
+        i = Math.max(0, Math.min(i, lad.length - 1));
+        if (markBelow) {
+          for (var k = 0; k < i; k++) {
+            var id = lad[k].id;
+            var item = data.items[id] || core().mastery.createItemState();
+            if ((item.score || 0) < 85) {
+              item = JSON.parse(JSON.stringify(item));
+              item.score = 85; item.level = 'proficient';
+              data.items[id] = item;
+            }
+          }
+        }
+        data.idx = i; S.guidedIdx = i; applyLevel(); persist(); return true;
       }
     };
   })();
+
+  /* ========================================================================
+     PLACEMENT TEST (owner spec, both games): a new player self-selects an
+     experience tier, takes a QUICK test at that tier's chapter (8 normal
+     2-measure dictation rounds, no-fail), and: pass (>=85%) -> the guided
+     path STARTS AT that chapter with everything below marked proficient;
+     fail -> back up one tier and test again, until the fit is found.
+     Mirrors MelodyQuest's flow; grounded in LEVEL_SYSTEM_RESEARCH.md §1.
+     Entirely additive: nothing here runs unless PLACE.active or the fresh-
+     boot offer fires (suppressed under all test seams).
+     ======================================================================== */
+  var PLACE = {
+    active: false, tierIdx: 0, item: 0, correct: 0,
+    ITEMS: 8, PASS: 0.85,
+    /* Human label for one chapter row: its NEW figures + NEW time signatures —
+       generated from the curriculum data itself, never hand-maintained. */
+    rowLabel: function (lvl, prevSigs) {
+      var human = function (id) { return String(id).replace('concept:', '').replace(/-/g, ' '); };
+      var bits = (lvl.newSkills || []).map(human);
+      var sigs = (lvl.meters && lvl.meters.timeSignatures) || [];
+      var newSigs = sigs.filter(function (ts) { return prevSigs.indexOf(ts) === -1; });
+      if (newSigs.length) bits.push(newSigs.join(' · '));
+      return lvl.title + (bits.length ? ' — ' + bits.join(', ') : '');
+    },
+    offer: function () {
+      if (document.getElementById('placeOv') || !GUIDE.avail()) return;
+      var lad = window.LevelCore.ladder.ladderForMode(S.mode === 'tapping' ? 'tapping' : 'dictation');
+      var ov = document.createElement('div');
+      ov.id = 'placeOv';
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:960;display:flex;align-items:center;justify-content:center;';
+      var card = document.createElement('div');
+      card.style.cssText = 'max-width:560px;width:calc(100% - 40px);max-height:82vh;overflow:auto;background:#fff;color:#1f2430;border-radius:14px;padding:22px 24px;font-family:inherit;';
+      card.innerHTML = '<div style="font-weight:800;font-size:1.2rem;margin-bottom:6px;">What do you already know?</div>' +
+        '<div style="opacity:.8;margin-bottom:12px;">Check every rhythm and time signature you can already read and count. A quick 8-question check at that level confirms your fit — you cannot fail; a miss just checks one level down.</div>';
+      var prevSigs = [];
+      var boxes = [];
+      lad.forEach(function (lvl, i) {
+        var row = document.createElement('label');
+        row.style.cssText = 'display:flex;gap:9px;align-items:flex-start;margin:5px 0;font-size:.92rem;cursor:pointer;';
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.style.marginTop = '3px';
+        // checking a row checks everything before it; unchecking clears everything after
+        cb.onchange = function () {
+          boxes.forEach(function (b, k) { if (cb.checked && k <= i) b.checked = true; if (!cb.checked && k >= i) b.checked = false; });
+        };
+        boxes.push(cb);
+        var span = document.createElement('span');
+        span.textContent = PLACE.rowLabel(lvl, prevSigs);
+        prevSigs = prevSigs.concat(((lvl.meters && lvl.meters.timeSignatures) || []).filter(function (ts) { return prevSigs.indexOf(ts) === -1; }));
+        row.appendChild(cb); row.appendChild(span);
+        card.appendChild(row);
+      });
+      var go = document.createElement('button');
+      go.textContent = 'Check my level';
+      go.style.cssText = 'display:block;width:100%;margin-top:12px;padding:11px 14px;border:2px solid #1f2430;border-radius:9px;background:#1f2430;color:#fff;font-weight:800;cursor:pointer;';
+      go.onclick = function () {
+        document.body.removeChild(ov);
+        // contiguous known-prefix: the last checked row from the start is the fit
+        var target = -1;
+        for (var k = 0; k < boxes.length; k++) { if (boxes[k].checked) target = k; else break; }
+        try { localStorage.setItem(PLACE.flagKey(), '1'); } catch (e) {}
+        if (target <= 0) { msg('Starting at the beginning — the early chapters go fast.'); return; }
+        PLACE.begin(target);
+      };
+      card.appendChild(go);
+      ov.appendChild(card);
+      document.body.appendChild(ov);
+    },
+    flagKey: function () { return 'beatquest-placed-' + (S.mode || 'dictation'); },
+    begin: function (ladderIdx) {
+      try { localStorage.setItem(PLACE.flagKey(), '1'); } catch (e) {}
+      PLACE.active = true; PLACE.targetIdx = ladderIdx; PLACE.item = 0; PLACE.correct = 0;
+      GUIDE.place(ladderIdx, false);
+      S.ramp = 2; S.measures = 2;
+      newRound();
+      msg('Placement check 1 / ' + PLACE.ITEMS + ' — dictate the rhythm as usual.');
+    },
+    record: function (correct) {
+      if (correct) PLACE.correct++;
+      PLACE.item++;
+      if (PLACE.item < PLACE.ITEMS) {
+        msg('Placement check ' + (PLACE.item + 1) + ' / ' + PLACE.ITEMS + (correct ? ' — got it!' : ''));
+        setTimeout(function () { S.measures = 2; newRound(); }, 1200);
+        return;
+      }
+      var rate = PLACE.correct / PLACE.ITEMS;
+      PLACE.active = false;
+      var lad = window.LevelCore.ladder.ladderForMode(S.mode === 'tapping' ? 'tapping' : 'dictation');
+      if (rate >= PLACE.PASS) {
+        GUIDE.place(PLACE.targetIdx, true);
+        msg('Placed! You start at "' + lad[PLACE.targetIdx].title + '" (' + Math.round(rate * 100) + '%). Everything below is unlocked.');
+        setTimeout(function () { newRound(); }, 1500);
+      } else {
+        // back up one tier (3 chapters) and test again — the owner's exact rule.
+        var down = Math.max(0, PLACE.targetIdx - 3);
+        if (down === 0 || PLACE.targetIdx === 0) {
+          GUIDE.place(0, false);
+          msg('Starting from the beginning — the early chapters will go fast.');
+          setTimeout(function () { newRound(); }, 1500);
+        } else {
+          msg('Close (' + Math.round(rate * 100) + '%) — checking one level down.');
+          setTimeout(function () { PLACE.begin(down); PLACE.active = true; }, 1500);
+        }
+      }
+    }
+  };
 
   /* Inline SVG icons — stroke/fill use currentColor so they inherit each
      theme's text color automatically (no emojis, ever). */
@@ -594,7 +812,48 @@
     // hand/finger tapping a surface — the "Tap it back" performance mode
     tap:   '<svg viewBox="0 0 20 20" class="ic"><path d="M9 9V4.4a1.3 1.3 0 0 1 2.6 0V9"/><path d="M11.6 9V7.6a1.2 1.2 0 0 1 2.4 0V9"/><path d="M14 9V8a1.2 1.2 0 0 1 2.4 0v3.2a4.6 4.6 0 0 1-4.6 4.6h-1.2a4 4 0 0 1-3-1.4l-2.3-2.7a1.3 1.3 0 0 1 1.9-1.7L9 11.4V9"/></svg>',
     close: '<svg viewBox="0 0 20 20" class="ic"><path d="M5 5l10 10M15 5L5 15"/></svg>',
-    redo:  '<svg viewBox="0 0 20 20" class="ic"><path d="M15 6a6 6 0 1 0 1.5 4"/><path d="M16 3v3.5h-3.5"/></svg>'
+    redo:  '<svg viewBox="0 0 20 20" class="ic"><path d="M15 6a6 6 0 1 0 1.5 4"/><path d="M16 3v3.5h-3.5"/></svg>',
+    mute:  '<svg viewBox="0 0 20 20" class="ic"><path d="M3 8v4h3l4 3V5L6 8z"/><path d="M14 8l4 4M18 8l-4 4"/></svg>',
+    sound: '<svg viewBox="0 0 20 20" class="ic"><path d="M3 8v4h3l4 3V5L6 8z"/><path d="M13.5 7c1.6 1.4 1.6 5.6 0 7"/><path d="M16 5c2.7 2.4 2.7 8.6 0 11"/></svg>',
+    home:  '<svg viewBox="0 0 20 20" class="ic"><path d="M3 9l7-6 7 6"/><path d="M5 8v8h10V8"/><path d="M8 16v-4h4v4"/></svg>',
+    bolt:  '<svg viewBox="0 0 20 20" class="ic ic-fill"><path d="M11 2L4 11h4l-1 7 7-9h-4z"/></svg>',
+    // vinyl record = "groove" (literal + recognizable); used to label the groove meter
+    disc:  '<svg viewBox="0 0 20 20" class="ic"><circle cx="10" cy="10" r="7.6"/><circle cx="10" cy="10" r="2"/></svg>'
+  };
+
+  /* TOCK — the KIDS-mode mascot: a metronome-pendulum creature (pendulum "antenna"
+     ticks with the beat). Kids theme ONLY (never shown in the mature themes). Two
+     poses: `celebrate` (arms up, big laugh, pendulum kicked wide — clean pass) and
+     `idle` (calm, gentle). Hand-built inline SVG, NO emoji, per the locked design. */
+  var TOCK = {
+    celebrate:
+      '<svg class="tock" viewBox="0 0 200 220" aria-hidden="true">' +
+        '<defs><linearGradient id="tockG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffc98a"/><stop offset="100%" stop-color="#ff9a3f"/></linearGradient></defs>' +
+        '<ellipse cx="75" cy="201" rx="14" ry="8" fill="#ffb26b" stroke="#8a4a2b" stroke-width="4"/>' +
+        '<ellipse cx="125" cy="201" rx="14" ry="8" fill="#ffb26b" stroke="#8a4a2b" stroke-width="4"/>' +
+        '<path d="M100,20 C60,20 35,55 35,95 C35,140 55,175 100,190 C145,175 165,140 165,95 C165,55 140,20 100,20 Z" fill="url(#tockG)" stroke="#8a4a2b" stroke-width="6"/>' +
+        '<ellipse cx="30" cy="70" rx="15" ry="22" fill="#ff8c42" stroke="#8a4a2b" stroke-width="5" transform="rotate(-55 30 70)"/>' +
+        '<ellipse cx="170" cy="70" rx="15" ry="22" fill="#ff8c42" stroke="#8a4a2b" stroke-width="5" transform="rotate(55 170 70)"/>' +
+        '<g class="tock-pend" transform="rotate(22 100 46)"><line x1="100" y1="46" x2="100" y2="4" stroke="#8a4a2b" stroke-width="6" stroke-linecap="round"/><circle cx="100" cy="0" r="11" fill="#ffd166" stroke="#8a4a2b" stroke-width="5"/></g>' +
+        '<path d="M62,92 Q76,76 90,92" fill="none" stroke="#3a2418" stroke-width="7" stroke-linecap="round"/>' +
+        '<path d="M100,90 Q116,72 132,90" fill="none" stroke="#3a2418" stroke-width="7" stroke-linecap="round"/>' +
+        '<ellipse cx="68" cy="118" rx="9" ry="6" fill="#ff6f6f" opacity=".6"/>' +
+        '<ellipse cx="128" cy="115" rx="9" ry="6" fill="#ff6f6f" opacity=".6"/>' +
+        '<path d="M78,128 Q100,155 122,128 Q100,148 78,128 Z" fill="#8a4a2b"/>' +
+        '<path d="M82,130 Q100,144 118,130 Z" fill="#ffdede"/>' +
+      '</svg>',
+    idle:
+      '<svg class="tock" viewBox="0 0 200 220" aria-hidden="true">' +
+        '<defs><linearGradient id="tockGi" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffb26b"/><stop offset="100%" stop-color="#ff8c42"/></linearGradient></defs>' +
+        '<ellipse cx="75" cy="201" rx="14" ry="8" fill="#ffb26b" stroke="#8a4a2b" stroke-width="4"/>' +
+        '<ellipse cx="125" cy="201" rx="14" ry="8" fill="#ffb26b" stroke="#8a4a2b" stroke-width="4"/>' +
+        '<path d="M100,20 C60,20 35,55 35,95 C35,140 55,175 100,190 C145,175 165,140 165,95 C165,55 140,20 100,20 Z" fill="url(#tockGi)" stroke="#8a4a2b" stroke-width="6"/>' +
+        '<g class="tock-pend" transform="rotate(0 100 46)"><line x1="100" y1="46" x2="100" y2="4" stroke="#8a4a2b" stroke-width="6" stroke-linecap="round"/><circle cx="100" cy="0" r="11" fill="#ffd166" stroke="#8a4a2b" stroke-width="5"/></g>' +
+        '<ellipse cx="78" cy="93" rx="15" ry="18" fill="#fff"/><ellipse cx="114" cy="90" rx="17" ry="20" fill="#fff"/>' +
+        '<circle cx="81" cy="97" r="7" fill="#3a2418"/><circle cx="118" cy="93" r="8" fill="#3a2418"/>' +
+        '<ellipse cx="70" cy="118" rx="8" ry="5" fill="#ff6f6f" opacity=".5"/><ellipse cx="128" cy="115" rx="8" ry="5" fill="#ff6f6f" opacity=".5"/>' +
+        '<path d="M86,132 Q100,142 116,130" fill="none" stroke="#8a4a2b" stroke-width="5" stroke-linecap="round"/>' +
+      '</svg>'
   };
 
   /* --------------------------------------------------------- persistence */
@@ -607,6 +866,9 @@
       if (typeof d.correctionMode === 'boolean') S.correctionMode = d.correctionMode;
       if (typeof d.metronome === 'boolean') S.metronome = d.metronome;
       if (typeof d.beatGuide === 'boolean') S.beatGuide = d.beatGuide;
+      if (typeof d.quiet === 'boolean') S.quiet = d.quiet;
+      if (typeof d.keyBeat === 'string' && d.keyBeat) S.keyBeat = d.keyBeat;
+      if (typeof d.keyRhythm === 'string' && d.keyRhythm) S.keyRhythm = d.keyRhythm;
       if (SPEEDS[d.speed]) S.speed = d.speed;
       if (d.measures === 2 || d.measures === 4 || d.measures === 8 || d.measures === 16) S.measures = d.measures;
       // Meter first (sets family/beats), then restore the level within that family.
@@ -618,7 +880,7 @@
     } catch (e) {}
   }
   function save() {
-    try { localStorage.setItem('beatquest-solo', JSON.stringify({ score: S.score, streak: S.streak, bonus: S.bonus, correctionMode: S.correctionMode, metronome: S.metronome, beatGuide: S.beatGuide, level: S.level, ts: S.ts, speed: S.speed, measures: S.measures, changing: S.changing, changeKind: S.changeKind })); } catch (e) {}
+    try { localStorage.setItem('beatquest-solo', JSON.stringify({ score: S.score, streak: S.streak, bonus: S.bonus, correctionMode: S.correctionMode, metronome: S.metronome, beatGuide: S.beatGuide, quiet: S.quiet, keyBeat: S.keyBeat, keyRhythm: S.keyRhythm, level: S.level, ts: S.ts, speed: S.speed, measures: S.measures, changing: S.changing, changeKind: S.changeKind })); } catch (e) {}
   }
 
   /* ----------------------------------------------------- target generation */
@@ -722,6 +984,10 @@
   // The engine's bank reads rhythmPatterns[difficulty]: a single family normally,
   // 'medium' for changing-simple, the combined 'mixedSC' set for simple<->compound.
   function bankKey() {
+    // EXTERNAL-TARGET seam: the bank family is whatever family the converted
+    // external target's patterns came from (the student must see draggable tiles
+    // that can actually build that target).
+    if (EXT.active && (EXT.current || EXT.pending)) return (EXT.current || EXT.pending).bank;
     if (S.changing) return (S.changeKind === 'simple') ? 'medium' : 'mixedSC';
     return curFamily().key;
   }
@@ -818,9 +1084,30 @@
     S.playing = false;
     if (S._playTimer) { clearTimeout(S._playTimer); S._playTimer = null; }
   }
-  function metroTick(when, accent) { tone(accent ? 2300 : 1550, when, 0.035, 'sine', accent ? 0.32 : 0.2); }
-  function subTick(when) { tone(1500, when, 0.022, 'sine', 0.08); }  // soft compound subdivision
-  function rhythmHit(when) { tone(320, when, 0.12, 'triangle', 0.5); }
+  function metroTick(when, accent) { if (!S.quiet) tone(accent ? 2300 : 1550, when, 0.035, 'sine', accent ? 0.32 : 0.2); }
+  function subTick(when) { if (!S.quiet) tone(1500, when, 0.022, 'sine', 0.08); }
+  // Warm marimba-ish pluck whose RING LENGTH scales with the note's duration, so a
+  // half note is audibly held longer than a quarter (durSec omitted -> short tap hit).
+  function rhythmHit(when, durSec) {
+    if (S.quiet) return;
+    var d = durSec || 0.14;
+    var ring = Math.max(0.10, Math.min(1.1, d * 0.92));
+    tone(523.25, when, ring, 'sine', 0.4);                    // fundamental (C5), soft
+    tone(1046.5, when, Math.min(ring, 0.13), 'sine', 0.09);   // octave ping for a clear attack
+  }
+  // Visual beat flash (quiet mode substitute for the metronome click). A full-width
+  // bar fixed at the top of the viewport pulses on every beat — visible in peripheral
+  // vision. No-op when sound is on.
+  function flashBeat(when, accent) {
+    if (!S.quiet) return;
+    var c = ctx(); if (!c) return;
+    var el = document.getElementById('beatFlash'); if (!el) return;
+    setTimeout(function () {
+      el.classList.remove('bf-accent', 'bf-beat');
+      void el.offsetWidth;   // restart animation
+      el.classList.add(accent ? 'bf-accent' : 'bf-beat');
+    }, Math.max(0, (when - c.currentTime) * 1000));
+  }
 
   var pulse = { running: false, timer: null, nextTime: 0, beat: 0, lastHl: null };
   function stopPulse() {
@@ -879,9 +1166,13 @@
         var abs = bt - countInBeats;
         var here = countIn ? null : measureOfAbs(abs);
         var atMeasureStart = !countIn && here.b === 1;
-        if (countIn || S.metronome) {
-          // count-in: every beat loud; example metronome: accent measure starts
+        tockBeatAt(pulse.nextTime);   // KIDS mascot pendulum ticks on every pulse beat
+        if (countIn || S.metronome || S.quiet) {
+          // audio: count-in every beat loud; example: accent measure starts
           metroTick(pulse.nextTime, countIn || atMeasureStart);
+          // flash: during count-in accent ONLY beat 1 so the meter is visually clear
+          var ciDownbeat = countIn && (bt % countInBeats === 0);
+          flashBeat(pulse.nextTime, ciDownbeat || atMeasureStart);
           // compound clicks on the 3 eighth-pulses — per the CURRENT measure's meter
           var ts = S.curMeters ? S.curMeters[(countIn ? 1 : here.m) - 1] : S.ts;
           if (isCompoundTs(ts)) {
@@ -926,12 +1217,93 @@
         var sum = raw.reduce(function (a, x) { return a + x; }, 0) || 1;
         var scale = (it.beats || 1) / sum;  // make the figure occupy exactly its beats
         pat.vexflow.forEach(function (nn, i) {
-          if (nn.duration.indexOf('r') === -1) onsets.push({ beat: beat, mi: mi });
-          beat += raw[i] * scale;
+          var d = raw[i] * scale;                 // this note's length in beats (for duration-aware sound)
+          if (nn.duration.indexOf('r') === -1) onsets.push({ beat: beat, mi: mi, dur: d });
+          beat += d;
         });
       });
     });
     return onsets;
+  }
+
+  /* COUNT-IN FLASH — big center words on each count-in beat, replacing the text line.
+     One word per beat for ONE measure of the actual meter, so it teaches the beat:
+     the last two beats are always READY · GO; earlier beats are numbers.
+       2/4 -> READY GO   3/4 -> 1 READY GO   4/4 -> 1 2 READY GO   6/8 -> READY GO */
+  function countInWords(n) {
+    if (n <= 1) return ['GO'];
+    if (n === 2) return ['READY', 'GO'];
+    var w = []; for (var i = 1; i <= n - 2; i++) w.push(String(i)); w.push('READY', 'GO'); return w;
+  }
+  function flashCountIn(t0, beatDur, n) {
+    var c = ctx(); if (!c) return;
+    var words = countInWords(n);
+    var host = document.getElementById('soloCountFlash');
+    if (!host) { host = document.createElement('div'); host.id = 'soloCountFlash'; host.className = 'count-flash'; document.body.appendChild(host); }
+    words.forEach(function (w, i) {
+      var delay = Math.max(0, (t0 + i * beatDur - c.currentTime) * 1000);
+      setTimeout(function () {
+        host.textContent = w;
+        host.classList.toggle('is-go', w === 'GO');
+        host.classList.add('show'); host.classList.remove('pop'); void host.offsetWidth; host.classList.add('pop');
+      }, delay);
+    });
+    setTimeout(function () { host.classList.remove('show'); }, Math.max(0, (t0 + n * beatDur - c.currentTime) * 1000) + 130);
+  }
+
+  /* ================= TAP-ALONG (first-listen "feel it" mechanic) =================
+     On the FIRST Play of a round at the early levels, the student taps the steady BEAT
+     while the rhythm plays — circles light up on each beat as a guide. This is the
+     embodied learning pass (feel it before you transcribe it). The first listen is FREE
+     (it doesn't count toward the listen cap — see playTarget), and grading is SOFT:
+     tapping in time earns points, but it never blocks you or drains groove. Early levels
+     only; fades as rhythms are internalized. (BeatQuest tapping spec.) */
+  var TAPALONG_MAX_IDX = 2;   // Levels 1-3
+  function tapAlongApplies() { return S.guided && !S.bonusRound && (S.guidedIdx || 0) <= TAPALONG_MAX_IDX; }
+  var TAP = { active: false, taps: [], beats: [], dots: [] };
+  function showTapAlong(rhythmStart, beatDur, nBeats) {
+    var area = document.querySelector('.answer-area'); var c = ctx(); if (!area || !c) return;
+    var ov = document.getElementById('tapAlongOv');
+    if (!ov) { ov = document.createElement('div'); ov.id = 'tapAlongOv'; ov.className = 'tapalong-ov'; area.appendChild(ov); }
+    // Explanation up front so a first-timer knows what to do.
+    ov.innerHTML = '<div class="ta-panel"><div class="ta-head">TAP ALONG</div><div class="ta-msg">First listen — tap the dot under each beat as it plays. Feel the rhythm and where you are.</div></div>';
+    TAP.active = true; TAP.taps = []; TAP.beats = []; TAP.dots = [];
+    // ONE dot per BEAT, centred UNDER that beat's cell (so the student taps the pulse AND learns
+    // where they are across the measures). Positions from the live cell layout, in beat order.
+    var aR = area.getBoundingClientRect();
+    var cells = area.querySelectorAll('.answer-staff .beat-drop-zone');
+    var idx = 0;
+    cells.forEach(function (cell) {
+      var r = cell.getBoundingClientRect();
+      var dot = document.createElement('i'); dot.className = 'ta-dot'; dot.dataset.i = idx;
+      dot.style.left = (((r.left + r.right) / 2) - aR.left) + 'px';
+      dot.style.top = ((r.bottom - aR.top) + 8) + 'px';
+      (function (ii, dd) { dd.addEventListener('pointerdown', function (e) { e.stopPropagation(); if (!TAP.active) return; TAP.taps.push({ i: ii, t: ctx().currentTime }); dd.classList.add('tap'); setTimeout(function () { dd.classList.remove('tap'); }, 120); }); })(idx, dot);
+      ov.appendChild(dot); TAP.dots.push(dot); idx++;
+    });
+    for (var i = 0; i < nBeats; i++) TAP.beats.push({ t: rhythmStart + i * beatDur, i: i });
+    // light each beat's dot on its beat
+    TAP.beats.forEach(function (bt) {
+      setTimeout(function () { var d = TAP.dots[bt.i]; if (d) { d.classList.add('lit'); setTimeout(function () { d.classList.remove('lit'); }, 210); } }, Math.max(0, (bt.t - c.currentTime) * 1000));
+    });
+    ov.classList.add('show');   // show from the START (before the count-in), so the student sees what to do
+    setTimeout(function () { scoreTapAlong(nBeats); }, Math.max(0, (TAP.beats[nBeats - 1].t + beatDur - c.currentTime) * 1000) + 250);
+  }
+  function scoreTapAlong(nBeats) {
+    TAP.active = false;
+    var hits = 0;   // a hit = tapped the CORRECT beat's dot near that beat's time
+    TAP.beats.forEach(function (bt) { if (TAP.taps.some(function (tp) { return tp.i === bt.i && Math.abs(tp.t - bt.t) <= TAP_TOLERANCE * 1.7; })) hits++; });
+    var pct = nBeats ? Math.round(hits / nBeats * 100) : 0;
+    var pts = hits * 5;   // soft: 5 pts per beat felt in the right place; never negative, never blocks
+    if (pts > 0) { S.score += pts; floatDelta('+' + pts, true, scoreAnchor()); }
+    S.tapAlongDone = true;
+    var ov = document.getElementById('tapAlongOv');
+    if (ov) {
+      var m = ov.querySelector('.ta-msg');
+      if (m) m.textContent = pct >= 70 ? ('Great — you felt it! +' + pts) : pct >= 35 ? ('Nice — keep following the measures! +' + pts) : 'Now replay to write it down';
+      setTimeout(function () { ov.classList.remove('show'); }, 1300);
+    }
+    render();
   }
 
   function playTarget() {
@@ -940,20 +1312,38 @@
     if (S.playing) { msg('Already playing — let it finish.'); return; }  // no overlapping playback
     stopPlayback();                         // clean slate (cancels any leftover sound)
     S.playing = true;
+    document.body.classList.add('bq-played');   // Option E: after the first Play, Metronome/Beat-guide glide to icon-only
+    // FIRST listen at early levels is the TAP-ALONG pass — it is FREE (doesn't count toward
+    // the listen cap / single-listen fast-track). Every later listen counts as normal.
+    var firstTapAlong = tapAlongApplies() && !S.tapAlongDone && (S.listensThisRound || 0) === 0;
+    if (!firstTapAlong) S.listensThisRound = (S.listensThisRound || 0) + 1;
     // (No play-start scroll — it yanked the view back to the staff top and pulled
     // the hidden controls into frame. The view stays where the student left it; the
     // downward-only autoscroll follows the beat if the page overflows.)
     var beatDur = 60 / S.tempo;
-    var t0 = c.currentTime + 0.2;          // count-in start
+    // TAP-ALONG pre-roll: on the first (tap-along) listen, delay the count-in ~1.4s so the
+    // "TAP ALONG" message + the beat dots appear the moment Play is pressed and the student
+    // can orient — THEN the READY·GO count-in starts with the metronome.
+    var preroll = firstTapAlong ? 1.4 : 0;
+    // If the metronome is already running, snap the count-in to the existing beat
+    // grid so the flash bar doesn't jump phase when Play is pressed.
+    var rawT0 = c.currentTime + 0.2 + preroll;
+    var t0 = rawT0;
+    if (pulse.running) {
+      var n = Math.max(0, Math.ceil((rawT0 + 0.05 - pulse.nextTime) / beatDur));
+      t0 = pulse.nextTime + n * beatDur;
+    }
     var rhythmStart = t0 + (mBeats()[0] || bpm()) * beatDur;   // rhythm starts after one measure of count-in
     var onsets = targetOnsets();
-    onsets.forEach(function (o) { rhythmHit(rhythmStart + o.beat * beatDur); });
+    onsets.forEach(function (o) { rhythmHit(rhythmStart + o.beat * beatDur, (o.dur || 1) * beatDur); });
     // playback runs through the full example (one onset-walk pass == totalBeats()).
     var t = rhythmStart + totalBeats() * beatDur;
     startPulse(t0);   // count-in always ticks; metronome/guide continue per toggles
+    flashCountIn(t0, beatDur, mBeats()[0] || bpm());   // big READY·GO flash instead of a text line
+    if (firstTapAlong) showTapAlong(rhythmStart, beatDur, totalBeats());   // "feel the beat" pass
     // playback ends at `t`; allow Play again after that
     S._playTimer = setTimeout(function () { S.playing = false; }, Math.max(0, (t - c.currentTime + 0.3) * 1000));
-    msg('Count-in… then the rhythm' + (S.metronome ? ' · metronome on' : '') + (S.beatGuide ? ' · beat guide on' : '') + '. Build your answer.');
+    msg('');   // the count-in flash carries the cue now; keep the message line clear
   }
 
   /* ========================================================================
@@ -1048,7 +1438,7 @@
       '<div class="tb-instruct" id="tbInstruct"></div>' +
       '<div class="tb-zones" id="tbZones">' +
         '<button class="tb-zone tb-beat" id="tbBeat"><span class="tb-zlabel">Beat</span><span class="tb-zhint" id="tbBeatHint">left hand</span></button>' +
-        '<button class="tb-zone tb-rhythm" id="tbRhythm"><span class="tb-zlabel">Rhythm</span><span class="tb-zhint">right hand</span></button>' +
+        '<button class="tb-zone tb-rhythm" id="tbRhythm"><span class="tb-zlabel">Rhythm</span><span class="tb-zhint" id="tbRhythmHint">right hand</span></button>' +
       '</div>' +
       '<div class="tb-results" id="tbResults" style="display:none"></div>'
     );
@@ -1417,7 +1807,7 @@
         // compound meters: soft eighth-pulse subdivisions, like the main metronome
         if (isCompoundTs(S.ts)) { var bd = 60 / S.tempo; subTick(TB.nextBeat + bd / 3); subTick(TB.nextBeat + 2 * bd / 3); }
         TB.beatTimes.push({ t: TB.nextBeat, idx: idx, accent: accent });
-        pulseBeatDot(TB.nextBeat);
+        pulseBeatDot(TB.nextBeat, accent);
         TB.beatIdx++; TB.nextBeat += 60 / S.tempo;   // tempo read live each beat
       }
       TB.timer = setTimeout(sched, 25);
@@ -1431,12 +1821,40 @@
     if (TB.timer) { clearTimeout(TB.timer); TB.timer = null; }
   }
   // Visual pulse on the Beat zone in time with the click (purely cosmetic cue).
-  function pulseBeatDot(when) {
+  function pulseBeatDot(when, accent) {
     var c = ctx(); if (!c) return;
+    flashBeat(when, accent);   // quiet-mode bar flash fires here too
+    tockBeatAt(when);          // KIDS mascot: swing the pendulum on this beat (visual metronome)
     setTimeout(function () {
       if (!TB.open) return;
       var z = document.getElementById('tbBeat'); if (!z) return;
       z.classList.add('tb-pulse'); setTimeout(function () { z.classList.remove('tb-pulse'); }, 90);
+    }, Math.max(0, (when - c.currentTime) * 1000));
+  }
+
+  /* KIDS mascot beat-sync: at each scheduled beat time, swing Tock's pendulum to the
+     opposite side. The swing's transition duration is set to ~one beat so it arrives at
+     the extreme exactly ON the next beat — a real metronome feel, phase-locked to the
+     clicks the child hears. When beats stop for ~1.4s he returns to a gentle idle sway.
+     No-op unless the kids theme is active. */
+  var _tockSide = false, _tockIdleTimer = null;
+  function tockBeatAt(when) {
+    if (!document.body.classList.contains('theme-kids')) return;
+    var el = document.getElementById('kidsTock'); if (!el) return;
+    var c = ctx(); if (!c) return;
+    setTimeout(function () {
+      if (!document.body.classList.contains('theme-kids')) return;
+      var pend = el.querySelector('.tock-pend');
+      if (pend) pend.style.transitionDuration = Math.max(0.12, (60 / S.tempo) * 0.92) + 's';
+      el.classList.add('tock-beat');
+      _tockSide = !_tockSide;
+      el.classList.toggle('tock-tick-l', !_tockSide);
+      el.classList.toggle('tock-tick-r', _tockSide);
+      if (_tockIdleTimer) clearTimeout(_tockIdleTimer);
+      _tockIdleTimer = setTimeout(function () {
+        el.classList.remove('tock-beat', 'tock-tick-l', 'tock-tick-r');
+        if (pend) pend.style.transitionDuration = '';
+      }, 1400);
     }, Math.max(0, (when - c.currentTime) * 1000));
   }
 
@@ -1509,7 +1927,9 @@
   function closeTapBack() {
     var wasInline = TB.inline;
     TB.open = false; TB.phase = 'idle';
+    document.body.classList.remove('tb-performing', 'tb-results-open');
     tbStopMetro(); stopAllAudio(); tbClearBeat();
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
     exitPerformLayout();   // restore the full staff before teardown
     clearTbTimers();
     if (TB.el) TB.el.classList.remove('show');
@@ -1536,6 +1956,7 @@
     TB.phase = 'ready';
     TB.metroOn = false; TB.lockStreak = 0; TB.lastBeatTapIdx = -1;
     TB.captureStart = 0; TB.captureEnd = 0; TB.captureStartIdx = -1; TB.beatTaps = []; TB.rhythmTaps = [];
+    document.body.classList.remove('tb-performing', 'tb-results-open');
     tbStopMetro(); tbClearBeat(); clearTbTimers();
     exitPerformLayout();   // back to the full preview staff (Try again / fresh round)
     var co = document.getElementById('tbCountoff'); if (co) { co.classList.remove('show'); co.textContent = ''; }
@@ -1562,6 +1983,7 @@
     // iPhone long-rhythm: collapse the full preview staff into the compact auto-scroll
     // lane the instant performing begins, so the lane + both tap zones fit at once.
     // No-op on iPad/desktop and on the single-row (≤2-bar) case.
+    document.body.classList.add('tb-performing');
     enterPerformLayout();
     tbStartMetro();
     tbMsg('Tap the BEAT in time — ' + bpm() + ' in a row to lock in.');
@@ -1600,8 +2022,15 @@
   }
   function onRhythmTap() {
     var c = ctx(); if (!c) return;
-    if (TB.phase === 'capture') TB.rhythmTaps.push(tapTime());   // latency-corrected
-    // ignored before capture (rhythm hand idle until the count-off ends)
+    if (TB.phase === 'capture') { TB.rhythmTaps.push(tapTime()); return; }
+    // Race guard: the visual GO and the _goTimer that flips phase both fire at the same
+    // scheduled instant, but JS timer ordering on iOS can let GO display before the
+    // phase flip. Accept rhythm taps within ±TAP_TOLERANCE of the capture downbeat
+    // even while still in 'countoff', so the first-note tap is never silently dropped.
+    if (TB.phase === 'countoff' && TB.captureStart > 0) {
+      var t = tapTime();
+      if (Math.abs(t - TB.captureStart) <= TAP_TOLERANCE) TB.rhythmTaps.push(t);
+    }
   }
   function flashOffbeat() {
     var z = document.getElementById('tbBeat'); if (!z) return;
@@ -1688,6 +2117,27 @@
       if (co) { co.textContent = 'GO'; co.classList.remove('tb-pop'); void co.offsetWidth; co.classList.add('tb-pop'); }
       setTimeout(function () { if (co) co.classList.remove('show'); }, 520);
     }, Math.max(0, (goWhen - c.currentTime) * 1000)));
+    // Voice count-off: "1 2 3 go" (numbers for beats 1..n-1, "go" on the last
+    // count-off beat). Music starts on the FOLLOWING beat, matching standard musical
+    // practice. Each word fires 120ms early so the spoken onset lands on the click.
+    // Skipped in quiet mode.
+    if (!S.quiet && window.speechSynthesis) {
+      var VOICE_LEAD = 0.12;
+      for (var vk = 0; vk < countBeats; vk++) {
+        (function (vk) {
+          var when = beatTimeByIdx(coStartIdx + vk, anchor);
+          var word = (vk === countBeats - 1) ? 'go' : String(vk + 1);
+          TB._countTimers.push(setTimeout(function () {
+            if (!TB.open || TB.phase !== 'countoff') return;
+            window.speechSynthesis.cancel();
+            var u = new SpeechSynthesisUtterance(word);
+            u.rate = 1.1; u.volume = 1.0;
+            window.speechSynthesis.speak(u);
+          }, Math.max(0, (when - c.currentTime - VOICE_LEAD) * 1000)));
+        })(vk);
+      }
+    }
+
     beginCapture(anchor);
   }
 
@@ -1714,7 +2164,7 @@
       if (sb) TB.captureStart = sb.t;
       if (eb) TB.captureEnd = eb.t; else TB.captureEnd = TB.captureStart + total * (60 / S.tempo);
       TB.phase = 'capture';
-      tbMsg('Go! Tap the RHYTHM (right), keep the BEAT (left).');
+      tbMsg('Go! Tap the RHYTHM (' + rhythmSide() + '), keep the BEAT (' + beatSide() + ').');
       var z = document.getElementById('tbZones'); if (z) { z.classList.add('tb-go'); setTimeout(function () { z.classList.remove('tb-go'); }, 600); }
     }, Math.max(0, (beatTimeByIdx(captureStartIdx, anchor) - c.currentTime) * 1000));
     // Stop capture one beat after the last beat of the pass, then score.
@@ -1872,7 +2322,18 @@
 
   function showResults(res) {
     document.getElementById('tbZones').style.display = 'none';
-    exitPerformLayout();   // performance over -> restore the full rhythm view for review
+    tbMsg('');   // clear the stale "Locked! Count-off..." line -- not relevant once results show
+    document.body.classList.remove('tb-performing');
+    document.body.classList.add('tb-results-open');
+    // Do NOT exit the scroll layout here — keep the horizontal lane visible so the
+    // rhythm stays readable during results review. exitPerformLayout() runs in
+    // enterReady() (Try Again) and closeTapBack() (Next/Done) when starting fresh.
+    // "One more" exit-nudge payoff: if the boost is armed AND this round actually
+    // earned a bonus, DOUBLE it and consume the boost. A boost is only spent on a
+    // round that scored something, so accepting "one more" then failing keeps the
+    // promise alive for the next real attempt (never feels like a bait-and-switch).
+    var bonusBoosted = false;
+    if (S.bonusBoost && res.bonus > 0) { res.bonus *= 2; bonusBoosted = true; S.bonusBoost = false; }
     S.bonus += res.bonus; S.score += res.bonus;     // bonus folds into the running score too
     // GUIDED (tapping game): a PERFORM result drives the same matched ladder as
     // dictation. Only the standalone tapping game's INLINE perform counts toward the
@@ -1895,12 +2356,40 @@
         '<span class="tb-mstat">' + (m.pass ? IC.check + 'pass' : IC.close + 'fix') + '</span>' +
         '<span class="tb-mnote">' + note + '</span></div>';
     }).join('');
+    // CELEBRATION — a juicy "win" moment on a fully-clean pass (every bar clean).
+    // Confetti + a rotating praise line for ALL themes; Tock celebrates in KIDS mode
+    // only (mascot is kids-exclusive). This is the emotional payoff that turns a bare
+    // percentage into something a kid wants to earn again.
+    var isCleanPass = res.total > 0 && res.passed === res.total;
+    var kidsTheme = document.body.classList.contains('theme-kids');
+    var celebrateHTML = '';
+    if (isCleanPass) {
+      var PRAISE = ['You did it!', 'Perfect!', 'Nailed it!', 'Woohoo!', 'Right on the beat!', 'Superstar!'];
+      var praise = PRAISE[(S.streak + res.passed) % PRAISE.length];
+      var CONF = ['#ff6fa8', '#ffd23f', '#4caf50', '#2f7ee0', '#ff8c42', '#7c5cff'];
+      var confetti = '';
+      for (var ci = 0; ci < 14; ci++) {
+        var col = CONF[ci % CONF.length];
+        var leftPct = (7 + (ci * 6.4) % 86).toFixed(1);
+        var delay = ((ci * 47) % 300);
+        var rot = ((ci * 37) % 90) - 45;
+        confetti += '<i class="tb-confetti-bit" style="left:' + leftPct + '%;background:' + col +
+          ';animation-delay:' + delay + 'ms;transform:rotate(' + rot + 'deg)"></i>';
+      }
+      celebrateHTML =
+        '<div class="tb-celebrate' + (kidsTheme ? ' tb-celebrate-kids' : '') + '">' +
+          '<div class="tb-confetti" aria-hidden="true">' + confetti + '</div>' +
+          (kidsTheme ? '<div class="tb-tock tb-tock-celebrate">' + TOCK.celebrate + '</div>' : '') +
+          '<div class="tb-celebrate-head">' + praise + '</div>' +
+        '</div>';
+    }
     var el = document.getElementById('tbResults');
     el.innerHTML =
+      celebrateHTML +
       '<div class="tb-score">' +
         '<div class="tb-acc"><b>' + res.accuracy + '%</b><span>accuracy</span></div>' +
         '<div class="tb-acc"><b>' + res.passed + '/' + res.total + '</b><span>bars clean</span></div>' +
-        '<div class="tb-acc tb-bonus"><b>+' + res.bonus + '</b><span>bonus</span></div>' +
+        '<div class="tb-acc tb-bonus' + (bonusBoosted ? ' tb-bonus-2x' : '') + '"><b>+' + res.bonus + (bonusBoosted ? '<i class="tb-2x">2×</i>' : '') + '</b><span>bonus</span></div>' +
       '</div>' +
       (tapAdvText ? '<div class="tb-advance">' + tapAdvText + '</div>' : '') +
       '<div class="tb-mlist">' + rows + '</div>' +
@@ -1912,10 +2401,15 @@
         (TB.inline
           ? '<button class="go" id="tbNextRound">' + IC.next + 'Next</button>'
           : '<button class="go" id="tbDone">' + IC.check + 'Done</button>') +
-      '</div>';
+      '</div>' +
+      // Tapping only: a graceful exit back to the hub. Tapping it doesn't just leave —
+      // it triggers the "one more for double bonus" motivation nudge first.
+      (TB.inline ? '<button class="tb-exit-link" id="tbExit">' + IC.home + 'Done for now</button>' : '');
     el.style.display = '';
     if (TB.inline) {
       document.getElementById('tbNextRound').onclick = newRound;   // fresh perform-ready round
+      var exitBtn = document.getElementById('tbExit');
+      if (exitBtn) exitBtn.onclick = showExitNudge;
     } else {
       document.getElementById('tbDone').onclick = closeTapBack;
     }
@@ -1926,9 +2420,144 @@
       // Full reset back to 'ready' (metronome off): the player re-starts + re-locks.
       enterReady();
     };
+    // Reachability on short screens (iPhone landscape) is handled by .tb-rbtns'
+    // position:sticky (see injectStyle) -- it pins to the bottom of whichever
+    // ancestor scrolls the instant results render, no JS/scroll-timing needed.
+  }
+
+  /* MOTIVATION NUDGE — fires when the student tries to leave (taps "Done for now"
+     on the results screen). Rather than just letting them go, offer a reason to do
+     one more: the next earned bonus is DOUBLED. Accepting arms S.bonusBoost and
+     starts a fresh round; declining navigates home. Theme-neutral (NO mascot — Tock
+     is kids-theme-only) + reuses the shared .tapback-ov surface + --tb-accent, so it
+     styles per theme automatically. */
+  function showExitNudge() {
+    var ov = document.getElementById('exitNudge');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'exitNudge'; ov.className = 'tapback-ov exit-nudge';
+      ov.innerHTML =
+        '<div class="tb-card exit-card">' +
+          '<div class="exit-head">' + IC.bolt + 'One more?</div>' +
+          '<div class="exit-sub">Do just <b>one more</b> and your next bonus is <b>DOUBLED</b>.</div>' +
+          '<div class="exit-btns">' +
+            '<button class="teach-btn teach-go" id="exitOneMore">' + IC.bolt + 'One more — 2× bonus!</button>' +
+            '<button class="teach-btn exit-leave" id="exitLeave">Leave for now</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(ov);
+    }
+    document.getElementById('exitOneMore').onclick = function () {
+      S.bonusBoost = true;
+      ov.classList.remove('show');
+      newRound();   // fresh perform-ready round; the doubled bonus applies when it's scored
+    };
+    document.getElementById('exitLeave').onclick = function () {
+      try { window.location.href = 'home.html'; } catch (e) {}
+    };
+    ov.classList.add('show');
   }
   function showTapBackBtn() {
     var b = document.getElementById('soloTapBack'); if (b) b.style.display = '';
+  }
+
+  /* ============================================================ WIN / LOSE
+     The run's two terminal moments, both on the shared .tapback-ov surface so casual
+     + every theme style them automatically via --tb-accent:
+       • GAME OVER      — groove hit 0. Ends the run (was a silent restart). Retry
+                          rebuilds THIS level from the 2-bar ramp; Menu leaves.
+       • LEVEL COMPLETE — the capstone gate opened. A real celebration + the next
+                          level, plus a dare to attempt the off-ladder 16-bar bonus.
+     The 16-bar bonus ("the killer rhythm") is pure upside: it never advances or
+     dents the ladder (guidedRecord is skipped) and a miss doesn't cost groove — it's
+     bragging rights + a fat score bonus for students who want to flex. ===== */
+  var KILLER_NAME = 'Widowmaker';           // the 16-bar bonus challenge's fun name
+  var KILLER_BONUS = 750;                   // flat score reward for conquering it
+
+  function leaveToMenu() {
+    // Casual wires its own return-to-menu (it has a custom menu screen); the pro game
+    // just goes home. Kept generic so the engine never hard-codes casual DOM.
+    if (typeof window.__casualGoMenu === 'function') { try { window.__casualGoMenu(); return; } catch (e) {} }
+    try { window.location.href = 'home.html'; } catch (e) {}
+  }
+
+  function showGameOver() {
+    var ov = document.getElementById('soloGameOver');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'soloGameOver'; ov.className = 'tapback-ov solo-end solo-end-over';
+      ov.innerHTML =
+        '<div class="tb-card end-card">' +
+          '<div class="end-head end-head-over">' + IC.disc + 'Groove lost!</div>' +
+          '<div class="end-sub">You ran out of groove — the run ends here. Shake it off and run it back.</div>' +
+          '<div class="end-score" id="goScore"></div>' +
+          '<div class="end-btns">' +
+            '<button class="teach-btn teach-go" id="goRetry">' + IC.redo + 'Try this level again</button>' +
+            '<button class="teach-btn end-leave" id="goMenu">' + IC.home + 'Menu</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(ov);
+    }
+    document.getElementById('goScore').innerHTML = 'Final score <b>' + S.score + '</b>';
+    document.getElementById('goRetry').onclick = function () {
+      ov.classList.remove('show');
+      S.groove = 100; S.streak = 0; S.bonusRound = false;
+      if (S.guided && GUIDE.avail()) GUIDE.applyLevel();   // rebuild THIS level from 2 bars
+      else { S.ramp = 2; S.measures = 2; }
+      newRound();
+    };
+    document.getElementById('goMenu').onclick = leaveToMenu;
+    ov.classList.add('show');
+  }
+
+  function confettiHTML() {
+    var CONF = ['#ff6fa8', '#ffd23f', '#4caf50', '#2f7ee0', '#ff8c42', '#7c5cff', '#22b083', '#ff5f6d'], bits = '';
+    for (var ci = 0; ci < 36; ci++) {
+      bits += '<i class="tb-confetti-bit" style="left:' + (2 + (ci * 5.3) % 96).toFixed(1) + '%;background:' +
+        CONF[ci % CONF.length] + ';animation-delay:' + ((ci * 61) % 800) + 'ms;transform:rotate(' + (((ci * 37) % 90) - 45) + 'deg)"></i>';
+    }
+    return '<div class="tb-confetti" aria-hidden="true">' + bits + '</div>';
+  }
+
+  /* Called after a capstone pass. `nextTitle` = the level just unlocked (or null at the
+     end of the ladder). Offers Continue + the optional 16-bar bonus dare. */
+  function showLevelComplete(nextTitle) {
+    var ov = document.getElementById('soloLevelDone');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'soloLevelDone'; ov.className = 'tapback-ov solo-end solo-end-win';
+      ov.innerHTML =
+        '<div class="tb-card end-card">' +
+          confettiHTML() +
+          '<div class="end-head end-head-win">' + IC.check + 'Level complete!</div>' +
+          '<div class="end-sub" id="ldSub"></div>' +
+          '<div class="end-score" id="ldScore"></div>' +
+          '<div class="end-btns">' +
+            '<button class="teach-btn teach-go" id="ldNext">' + IC.next + 'Next level</button>' +
+            '<button class="teach-btn end-killer" id="ldKiller">' + IC.flame + 'ENTER THE ' + KILLER_NAME.toUpperCase() + '<small>16 bars · only the fearless</small></button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(ov);
+    }
+    document.getElementById('ldSub').innerHTML = nextTitle
+      ? 'Up next: <b>' + nextTitle + '</b>… or do you dare face the ' + KILLER_NAME + '?'
+      : 'Top of the ladder. Only the ' + KILLER_NAME + ' remains.';
+    document.getElementById('ldScore').innerHTML = 'Score <b>' + S.score + '</b>';
+    document.getElementById('ldNext').onclick = function () { ov.classList.remove('show'); newRound(); };
+    document.getElementById('ldKiller').onclick = function () {
+      ov.classList.remove('show');
+      startKillerRound();
+    };
+    ov.classList.add('show');
+  }
+
+  /* The 16-bar bonus round. Off-ladder flex: sets a big bar count + a flag submit()
+     reads to award KILLER_BONUS and skip the guided ladder entirely. */
+  function startKillerRound() {
+    S.bonusRound = true;
+    S.measures = 16;
+    newRound();   // generates a 16-bar target from the current vocabulary
+    msg('The ' + KILLER_NAME + ' — 16 bars, one big rhythm. No pressure. Free flex, groove-safe.');
   }
 
   /* --------------------------------------------------------------- checking
@@ -2007,8 +2636,21 @@
   function newRound() {
     if (TB.open) closeTapBack();    // a new round tears down any open tap-back overlay + its metro
     stopPlayback();                 // stop any playing rhythm (and the tap-back metro) before building a new one
-    S.target = generateTarget();
-    S.hintsThisRound = 0; S.wrongThisRound = false; S.solved = false;
+    // EXTERNAL-TARGET seam (melodic suite reuse): when an embedding page has posted a
+    // target (see EXT block below), THIS round plays that exact rhythm instead of
+    // generating one. Gated on ?exttarget=1 — zero effect in the normal game.
+    if (EXT.active && EXT.pending) {
+      S.changing = false;
+      S.measures = EXT.pending.target.length;
+      S.ts = EXT.pending.ts;
+      // bpm()/mBeats()/the grade grid all read S.beatsPerMeasure — it MUST match
+      // the external meter or grading silently covers the wrong number of beats
+      // per bar (caught by the seam round-trip test: totalBeats 4, expected 8).
+      S.beatsPerMeasure = beatsForTs(EXT.pending.ts);
+      EXT.current = EXT.pending; EXT.pending = null;
+    }
+    S.target = (EXT.active && EXT.current) ? EXT.current.target : generateTarget();
+    S.hintsThisRound = 0; S.wrongThisRound = false; S.solved = false; S.listensThisRound = 0; S.tapAlongDone = false;
     if (rs.updateGameSettings) rs.updateGameSettings({
       measureCount: S.measures,
       difficulty: bankKey(),                  // engine bank reads rhythmPatterns[key]
@@ -2029,8 +2671,9 @@
     if (S.mode === 'tapping') { newTappingRound(); maybeTeachThisRound(); return; }
     if (rs) rs.onAnswerChanged = updateSubmitBtn;   // re-evaluate Submit on each placement
     updateSubmitBtn();
-    // No auto-play — the rhythm only sounds when the student presses Play.
-    msg('Press ▶ Play rhythm to hear it.');
+    // No auto-play — the rhythm only sounds when the student presses Play. (No "press play"
+    // prompt: it's obvious, and the message line stays clear for real feedback.)
+    msg('');
     maybeTeachThisRound();
   }
   /* TEACH gate for the round we just built. The round is already laid out underneath;
@@ -2062,7 +2705,38 @@
      rhythm + the two tap zones + the Start-metronome button — with no intermediate
      "Perform it" click. "Start metronome" is the only thing the player presses to
      begin (it unlocks audio on its own gesture). */
+  /* HAND-SWAP — every single-line tapping round is performed in one of two hand
+     orientations so the student learns to keep the beat in EITHER hand (real
+     musicianship). 'BL' = Beat-Left/Rhythm-Right (default), 'BR' = the mirror. It is
+     PRESENTATION ONLY: the tap handlers stay bound to #tbBeat/#tbRhythm (logical
+     roles) — applyTapOrient just flips which screen SIDE each zone sits on (flex
+     order) and the hand-hint text. Scoring/timing paths are untouched. */
+  var _tapAlt = true;   // start so the first pick resolves to the familiar 'BL'
+  function pickTapOrient() {
+    // Capstone-forcing (both hands required to master) is layered on in the mastery
+    // gate; here we simply alternate so both orientations get exercised each level.
+    if (GUIDE.avail() && GUIDE.neededOrient) {
+      var forced = GUIDE.neededOrient();
+      if (forced) return forced;
+    }
+    _tapAlt = !_tapAlt;
+    return _tapAlt ? 'BR' : 'BL';
+  }
+  function beatSide() { return S.tapOrient === 'BR' ? 'right' : 'left'; }
+  function rhythmSide() { return S.tapOrient === 'BR' ? 'left' : 'right'; }
+  function applyTapOrient() {
+    var beat = document.getElementById('tbBeat'), rhythm = document.getElementById('tbRhythm');
+    if (!beat || !rhythm) return;
+    var br = S.tapOrient === 'BR';
+    beat.style.order = br ? '2' : '1';      // BR: Beat renders on the RIGHT
+    rhythm.style.order = br ? '1' : '2';
+    var bh = document.getElementById('tbBeatHint'), rh = document.getElementById('tbRhythmHint');
+    if (bh) bh.textContent = beatSide() + ' hand';
+    if (rh) rh.textContent = rhythmSide() + ' hand';
+  }
+
   function newTappingRound() {
+    S.tapOrient = pickTapOrient();   // choose this round's hand orientation before mounting the panel
     // Pre-fill the staff with the generated rhythm (same note glyphs as dictation).
     revealCorrect();
     // S.solved=true so the shared perform path (openTapBack) is allowed to run. It is
@@ -2081,8 +2755,9 @@
     // mounts the panel under the main staff and drops into 'ready' (metronome off);
     // the player just presses Start metronome. The main staff already shows the rhythm.
     openTapBack(true);
+    applyTapOrient();   // flip the zones to this round's orientation (after they're mounted)
     syncBankPad();
-    msg('Press Start metronome, then tap the BEAT (left) to lock in.');
+    msg('Press Start metronome, then tap the BEAT (' + beatSide() + ') to lock in.');
   }
 
   // On small screens, save space: only show Submit once every beat is filled.
@@ -2092,7 +2767,11 @@
     if (S.solved || (next && next.style.display !== 'none')) { btn.style.display = 'none'; return; }
     var mobile = false;
     try { mobile = window.matchMedia('(pointer: coarse) and (max-width: 1400px)').matches; } catch (e) {}
-    btn.style.display = (mobile && rs && rs.isComplete && !rs.isComplete()) ? 'none' : '';
+    // Submit appears ONLY when every answer tile is filled (owner: never present otherwise).
+    // Enforced on touch AND on the tiles/casual skin (so it holds regardless of width).
+    var gated = mobile || document.body.classList.contains('tiles-skin');
+    var incomplete = rs && rs.isComplete && !rs.isComplete();
+    btn.style.display = (gated && incomplete) ? 'none' : '';
     syncBankPad();   // the floating action row's height changed -> re-fit staff bottom pad + offset
   }
 
@@ -2100,29 +2779,90 @@
     if (S.solved) return;
     clearMarks();
     var r = checkAnswer();
+    // EXTERNAL-TARGET seam: report the grade to the embedding page. Correction mode is
+    // forced OFF in ext mode (see EXT block), so every submit here is terminal.
+    if (EXT.active && window.parent !== window) {
+      var extTotal = 0, extMb = mBeats();
+      for (var extI = 0; extI < extMb.length; extI++) extTotal += extMb[extI];
+      try {
+        window.parent.postMessage({
+          type: 'melodic-ext-result',
+          allCorrect: r.allCorrect,
+          wrongBeats: r.wrong.length,
+          totalBeats: extTotal
+        }, '*');
+      } catch (e) {}
+    }
     if (r.allCorrect) {
       S.solved = true;
-      var clean = !S.wrongThisRound && S.hintsThisRound === 0;
-      if (clean) { S.streak++; S.groove = Math.min(100, S.groove + GROOVE_GAIN_CLEAN); }
+      playWin();   // cheerful fanfare on a correct answer
+      // KILLER (16-bar) BONUS round: off-ladder flex. Award the flat bonus, DON'T touch the
+      // guided ladder, restore the normal bar count, and offer Next. Groove-safe by design.
+      if (S.bonusRound) {
+        S.bonusRound = false;
+        S.score += KILLER_BONUS;
+        floatDelta('+' + KILLER_BONUS, true, scoreAnchor());
+        S.measures = (S.guided && GUIDE.avail()) ? GUIDE.rampBars() : S.ramp;
+        msg('You survived the ' + KILLER_NAME + '! +' + KILLER_BONUS + ' bonus. Certified monster.');
+        document.getElementById('soloSubmit').style.display = 'none';
+        document.getElementById('soloNext').style.display = '';
+        syncBankPad(); save(); render(); return;
+      }
+      // "clean" = correct, first-try, no hints, AND within the listen cap. Going over the
+      // cap is as costly as a hint here: the answer counts as correct but NOT clean, so it
+      // neither builds the streak/groove nor advances the ramp. A SINGLE listen is the
+      // fast-track signal that accelerates the 2->4->8 ramp (see recordRound).
+      var listens = S.listensThisRound || 0;
+      var cap = listenCapFor(S.measures);
+      var withinCap = listens <= cap;
+      var noSlips = !S.wrongThisRound && S.hintsThisRound === 0;
+      var clean = noSlips && withinCap;
+      var singleListen = clean && listens <= 1;
+      if (clean) { S.streak++; S.groove = Math.min(100, S.groove + GROOVE_GAIN_CLEAN); floatDelta('+' + GROOVE_GAIN_CLEAN, true, grooveAnchor()); }
       else { S.streak = 0; }
-      var pts = 100 + (clean ? S.streak * 20 : 0);
+      var pts = Math.round((100 + (clean ? S.streak * 20 : 0)) * tempoMult());   // tempo scales POINTS (not groove)
       S.score += pts;
-      var baseMsg = clean ? 'Nailed it first try! +' + pts + '  ·  Groove +' + GROOVE_GAIN_CLEAN + '  ·  streak ×' + S.streak
-                          : 'Correct! +' + pts;
+      floatDelta('+' + pts, true, scoreAnchor());   // points flash on every correct answer
+      var tempoNote = S.speed === 'fast' ? '  ·  Fast-tempo bonus' : (S.speed === 'slow' && tempoMult() < 1) ? '  ·  (slower = fewer points)' : '';
+      var baseMsg = clean ? 'Nailed it first try! +' + pts + '  ·  Groove +' + GROOVE_GAIN_CLEAN + '  ·  streak ×' + S.streak + tempoNote
+                  : (noSlips && !withinCap) ? 'Correct! +' + pts + '  ·  but that took ' + listens + ' listens — keep it to ' + cap + ' to count clean'
+                  : 'Correct! +' + pts + tempoNote;
       // GUIDED: record mastery + run the capstone/ramp gate. A fully-correct answer is
       // 100% beats correct (every beat matched), so the per-beat groove for THIS round
       // is 100; the gate also requires the capstone bar count (8). bonus points for the
       // 16-bar extra are handled by the existing scoring (more bars = more points).
-      var adv = guidedRecord(true, clean, 100);
+      var adv = guidedRecord(true, clean, 100, { singleListen: singleListen, listens: listens });
       msg(adv && adv.advText ? baseMsg + '  ·  ' + adv.advText : baseMsg);
       document.getElementById('soloSubmit').style.display = 'none';
       document.getElementById('soloNext').style.display = '';
+      // LEVEL COMPLETE: the capstone gate opened this round -> celebration overlay + the
+      // 16-bar dare, instead of the plain Next. Otherwise offer the optional tap-back bonus.
+      var capstonePassed = adv && adv.res && adv.res.capstonePassed;
+      if (capstonePassed) {
+        var nextTitle = (adv.res.leveledUp && GUIDE.avail()) ? GUIDE.curLevel().title : null;
+        save(); render();
+        showLevelComplete(nextTitle);
+        return;
+      }
       showTapBackBtn();   // OPTIONAL bonus — only ever offered after a correct answer
       syncBankPad();      // Next + Tap-back now showing -> re-fit the floating action row
       save(); render(); return;
     }
     S.wrongThisRound = true;
-    S.groove = Math.max(0, S.groove - GROOVE_PER_WRONG * r.wrong.length);
+    playLose();   // comedic "womp-womp" on a wrong answer
+    // KILLER (16-bar) BONUS miss: groove-safe flex — no groove penalty, no ladder record.
+    // Reveal the answer, restore the normal bar count, offer Next. The killer bites; it
+    // never punishes your real progress.
+    if (S.bonusRound) {
+      S.bonusRound = false;
+      S.measures = (S.guided && GUIDE.avail()) ? GUIDE.rampBars() : S.ramp;
+      revealCorrect();
+      msg('The ' + KILLER_NAME + ' got you this time — no harm done. Onward.');
+      document.getElementById('soloSubmit').style.display = 'none';
+      document.getElementById('soloNext').style.display = '';
+      syncBankPad(); save(); render(); return;
+    }
+    S.groove = Math.max(0, S.groove - GROOVE_PER_WRONG * r.wrong.length); grooveHit(GROOVE_PER_WRONG * r.wrong.length);
     if (S.correctionMode) {
       r.wrong.forEach(function (w) { markZone(w.m, w.b, 'solo-wrong'); });
       msg(r.wrong.length + ' beat(s) off — fix the red beats, then submit again.');
@@ -2151,7 +2891,10 @@
       });
     });
   }
-  function grooveBroken() { msg('You lost the groove! Score ' + S.score + '. Restarting the set…'); S.groove = 100; S.streak = 0; setTimeout(newRound, 1600); }
+  // Groove hit 0 -> the run is over. A real Game Over screen (Retry this level / Menu)
+  // replaces the old silent restart. Bonus (killer) rounds are groove-safe, so this is
+  // never reached from them. resetting groove/ramp happens on Retry (see showGameOver).
+  function grooveBroken() { showGameOver(); }
 
   /* Bridge a graded round into the guided spine: record mastery, run the capstone/
      ramp gate, refresh the level picker + mastery meter, and return a short status
@@ -2159,6 +2902,9 @@
      dictation submit() and the tapping showResults() so BOTH games drive the SAME
      matched ladder identically. */
   function guidedRecord(correct, clean, groovePct, meta) {
+    // PLACEMENT intercept: assessment answers feed the placement counter, never
+    // the mastery ladder (the test is diagnostic, not practice).
+    if (PLACE.active) { PLACE.record(!!correct); return { advanced: false, leveledUp: false }; }
     if (!(S.guided && GUIDE.avail())) return null;
     var before = GUIDE.curLevel();
     var res = GUIDE.recordRound(correct, clean, groovePct, meta);
@@ -2176,16 +2922,83 @@
     } else if (res.rampedUp) {
       // ramp advanced this round (e.g. 2 -> 4); reflected on the next newRound().
       advText = 'Clean! Next: ' + res.rampBars + ' bars';
+    } else if (res.needOtherHand) {
+      // Clean capstone in ONE orientation — the other hand is now forced to master.
+      advText = 'Clean! Now perform it the OTHER way — Beat in your ' + rhythmSide() + ' hand.';
+    } else if (GUIDE.atCapstone && GUIDE.atCapstone() && correct && clean) {
+      // At capstone, clean, but the full gate (Proficient band + streak) isn't open yet.
+      advText = 'Clean! Keep it up to master this level (' + Math.round(res.masteryScore || 0) + '/80).';
     }
     fillLevelOptions();   // mastered/now tags + frontier may have moved
     render();             // mastery meter + ramp readout
     return { res: res, advText: advText };
   }
 
+  /* ---------------------------------------------------------- score "juice"
+     Floating +/- number that pops off an anchor and drifts up — makes every groove
+     change and every point gain VISIBLE (owner: "when you click a hint should you see
+     a -8 appear… when you pass, the points flash on screen"). Anchored to whichever
+     score/groove element is actually on screen (the compact touch quickstats or the
+     desktop readout). Cheap, self-cleaning, never blocks input. */
+  // Anchor groove pops to whatever's ON SCREEN: the frame's groove badge (Option E, the bar
+  // is hidden) first, else the old header bar. Without this the −8 hint pop had no anchor.
+  function grooveAnchor() { return document.querySelector('.answer-area .groove-badge') || document.getElementById('soloGroovePct') || document.querySelector('#soloHud .solo-stat.groove'); }
+  function scoreAnchor() { var q = document.getElementById('soloScoreQ'); if (q && q.offsetParent) return q; return document.getElementById('soloScore') || q; }
+  function floatDelta(text, good, anchor) {
+    try {
+      if (!anchor) return;
+      var r = anchor.getBoundingClientRect();
+      if (!r.width && !r.height) return;
+      var el = document.createElement('div');
+      el.className = 'delta-pop ' + (good ? 'delta-good' : 'delta-bad');
+      el.textContent = text;
+      el.style.left = (r.left + r.width / 2) + 'px';
+      el.style.top = (r.top - 4) + 'px';
+      document.body.appendChild(el);
+      setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 1050);
+    } catch (e) {}
+  }
+  function grooveHit(cost) { floatDelta('−' + cost, false, grooveAnchor()); }   // groove loss pop
+  // Cost badge shown on each hint button: "−N ◎" (the groove disc), so students see the
+  // price BEFORE tapping — and learn what the groove meter measures.
+  function hintCostBadge(n) { return '<span class="hint-cost">−' + n + IC.disc + '</span>'; }
+
+  /* WIN / FAIL SOUND EFFECTS — the playful "did I get it?" payoff students love (the cheap
+     app-store version has silly sounds). WIN = a bright ascending fanfare; FAIL = a comedic
+     "womp-womp" pitch-bend. Pure synth (no audio files), respects the Quiet toggle, and
+     varies so it doesn't get old. */
+  function playWin() {
+    var c = ctx(); if (!c || S.quiet) return;
+    var VARIANTS = [[523.25, 659.25, 783.99, 1046.5], [587.33, 739.99, 880.0, 1174.7], [523.25, 698.46, 880.0, 1046.5]];
+    var notes = VARIANTS[Math.floor(Math.random() * VARIANTS.length)], t0 = c.currentTime + 0.02;
+    notes.forEach(function (f, i) {
+      var o = c.createOscillator(), g = c.createGain(), st = t0 + i * 0.085, last = i === notes.length - 1;
+      o.type = 'triangle'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, st);
+      g.gain.exponentialRampToValueAtTime(0.28, st + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, st + (last ? 0.6 : 0.24));
+      o.connect(g).connect(c.destination); o.start(st); o.stop(st + (last ? 0.6 : 0.24));
+    });
+  }
+  function playLose() {
+    var c = ctx(); if (!c || S.quiet) return;
+    var t0 = c.currentTime + 0.02;
+    [[196, 155.56], [155.56, 116.54]].forEach(function (pr, i) {
+      var o = c.createOscillator(), g = c.createGain(), st = t0 + i * 0.26;
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(pr[0], st);
+      o.frequency.exponentialRampToValueAtTime(pr[1], st + 0.22);
+      g.gain.setValueAtTime(0.0001, st);
+      g.gain.exponentialRampToValueAtTime(0.22, st + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, st + 0.24);
+      o.connect(g).connect(c.destination); o.start(st); o.stop(st + 0.26);
+    });
+  }
+
   /* ------------------------------------------------------------------ hints */
   function hintMistakes() {
     if (S.solved) return;
-    S.hintsThisRound++; S.groove = Math.max(0, S.groove - GROOVE_HINT_MISTAKES);
+    S.hintsThisRound++; S.groove = Math.max(0, S.groove - GROOVE_HINT_MISTAKES); grooveHit(GROOVE_HINT_MISTAKES);
     clearMarks();
     var r = checkAnswer();
     var filledWrong = r.wrong.filter(function (w) { return rs.userAnswer[w.m - 1][w.b - 1]; });
@@ -2205,13 +3018,17 @@
     if (S.solved) return;
     S.pick = (S.pick === mode) ? null : mode;     // toggle; stays armed for multiple taps
     setPickBtns();
-    msg(S.pick === 'count' ? 'Tap a beat to count its sounds.' : S.pick === 'play' ? 'Tap a beat to hear just that beat.' : '');
+    document.body.classList.toggle('pick-armed', !!S.pick);   // outlines the answer beats as tappable
+    msg(S.pick === 'count' ? 'Now tap a beat to count its sounds.' : S.pick === 'play' ? 'Now tap a beat to hear just that beat.' : '');
   }
   function doCountBeat(m, b) {
     var n = beatSoundCount(m - 1, b - 1);
-    S.hintsThisRound++; S.groove = Math.max(0, S.groove - GROOVE_HINT_COUNT);
+    S.hintsThisRound++; S.groove = Math.max(0, S.groove - GROOVE_HINT_COUNT); grooveHit(GROOVE_HINT_COUNT);
     clearMarks(); markZone(m, b, 'solo-right');
     msg('Measure ' + m + ', beat ' + b + ': ' + n + ' sound' + (n === 1 ? '' : 's') + '.');
+    // The message line is hidden in casual — pop the count ON the tapped beat so it's visible.
+    var cell = document.querySelector('.beat-drop-zone[data-measure="' + m + '"][data-beat="' + b + '"]');
+    if (cell) floatDelta(n + (n === 1 ? ' sound' : ' sounds'), true, cell);
     if (S.groove <= 0) grooveBroken();
     save(); render();
   }
@@ -2222,7 +3039,7 @@
     metroTick(t0, true);                          // the beat's downbeat, for reference
     var sounds = 0, k;
     for (k = 0; k < RES; k++) if (grid[start + k]) { rhythmHit(t0 + (k / RES) * beatDur); sounds++; }
-    S.hintsThisRound++; S.groove = Math.max(0, S.groove - GROOVE_HINT_PLAY);
+    S.hintsThisRound++; S.groove = Math.max(0, S.groove - GROOVE_HINT_PLAY); grooveHit(GROOVE_HINT_PLAY);
     clearMarks(); markZone(m, b, 'solo-right');
     msg('Measure ' + m + ', beat ' + b + ' — ' + sounds + ' sound' + (sounds === 1 ? '' : 's') + '.');
     if (S.groove <= 0) grooveBroken();
@@ -2232,7 +3049,7 @@
   function setNarrowBtn() {
     var btn = document.getElementById('soloHintNarrow'); if (!btn) return;
     btn.classList.toggle('on', !!S.narrowed);
-    btn.innerHTML = IC.filter + (S.narrowed ? 'Show all' : 'Narrow options');
+    btn.innerHTML = IC.filter + (S.narrowed ? 'Show all' : 'Narrow options' + hintCostBadge(GROOVE_HINT_NARROW));
   }
   // TOGGLE: hide every bank tile whose figure isn't in this example (so the
   // student only chooses among the figures used), or restore the full level bank.
@@ -2247,7 +3064,7 @@
     S.target.forEach(function (meas) { meas.forEach(function (it) { used[it.patternId] = 1; }); });
     document.querySelectorAll('.rhythm-tile').forEach(function (t) { if (!used[t.dataset.patternId]) t.style.display = 'none'; });
     S.narrowed = true; setNarrowBtn();
-    if (!S.narrowCharged) { S.hintsThisRound++; S.groove = Math.max(0, S.groove - GROOVE_HINT_NARROW); S.narrowCharged = true; }
+    if (!S.narrowCharged) { S.hintsThisRound++; S.groove = Math.max(0, S.groove - GROOVE_HINT_NARROW); grooveHit(GROOVE_HINT_NARROW); S.narrowCharged = true; }
     msg('Showing only the ' + Object.keys(used).length + ' figure(s) in this example.');
     if (S.groove <= 0) grooveBroken();
     save(); render();
@@ -2257,13 +3074,85 @@
   function msg(t) { var el = document.getElementById('soloMsg'); if (el) el.textContent = t; }
   // Human label per mastery band (from core/mastery LEVELS). No emoji.
   var BAND_LABEL = { attempted: 'Attempted', familiar: 'Familiar', proficient: 'Proficient', mastered: 'Mastered' };
+  /* GROOVE RING — the answer frame's border drawn as a depleting progress ring (track + fill),
+     ported verbatim from the approved groove-mockups.html. A grey track is the full frame; two
+     colour half-paths from top-centre down each side show groove% of the perimeter, draining
+     symmetrically from the bottom up. Recomputed every render + on resize so it never distorts
+     when the frame changes size (e.g. the 16-bar). Colour = the same green→red hue as before. */
+  function updateGrooveRing() {
+    if (!document.body.classList.contains('tiles-skin')) return;
+    var area = document.querySelector('.answer-area'); if (!area) return;
+    var W = area.clientWidth, H = area.clientHeight;
+    if (W < 40 || H < 40) return;
+    var NS = 'http://www.w3.org/2000/svg';
+    var svg = area.querySelector('.groove-ring');
+    if (!svg) {
+      svg = document.createElementNS(NS, 'svg'); svg.setAttribute('class', 'groove-ring');
+      svg.setAttribute('preserveAspectRatio', 'none');   // fill the frame exactly, never letterbox
+      ['gr-track', 'gr-fill gr-r', 'gr-fill gr-l'].forEach(function (cl) { var pp = document.createElementNS(NS, 'path'); pp.setAttribute('class', cl); pp.setAttribute('pathLength', '100'); svg.appendChild(pp); });
+      area.insertBefore(svg, area.firstChild);
+      // Redraw whenever the frame's size actually changes (flex settle, 16-bar, orientation) —
+      // render() alone fired too early (stale height → the ring stopped short of the edges).
+      if (typeof ResizeObserver !== 'undefined' && !area._grObs) {
+        area._grObs = new ResizeObserver(function () { updateGrooveRing(); });
+        area._grObs.observe(area);
+      }
+    }
+    var SW = 6, R = 18, t = SW / 2, cx = W / 2, g = Math.max(0, Math.min(100, S.groove));
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    var track = 'M' + (t + R) + ' ' + t + 'L' + (W - t - R) + ' ' + t + 'A' + R + ' ' + R + ' 0 0 1 ' + (W - t) + ' ' + (t + R) + 'L' + (W - t) + ' ' + (H - t - R) + 'A' + R + ' ' + R + ' 0 0 1 ' + (W - t - R) + ' ' + (H - t) + 'L' + (t + R) + ' ' + (H - t) + 'A' + R + ' ' + R + ' 0 0 1 ' + t + ' ' + (H - t - R) + 'L' + t + ' ' + (t + R) + 'A' + R + ' ' + R + ' 0 0 1 ' + (t + R) + ' ' + t + 'Z';
+    var rp = 'M' + cx + ' ' + t + 'L' + (W - t - R) + ' ' + t + 'A' + R + ' ' + R + ' 0 0 1 ' + (W - t) + ' ' + (t + R) + 'L' + (W - t) + ' ' + (H - t - R) + 'A' + R + ' ' + R + ' 0 0 1 ' + (W - t - R) + ' ' + (H - t) + 'L' + cx + ' ' + (H - t);
+    var lp = 'M' + cx + ' ' + t + 'L' + (t + R) + ' ' + t + 'A' + R + ' ' + R + ' 0 0 0 ' + t + ' ' + (t + R) + 'L' + t + ' ' + (H - t - R) + 'A' + R + ' ' + R + ' 0 0 0 ' + (t + R) + ' ' + (H - t) + 'L' + cx + ' ' + (H - t);
+    svg.querySelector('.gr-track').setAttribute('d', track);
+    var col = 'hsl(' + Math.round(g * 1.3) + ',68%,44%)';
+    var pr = svg.querySelector('.gr-r'), pl = svg.querySelector('.gr-l');
+    pr.setAttribute('d', rp); pl.setAttribute('d', lp);
+    [pr, pl].forEach(function (p) { p.style.strokeDasharray = g + ' ' + (100 - g); p.style.stroke = col; });
+  }
+  try { window.addEventListener('resize', function () { updateGrooveRing(); }); } catch (e) {}
+
   function render() {
     var f = document.getElementById('soloGrooveFill');
     if (f) { f.style.width = S.groove + '%'; f.style.background = S.groove > 50 ? 'var(--groove-ok,#19e07a)' : S.groove > 25 ? 'var(--groove-warn,#ffd24a)' : 'var(--groove-low,#ff5a4d)'; }
     var p = document.getElementById('soloGroovePct'); if (p) p.textContent = S.groove + '%';
+    // Option E (tiles/casual): GROOVE is the answer's border. Colour it by level and put a
+    // small disc-labelled badge on the answer's lower-left so the glowing frame is legible.
+    if (document.body.classList.contains('tiles-skin')) {
+      // CONTINUOUS colour so the groove visibly MOVES at every value (banded thresholds made
+      // 60% look identical to 100%). hue 130=green at 100% → 0=red at 0%.
+      var gg = Math.max(0, Math.min(100, S.groove));
+      var hue = Math.round(gg * 1.3);
+      var gcol = 'hsl(' + hue + ',68%,44%)';
+      var gglow = 'hsla(' + hue + ',68%,50%,.32)';
+      try { document.body.style.setProperty('--groove-col', gcol); document.body.style.setProperty('--groove-glow', gglow); } catch (e) {}
+      updateGrooveRing();   // the depleting progress ring around the frame
+      // The groove FRAME is the whole answer AREA (not the small measures box). Dock the
+      // level pips (top-left) + score/streak (top-right) onto the frame edge, and the
+      // disc-labelled groove badge onto its lower-left — matching the Option-E mockup.
+      var area = document.querySelector('.answer-area');
+      if (area) {
+        var badge = area.querySelector('.groove-badge');
+        if (!badge) { badge = document.createElement('div'); badge.className = 'groove-badge'; area.appendChild(badge); }
+        badge.innerHTML = IC.disc + 'GROOVE ' + S.groove + '%';
+        var mast = document.getElementById('soloMastery');
+        if (mast && mast.parentNode !== area) { mast.classList.add('frame-tab', 'frame-tab-left'); area.appendChild(mast); }
+        var qs = document.getElementById('soloQuickStats');
+        if (qs && qs.parentNode !== area) { qs.classList.add('frame-tab', 'frame-tab-right'); area.appendChild(qs); }
+        var sub = document.getElementById('soloSubmit');
+        if (sub && sub.parentNode !== area) { sub.classList.add('frame-submit'); area.appendChild(sub); }
+        // Next + Tap-back also dock onto the frame's bottom edge (they were floating behind the
+        // answer). Their display is engine-controlled, so they only appear when it's time to move on.
+        var nxt = document.getElementById('soloNext');
+        if (nxt && nxt.parentNode !== area) { nxt.classList.add('frame-next'); area.appendChild(nxt); }
+        var tb = document.getElementById('soloTapBack');
+        if (tb && tb.parentNode !== area) { tb.classList.add('frame-tapback'); area.appendChild(tb); }
+      }
+    }
     var sc = document.getElementById('soloScore'); if (sc) sc.textContent = S.score;
     var st = document.getElementById('soloStreak'); if (st) st.textContent = S.streak;
     var bn = document.getElementById('soloBonus'); if (bn) bn.textContent = S.bonus;
+    var scQ = document.getElementById('soloScoreQ'); if (scQ) scQ.textContent = S.score;
+    var stQ = document.getElementById('soloStreakQ'); if (stQ) stQ.textContent = S.streak;
     renderMastery();
   }
 
@@ -2275,8 +3164,28 @@
     if (!(S.guided && GUIDE.avail())) { wrap.style.display = 'none'; return; }
     var mv = GUIDE.masteryView(); if (!mv) { wrap.style.display = 'none'; return; }
     wrap.style.display = '';
-    var chap = document.getElementById('smChap'); if (chap) chap.textContent = 'Ch ' + mv.hallChapter + ' · ' + (mv.idx + 1) + '/' + mv.count;
+    var chap = document.getElementById('smChap');
+    if (chap) chap.textContent = document.body.classList.contains('tiles-skin')
+      ? ('LEVEL ' + (mv.idx + 1))                                  // casual: a simple level number
+      : ('Ch ' + mv.hallChapter + ' · ' + (mv.idx + 1) + '/' + mv.count);
     var title = document.getElementById('smTitle'); if (title) title.textContent = mv.title;
+    // PIPS — progress THROUGH the level via the RAMP (2→4→8 bars → mastered). This resets to
+    // the first step each level, so a fresh level = first pip amber, rest hollow (MelodyQuest
+    // journey style). NOT the mastery score — that's seeded high by the intake, which wrongly
+    // lit every pip green at Level 1. done=solid, current=amber, upcoming=hollow ring.
+    var pips = document.getElementById('soloPips');
+    if (pips) {
+      var N = 4;                                                   // 2-bar · 4-bar · 8-bar · mastered
+      var rampIdx = S.ramp <= 2 ? 0 : S.ramp <= 4 ? 1 : 2;         // which ramp step you're on
+      var done = mv.mastered ? N : rampIdx;                        // steps already cleared (green)
+      var active = mv.mastered ? -1 : rampIdx;                     // the step you're on (amber)
+      var ph = '';
+      for (var pi = 0; pi < N; pi++) {
+        var pc = pi < done ? 'is-done' : (pi === active ? 'is-active' : 'is-upcoming');
+        ph += '<span class="solo-pip ' + pc + '"></span>';
+      }
+      pips.innerHTML = ph;
+    }
     var fill = document.getElementById('smFill');
     if (fill) {
       fill.style.width = mv.score + '%';
@@ -2293,7 +3202,9 @@
     if (ramp) {
       ramp.textContent = mv.mastered
         ? 'Passed — replaying for practice'
-        : ('Capstone ramp: ' + S.measures + ' bars' + (GUIDE.atCapstone() ? ' · pass a clean 8-bar example to advance' : ' → climb to 8'));
+        : (GUIDE.atCapstone()
+            ? ('Reach Proficient (' + mv.score + '/80) with clean 8-bar runs' + (S.mode === 'tapping' ? ' — both hands — to master' : ' to master'))
+            : ('Capstone ramp: ' + S.measures + ' bars → climb to 8'));
     }
   }
 
@@ -2734,7 +3645,7 @@
     function proceed() {
       if (T.decision && T.decision.mode === 'quick') GUIDE.markQuickShown();
       teardown();
-      msg(S.mode === 'tapping' ? 'Press Start metronome, then tap the rhythm.' : 'Press ▶ Play rhythm to hear it.');
+      msg(S.mode === 'tapping' ? 'Press Start metronome, then tap the rhythm.' : '');
     }
     // SKIP → straight to the level; remember the skip (quick) so it isn't re-shown.
     function skip() {
@@ -2756,6 +3667,39 @@
       '#soloHud .solo-stat>span{opacity:.7;font-weight:700}' +
       '#soloHud .solo-stat b{font-size:1.05rem}' +
       '#soloHud .solo-stat.groove{flex:1;min-width:200px}' +
+      // Compact score/streak: hidden by default (desktop shows the full .solo-stats
+      // row already); the touch breakpoint in each page's own stylesheet reveals it.
+      '#soloHud .solo-quickstats{display:none;gap:12px;flex:0 0 auto}' +
+      '#soloHud .solo-quickstats .qs-item{display:flex;align-items:center;gap:4px}' +
+      '#soloHud .solo-quickstats .qs-item b{font-size:1.05rem;font-weight:800;line-height:1}' +
+      '#soloHud .solo-quickstats .qs-item small{font-size:.55rem;opacity:.6;letter-spacing:.06em;font-weight:700}' +
+      '#soloHud .solo-quickstats .qs-streak .ic{width:.9em;height:.9em;margin:0}' +
+      // Groove label gets the vinyl-disc icon so the meter is instantly recognizable.
+      '#soloHud .solo-stat.groove>span{display:inline-flex;align-items:center;gap:5px}' +
+      '#soloHud .solo-stat.groove>span .ic{width:1.05em;height:1.05em;margin:0;opacity:.9}' +
+      // Floating +/- score & groove pops (the "juice").
+      '.delta-pop{position:fixed;z-index:100000;transform:translate(-50%,0);font-weight:900;font-size:1.15rem;pointer-events:none;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.35);animation:deltaPop 1.02s cubic-bezier(.2,.7,.3,1) forwards}' +
+      '.delta-good{color:#1fbf6b}.delta-bad{color:#ff5b5b}' +
+      // Count-in flash: big center word per beat (READY · GO). GO turns green.
+      '.count-flash{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:9000;pointer-events:none;font-weight:900;font-size:22vh;letter-spacing:.02em;color:#5b6ee1;text-shadow:0 6px 24px rgba(0,0,0,.12)}' +
+      '.count-flash.show{display:flex}.count-flash.is-go{color:#22b083}' +
+      '.count-flash.pop{animation:countPop .3s ease-out}' +
+      '@keyframes countPop{0%{transform:scale(.55);opacity:0}45%{transform:scale(1.08);opacity:1}100%{transform:scale(1);opacity:.95}}' +
+      // TAP-ALONG overlay (first-listen "feel the beat"): pips light on each beat, tap anywhere.
+      // TAP-ALONG: one big dot UNDER each measure; the current measure lights on the beat.
+      '.tapalong-ov{position:absolute;inset:0;display:none;z-index:30;background:rgba(91,110,225,.05);border-radius:14px;-webkit-tap-highlight-color:transparent}' +
+      '.tapalong-ov.show{display:block}' +
+      '.tapalong-ov .ta-panel{position:absolute;left:50%;bottom:16%;transform:translateX(-50%);text-align:center;background:rgba(255,255,255,.94);border-radius:14px;padding:12px 22px;box-shadow:0 4px 16px rgba(90,110,170,.18);max-width:78%}' +
+      '.tapalong-ov .ta-head{font-size:1.35rem;font-weight:900;color:#5b6ee1;letter-spacing:.05em}' +
+      '.tapalong-ov .ta-msg{font-size:.92rem;color:#4a5170;font-weight:700;margin-top:4px;line-height:1.35}' +
+      '.tapalong-ov .ta-dot{position:absolute;width:48px;height:48px;border-radius:50%;border:4px solid #8aa0e8;background:#eef2ff;box-sizing:border-box;transform:translate(-50%,0);cursor:pointer;transition:transform .1s,background .1s,box-shadow .1s,border-color .1s;animation:taIdle 1.2s ease-in-out infinite}' +
+      '@keyframes taIdle{50%{box-shadow:0 0 0 6px rgba(91,110,225,.12)}}' +
+      '.tapalong-ov .ta-dot.lit{background:#22b083;border-color:#22b083;transform:translate(-50%,0) scale(1.28);box-shadow:0 0 0 8px rgba(34,176,131,.2)}' +
+      '.tapalong-ov .ta-dot.tap{background:#5b6ee1;border-color:#5b6ee1;transform:translate(-50%,0) scale(1.15)}' +
+      // Hint groove-cost badge ("−N ◎") on each hint button.
+      '.solo-hints .hint .hint-cost{margin-left:7px;font-size:.74em;font-weight:800;opacity:.75;color:#ff7a7a;display:inline-flex;align-items:center;gap:2px}' +
+      '.solo-hints .hint .hint-cost .ic{width:.9em;height:.9em;margin:0;stroke:#ff7a7a}' +
+      '@keyframes deltaPop{0%{opacity:0;transform:translate(-50%,8px) scale(.7)}18%{opacity:1;transform:translate(-50%,-2px) scale(1.12)}100%{opacity:0;transform:translate(-50%,-42px) scale(1)}}' +
       '#soloHud .solo-bar{flex:1;max-width:240px;height:10px;border-radius:6px;background:rgba(255,255,255,.15);overflow:hidden}' +
       '#soloHud .solo-bar i{display:block;height:100%;width:100%;background:#19e07a;transition:width .35s,background .35s}' +
       '#soloHud .solo-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}' +
@@ -2788,6 +3732,11 @@
       /* ---- GUIDED mastery meter (per-theme; NO emoji) ---- */
       '.solo-mastery{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:2px 0 10px;padding:9px 12px;border-radius:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)}' +
       '.solo-mastery .sm-level{display:flex;flex-direction:column;min-width:140px}' +
+      '.sm-pips{display:none;align-items:center;gap:7px}' +   // shown in casual (replaces the meter bar)
+      '.solo-pip{width:11px;height:11px;border-radius:999px;box-sizing:border-box}' +
+      '.solo-pip.is-upcoming{border:2px solid currentColor;opacity:.35}' +
+      '.solo-pip.is-done{background:#22b083}' +
+      '.solo-pip.is-active{background:#ffc23f;box-shadow:0 0 0 3px rgba(255,194,63,.3)}' +
       '.solo-mastery .sm-chap{font-size:.62rem;letter-spacing:.12em;opacity:.6;font-weight:800}' +
       '.solo-mastery .sm-title{font-size:.92rem;font-weight:700}' +
       '.solo-mastery .sm-meterwrap{display:flex;align-items:center;gap:10px;flex:1;min-width:200px}' +
@@ -2803,6 +3752,17 @@
       '.beat-drop-zone.solo-wrong{outline:2px solid #ff5a4d;outline-offset:-2px;background:rgba(255,90,77,.13)!important}' +
       '.beat-drop-zone.solo-right{background:rgba(25,224,122,.16)!important}' +
       '.beat-drop-zone.solo-beat-on{background:rgba(33,150,243,.22)!important;box-shadow:inset 0 0 0 2px rgba(33,150,243,.7)}' +
+      /* ---- key binding buttons in settings ---- */
+      '.keybind-btn{font-family:system-ui,monospace;font-size:.82rem;font-weight:800;min-width:2.4em;padding:4px 8px;border-radius:6px;border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;letter-spacing:.03em;text-transform:uppercase;transition:.12s;line-height:1}' +
+      '.keybind-btn:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.55)}' +
+      '.keybind-btn.capturing{background:rgba(255,200,60,.18);border-color:#ffc83c;color:#ffc83c;animation:kbPulse 0.7s ease-in-out infinite}' +
+      '@keyframes kbPulse{0%,100%{opacity:1}50%{opacity:.55}}' +
+      /* ---- quiet-mode beat flash bar ---- */
+      '#beatFlash{position:fixed;top:0;left:0;right:0;height:5px;z-index:99999;pointer-events:none;background:transparent}' +
+      '@keyframes bfAccent{0%{opacity:1;background:var(--tb-accent,#7c5cff);box-shadow:0 0 18px 4px var(--tb-accent,#7c5cff)}100%{opacity:0;background:var(--tb-accent,#7c5cff)}}' +
+      '@keyframes bfBeat{0%{opacity:.65;background:rgba(255,255,255,.75)}100%{opacity:0;background:rgba(255,255,255,.75)}}' +
+      '#beatFlash.bf-accent{animation:bfAccent .28s ease-out forwards}' +
+      '#beatFlash.bf-beat{animation:bfBeat .22s ease-out forwards}' +
       // Tap-it-back entry button (sits in the actions bar next to Submit/Next).
       // Per-theme color comes from suite-theme.css; this is the neutral default.
       '#soloTapBack{display:inline-flex;align-items:center;justify-content:center;font-family:inherit;font-weight:700;font-size:.85rem;border:none;border-radius:10px;padding:11px 16px;min-height:42px;cursor:pointer;background:#7c5cff;color:#fff;transition:.12s}' +
@@ -2819,6 +3779,13 @@
       // The rhythm is SHOWN, not edited, in tapping mode — drop the per-note remove
       // buttons so the staff reads as a clean piece of notation to perform.
       'body.tapping-mode .remove-btn{display:none!important}' +
+      // Kill the pale-green "cell has a note" wash in tapping mode. That tint is a
+      // placement affordance for DICTATION (distinguishes filled vs empty beats as
+      // you build an answer); in tapping the rhythm is ALWAYS fully revealed, so
+      // every cell is .filled and the green just becomes a uniform wash behind the
+      // whole staff — noise that cheapens the clean "real notation" look. Dictation
+      // keeps it (not tapping-mode). Higher specificity than the base .filled rule.
+      'body.tapping-mode .beat-drop-zone.filled,body.tapping-mode .beat-drop-zone.continuation{background:transparent!important}' +
       /* ---- full-screen tap-it-back overlay (mobile-first, dark) ---- */
       '.tapback-ov{position:fixed;inset:0;z-index:10000;display:none;align-items:stretch;justify-content:center;background:rgba(8,8,14,.92);backdrop-filter:blur(6px);color:#eef1fb;font-family:system-ui,sans-serif;-webkit-tap-highlight-color:transparent}' +
       '.tapback-ov.show{display:flex}' +
@@ -2900,10 +3867,91 @@
       '.tb-mstat .ic{margin:0;width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}' +
       '.tb-pass .tb-mstat{color:#19e07a}.tb-fail .tb-mstat{color:#ff7a6e}' +
       '.tb-mnote{opacity:.7;font-size:.78rem;flex:1}' +
-      '.tb-rbtns{display:flex;gap:12px;justify-content:center;margin-top:6px}' +
+      // Sticky footer: on short screens the results (score + bar list) can be taller
+      // than the viewport. Instead of requiring the player to find a scrollbar to
+      // reach Try again/Next, pin the button row to the bottom of whichever ancestor
+      // actually scrolls (.tb-results in the modal, .game-area.active inline) so it's
+      // visible the INSTANT results render, while the score/bars still scroll above it.
+      '.tb-rbtns{display:flex;gap:12px;justify-content:center;margin-top:6px;' +
+        'position:sticky;bottom:0;left:0;right:0;padding:10px 0 2px;background:rgba(10,10,16,.96);z-index:2}' +
       '.tb-rbtns button{display:inline-flex;align-items:center;justify-content:center;font-family:inherit;font-weight:700;font-size:.9rem;border:none;border-radius:10px;padding:12px 20px;min-height:46px;cursor:pointer;background:rgba(255,255,255,.1);color:#fff}' +
       '.tb-rbtns button .ic{margin-right:7px;width:1.05em;height:1.05em;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}' +
       '.tb-rbtns button.go{background:var(--tb-accent,#7c5cff);color:#fff}' +
+      // "2x bonus" marker on the results bonus stat when the exit-nudge boost paid off
+      '.tb-acc.tb-bonus-2x{box-shadow:inset 0 0 0 2px var(--tb-accent,#7c5cff)}' +
+      '.tb-acc .tb-2x{font-size:.7em;font-style:normal;font-weight:800;margin-left:3px;vertical-align:super;color:var(--tb-accent,#7c5cff)}' +
+      // "Done for now" graceful-exit link under the results buttons (subtle, not a CTA)
+      '.tb-exit-link{display:flex;align-items:center;justify-content:center;gap:6px;margin:10px auto 0;background:none;border:none;color:#cfd3e0;font-family:inherit;font-weight:600;font-size:.82rem;opacity:.7;cursor:pointer}' +
+      '.tb-exit-link:hover{opacity:1}' +
+      '.tb-exit-link .ic{width:1em;height:1em;margin:0;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}' +
+      // ===== EXIT MOTIVATION NUDGE (reuses .tapback-ov dark surface; theme accent) =====
+      '.exit-nudge{align-items:center;justify-content:center}' +
+      '.exit-card{max-width:380px;text-align:center;padding:24px 22px calc(env(safe-area-inset-bottom,0px) + 22px)}' +
+      '.exit-head{display:flex;align-items:center;justify-content:center;gap:8px;font-size:1.5rem;font-weight:900;color:var(--tb-accent,#7c5cff);margin-bottom:8px}' +
+      '.exit-head .ic{width:1.1em;height:1.1em;margin:0}' +
+      '.exit-head .ic-fill{fill:var(--tb-accent,#7c5cff);stroke:none}' +
+      '.exit-sub{font-size:1rem;line-height:1.5;opacity:.9;margin-bottom:20px}' +
+      '.exit-sub b{color:var(--tb-accent,#7c5cff)}' +
+      '.exit-btns{display:flex;flex-direction:column;gap:10px}' +
+      '.exit-btns .teach-go{font-size:1rem}' +
+      // ===== WIN / LOSE end screens (Game Over + Level Complete), share exit-card look =====
+      '.tapback-ov.solo-end{align-items:center!important}' +   // centre the card vertically + horizontally
+      '.end-card{max-width:440px;margin:auto;text-align:center;padding:26px 24px calc(env(safe-area-inset-bottom,0px) + 24px)}' +
+      '.end-head{display:flex;align-items:center;justify-content:center;gap:10px;font-size:1.7rem;font-weight:900;margin-bottom:8px}' +
+      '.end-head .ic{width:1.35em;height:1.35em;margin:0;stroke-width:2.4}' +
+      '.end-head-win .ic{padding:6px;border-radius:50%;background:rgba(34,176,131,.16);box-sizing:content-box;width:1.1em;height:1.1em}' +   // check in a celebratory badge
+      '.end-head-win{color:var(--tb-accent,#22b083)}.end-head-win .ic{stroke:var(--tb-accent,#22b083)}' +
+      '.end-head-over{color:#ff7a7a}.end-head-over .ic{stroke:#ff7a7a}.end-head-over .ic-fill{fill:#ff7a7a;stroke:none}' +
+      '.end-sub{font-size:1rem;line-height:1.5;opacity:.9;margin-bottom:14px}' +
+      '.end-sub b{color:var(--tb-accent,#22b083)}' +
+      '.end-score{font-size:1.05rem;margin-bottom:20px;opacity:.95}.end-score b{font-size:1.4rem;font-weight:900;color:var(--tb-accent,#22b083)}' +
+      '.end-btns{display:flex;flex-direction:column;gap:12px}' +
+      '.end-btns .teach-btn{font-size:1rem}' +
+      // menacing dare button: deep ember gradient, dark glow, restless pulse, stacked subtitle
+      '.end-killer{flex-direction:column!important;gap:2px!important;background:linear-gradient(160deg,#ff5f4a,#c1121f 70%,#7a0b16)!important;color:#fff!important;border:none!important;box-shadow:0 0 0 1px rgba(0,0,0,.25),0 8px 22px rgba(150,20,30,.5)!important;letter-spacing:.06em;animation:killerPulse 1.5s ease-in-out infinite}' +
+      '.end-killer small{font-size:.66rem;font-weight:700;opacity:.9;letter-spacing:.08em;text-transform:uppercase}' +
+      '.end-killer .ic-fill{fill:#ffe08a;stroke:none}' +
+      '@keyframes killerPulse{0%,100%{box-shadow:0 0 0 1px rgba(0,0,0,.25),0 8px 20px rgba(150,20,30,.45)}50%{box-shadow:0 0 0 1px rgba(0,0,0,.25),0 10px 34px rgba(220,40,40,.8)}}' +
+      '.end-leave{background:transparent!important;opacity:.8}' +
+      '.exit-btns .teach-go .ic-fill{fill:currentColor;stroke:none;width:1.1em;height:1.1em}' +
+      '.exit-leave{background:rgba(255,255,255,.1);color:#cfd3e0;font-weight:600}' +
+      '.exit-leave:hover{background:rgba(255,255,255,.18);color:#fff}' +
+      // ===== CELEBRATION (clean-pass win moment) — confetti + praise + Tock (kids) =====
+      '.tb-celebrate{position:relative;text-align:center;padding:4px 0 8px;margin-bottom:4px}' +
+      '.tb-celebrate-head{font-size:1.5rem;font-weight:900;color:var(--tb-accent,#7c5cff);letter-spacing:.01em;animation:tbPop .5s ease-out;position:relative;z-index:2}' +
+      '.tb-celebrate-kids .tb-celebrate-head{color:#ff8c42}' +
+      // Tock mascot (kids only) — bounces, pendulum ticks
+      '.tb-tock{width:96px;height:106px;margin:0 auto -6px;display:block;animation:tockBounce 1.2s ease-in-out infinite;position:relative;z-index:2}' +
+      '.tb-tock .tock{width:100%;height:100%;display:block;overflow:visible}' +
+      '.tb-tock .tock-pend{transform-origin:100px 46px;animation:tockTick .5s ease-in-out infinite alternate}' +
+      '@keyframes tockBounce{0%,100%{transform:translateY(0)}30%{transform:translateY(-11px)}55%{transform:translateY(2px)}}' +
+      '@keyframes tockTick{from{transform:rotate(-15deg)}to{transform:rotate(15deg)}}' +
+      // confetti burst across the top of the celebration
+      '.tb-confetti{position:absolute;left:0;right:0;top:-6px;height:96px;pointer-events:none;overflow:hidden;z-index:1}' +
+      '.tb-confetti-bit{position:absolute;top:-14px;width:9px;height:14px;border-radius:2px;opacity:0;animation:tbConfetti 1.1s ease-in forwards}' +
+      '@keyframes tbConfetti{0%{opacity:0;transform:translateY(-12px) rotate(0)}15%{opacity:1}100%{opacity:0;transform:translateY(94px) rotate(240deg)}}' +
+      // Level-Complete celebration: rain the confetti over the WHOLE screen, not just the card top.
+      '.solo-end .tb-confetti{position:fixed!important;left:0;right:0;top:0;height:100vh;overflow:visible;z-index:0}' +
+      '.solo-end .tb-confetti-bit{width:10px;height:16px;animation:tbConfettiFull 1.9s ease-in forwards}' +
+      '@keyframes tbConfettiFull{0%{opacity:0;transform:translateY(-24px) rotate(0)}8%{opacity:1}100%{opacity:0;transform:translateY(82vh) rotate(400deg)}}' +
+      // ===== EVER-PRESENT KIDS MASCOT (Tock) — kids theme only, never blocks taps =====
+      // Docked into the HUD top-left (the ONE spot that never overlaps the staff or the
+      // big tap bricks — the bricks fill the bottom, so a floating corner mascot always
+      // collides). A reserved gutter (padding on the mastery row) keeps him clear of the
+      // level text; during performance the mastery row is hidden so he sits in empty HUD.
+      '#kidsTock{display:none}' +
+      'body.theme-kids #kidsTock{display:block;position:fixed;top:calc(env(safe-area-inset-top,0px) + 4px);left:12px;width:62px;height:70px;z-index:61;pointer-events:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.2));animation:tockBob 3.2s ease-in-out infinite}' +
+      'body.theme-kids #soloMastery{padding-left:60px}' +
+      '#kidsTock .tock{width:100%;height:100%;display:block;overflow:visible}' +
+      '#kidsTock .tock-pend{transform-origin:100px 46px;transition:transform .18s ease-out;animation:tockSway 1.6s ease-in-out infinite alternate}' +
+      // when the beat is driving him, the JS toggles .tock-tick-l/.tock-tick-r and we stop the idle sway
+      '#kidsTock.tock-beat .tock-pend{animation:none}' +
+      '#kidsTock.tock-beat.tock-tick-l .tock-pend{transform:rotate(-16deg)}' +
+      '#kidsTock.tock-beat.tock-tick-r .tock-pend{transform:rotate(16deg)}' +
+      '@keyframes tockBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}' +
+      '@keyframes tockSway{from{transform:rotate(-13deg)}to{transform:rotate(13deg)}}' +
+      // landscape phone: smaller so he tucks neatly into the slim HUD-left
+      '@media (pointer:coarse) and (max-height:500px){body.theme-kids #kidsTock{width:46px;height:52px;left:8px}body.theme-kids #soloMastery{padding-left:44px}}' +
       // landscape phones: keep zones big & side-by-side, shrink chrome
       '@media (orientation:landscape) and (max-height:560px){.tb-instruct{min-height:1.8em;font-size:.9rem}.tb-title{font-size:1.05rem}.tb-zone .tb-zlabel{font-size:1.3rem}}' +
       /* ===== iPHONE DECLUTTER — gated to the app's phone breakpoint so iPad and
@@ -3040,8 +4088,54 @@
       '.teach-go:disabled{opacity:.4;cursor:default;transform:none;filter:none}' +
       // moving beat guide on the teach mini-staff (same blue as the main beat guide)
       '.teach-staff .teach-cell.solo-beat-on{background:rgba(33,150,243,.18)!important;box-shadow:inset 0 0 0 2px rgba(33,150,243,.7);border-radius:4px}' +
-      '@media (max-width:480px){.teach-title{font-size:1.2rem}.teach-card{padding-left:12px;padding-right:12px}.teach-pad{height:104px}}';
+      '@media (max-width:480px){.teach-title{font-size:1.2rem}.teach-card{padding-left:12px;padding-right:12px}.teach-pad{height:104px}}' +
+      /* ===== LANDSCAPE PHONE: the teach card was sized for a tall portrait phone
+         (max-width:620px, generous padding/fonts) and never adapted for a short,
+         wide landscape screen -- on landscape it either needed heavy scrolling to
+         reach Skip/Got it, or just looked like a cramped portrait card stranded in
+         a wide viewport. Same fix family as the tap-back modal's landscape block
+         above: widen the card to use the actual available width instead of capping
+         at a portrait-sized max-width, shrink vertical rhythm everywhere, and pin
+         the footer buttons with position:sticky (proven pattern from .tb-rbtns)
+         so they're reachable without hunting for a scrollbar. */
+      '@media (pointer:coarse) and (max-height:500px){' +
+        '.teach-card{max-width:94vw;padding-top:6px!important}' +
+        '.teach-head{margin:0 26px 4px 4px}' +   // right margin clears the close button
+        '.teach-chap{font-size:.56rem;margin-bottom:2px}' +
+        '.teach-title{font-size:1.05rem;line-height:1.1}' +
+        '.teach-new{font-size:.78rem;margin-top:3px;line-height:1.3}' +
+        '.teach-body{gap:6px}' +
+        '.teach-stage{font-size:.62rem}' +
+        '.teach-figs{gap:2px}' +
+        '.teach-figs li{font-size:.74rem;padding-left:14px}' +
+        '.teach-syll{font-size:.78rem;padding:6px 10px;line-height:1.3}' +
+        '.teach-staff{max-height:92px!important}' +
+        '.teach-tip{font-size:.76rem;padding:7px 10px;line-height:1.3}' +
+        '.teach-tip-label{font-size:.54rem;margin-bottom:2px}' +
+        '.teach-pad{height:68px}' +
+        '.teach-pad-hint{font-size:.78rem}' +
+        '.teach-pad-co{font-size:2.2rem}' +
+        '.teach-pad-msg{font-size:.7rem;min-height:1em}' +
+        '.teach-foot{' +
+          'position:sticky;bottom:0;margin-top:6px;padding:8px 0 2px;' +
+          'background:rgba(10,10,16,.96);border-top:1px solid rgba(255,255,255,.12)' +
+        '}' +
+        '.teach-btn{padding:9px 14px;min-height:38px;font-size:.8rem}' +
+      '}';
     document.head.appendChild(st);
+    // Beat flash bar — always in the DOM; only animates when S.quiet is on.
+    if (!document.getElementById('beatFlash')) {
+      var bf = document.createElement('div'); bf.id = 'beatFlash';
+      document.body.appendChild(bf);
+    }
+    // Ever-present KIDS mascot (Tock). Always in the DOM; shown ONLY in the kids theme
+    // (CSS-gated). pointer-events:none so it never blocks a tap. His pendulum ticks in
+    // time with the beat (wired in the beat schedulers) — a functional visual metronome.
+    if (!document.getElementById('kidsTock')) {
+      var kt = document.createElement('div'); kt.id = 'kidsTock'; kt.setAttribute('aria-hidden', 'true');
+      kt.innerHTML = TOCK.idle;
+      document.body.appendChild(kt);
+    }
   }
 
   // Populate the LEVEL dropdown.
@@ -3110,8 +4204,10 @@
       '<div class="solo-stats">' +
         '<div class="solo-stat solo-modesel"><span>PATH</span><select id="soloPath"><option value="guided">Guided</option><option value="free">Free play</option></select></div>' +
         '<div class="solo-stat solo-metersel"><span>METER</span><select id="soloMeter">' + meterOpts + '</select></div>' +
-        '<div class="solo-stat"><span>LEVEL</span><select id="soloLevel"></select></div>' +
+        '<div class="solo-stat solo-levelsel"><span>LEVEL</span><select id="soloLevel"></select></div>' +
         '<div class="solo-stat solo-barsel"><span>BARS</span><select id="soloBars"><option value="2">2</option><option value="4">4</option><option value="8">8</option><option value="16">16</option></select></div>' +
+        '<div class="solo-stat solo-keybind"><span>BEAT KEY</span><button class="keybind-btn" id="keyBeatBtn" title="Click to rebind"></button></div>' +
+        '<div class="solo-stat solo-keybind"><span>RHYTHM KEY</span><button class="keybind-btn" id="keyRhythmBtn" title="Click to rebind"></button></div>' +
         '<div class="solo-stat"><span>SCORE</span><b id="soloScore">0</b></div>' +
         '<div class="solo-stat"><span>STREAK</span><b id="soloStreak">0</b>' + IC.flame + '</div>' +
         '<div class="solo-stat"><span>BONUS</span><b id="soloBonus">0</b></div>' +
@@ -3120,6 +4216,10 @@
       // (NO emoji). Hidden in free play. Populated by render() via GUIDE.masteryView().
       '<div id="soloMastery" class="solo-mastery" style="display:none">' +
         '<div class="sm-level"><span class="sm-chap" id="smChap"></span><span class="sm-title" id="smTitle"></span></div>' +
+        // Level-progress PIPS (casual): circles that fill as you near passing the level —
+        // out of the way, no second bar (MelodyQuest pattern). Hidden by default; casual
+        // shows them and hides the meter bar. Populated by renderMastery.
+        '<div class="sm-pips" id="soloPips"></div>' +
         '<div class="sm-meterwrap"><div class="sm-meter"><i id="smFill"></i>' +
           // band threshold ticks at 50 / 80 / 95 (Familiar / Proficient / Mastered)
           '<u class="sm-tick" style="left:50%"></u><u class="sm-tick" style="left:80%"></u><u class="sm-tick" style="left:95%"></u>' +
@@ -3127,36 +4227,58 @@
         '<div class="sm-ramp" id="smRamp"></div>' +
       '</div>' +
       '<div class="solo-actions">' +
-        '<button id="soloPlay" class="primary play">' + IC.play + 'Play rhythm</button>' +
+        '<button id="soloPlay" class="primary play">' + IC.play + 'Play</button>' +
         // Everyday controls live IN the bar next to Play (on desktop too):
         '<div class="solo-stat bar-item"><span>SPEED</span><select id="soloSpeed"><option value="slow">Slow</option><option value="medium">Medium</option><option value="fast">Fast</option></select></div>' +
         '<button id="soloMetro" class="toggle">' + IC.metro + 'Metronome</button>' +
         '<button id="soloGuide" class="toggle">' + IC.guide + 'Beat guide</button>' +
+        '<button id="soloMute" class="toggle" title="Quiet mode — replaces clicks with a visual beat flash">' + IC.mute + 'Quiet</button>' +
         '<button id="soloHintsToggle" class="toggle focus-only">' + IC.bulb + 'Hints</button>' +
         '<button id="soloSettingsToggle" class="toggle focus-only">' + IC.gear + 'Settings</button>' +
-        '<div class="solo-stat groove bar-item"><span>GROOVE</span><div class="solo-bar"><i id="soloGrooveFill"></i></div><b id="soloGroovePct">100%</b></div>' +
+        '<div class="solo-stat groove bar-item"><span>' + IC.disc + 'GROOVE</span><div class="solo-bar"><i id="soloGrooveFill"></i></div><b id="soloGroovePct">100%</b></div>' +
+        // Compact SCORE/STREAK — hidden by default (desktop already shows the full
+        // .solo-stats readout); the touch breakpoint reveals this instead, since
+        // .solo-stats itself collapses into the Settings dropdown there and score/
+        // streak would otherwise be buried under a menu tap. Sits directly before
+        // the theme icon so groove's flex:1 pushes BOTH of them together to the
+        // far right edge, theme icon last/outermost.
+        '<div class="solo-stat solo-quickstats" id="soloQuickStats" title="Score / streak">' +
+          '<div class="qs-item"><b id="soloScoreQ">0</b><small>SCORE</small></div>' +
+          '<div class="qs-item qs-streak"><b id="soloStreakQ">0</b>' + IC.flame + '<small>STREAK</small></div>' +
+        '</div>' +
         '<button id="soloThemeToggle" class="toggle focus-only icon-only" title="Theme" aria-label="Theme">' + IC.palette + '</button>' +
         '<span class="solo-hints"><span class="hints-label">HINTS</span>' +
-          '<button id="soloHintNarrow" class="hint">' + IC.filter + 'Narrow options</button>' +
-          '<button id="soloHearBeat" class="hint">' + IC.hear + 'Hear a beat</button>' +
-          '<button id="soloHintCount" class="hint">' + IC.count + 'Count sounds</button>' +
-          '<button id="soloHintBeats" class="hint">' + IC.search + 'Find mistakes</button>' +
+          '<button id="soloHintNarrow" class="hint">' + IC.filter + 'Narrow options' + hintCostBadge(GROOVE_HINT_NARROW) + '</button>' +
+          '<button id="soloHearBeat" class="hint">' + IC.hear + 'Hear a beat' + hintCostBadge(GROOVE_HINT_PLAY) + '</button>' +
+          '<button id="soloHintCount" class="hint">' + IC.count + 'Count sounds' + hintCostBadge(GROOVE_HINT_COUNT) + '</button>' +
+          '<button id="soloHintBeats" class="hint">' + IC.search + 'Find mistakes' + hintCostBadge(GROOVE_HINT_MISTAKES) + '</button>' +
           '<button id="soloReveal" class="hint">' + IC.eye + 'Show answer</button>' +
         '</span>' +
         '<label class="solo-toggle solo-cfg"><input type="checkbox" id="soloCorrect"> Fix-it mode</label>' +
       '</div>' +
       '<div id="soloMsg"></div>';
+    // Insert #soloHud as a DIRECT CHILD OF BODY, a sibling of #gameArea -- NOT
+    // nested inside it. On mobile both are position:fixed; #gameArea also has
+    // overflow-y:auto there, and WebKit has a long-documented bug (e.g.
+    // bugs.webkit.org #160953) where a position:fixed descendant of an ancestor
+    // that establishes its own overflow/stacking context gets incorrectly clipped
+    // -- correct layout geometry, but nothing paints. #beatFlash and the debug
+    // readout (appended straight to body) never hit this; #soloHud did because it
+    // was inserted inside #gameArea. Visually harmless: body is a flex column, so
+    // inserting HUD immediately before #gameArea keeps it in the same spot in both
+    // the desktop in-flow layout and the mobile fixed-bar layout.
     var ga = document.getElementById('gameArea');
-    var sb = ga ? ga.querySelector('.status-bar') : null;
-    if (sb) sb.insertAdjacentElement('afterend', hud); else if (ga) ga.insertBefore(hud, ga.firstChild);
+    if (ga && ga.parentNode) ga.parentNode.insertBefore(hud, ga); else document.body.appendChild(hud);
 
     // Submit / Next live in their own bar at the very bottom, under the bank.
+    // Same clipping risk as #soloHud above (also position:fixed on mobile) -- same
+    // fix: a body-level sibling of #gameArea, not a descendant of it.
     var actions = document.createElement('div'); actions.id = 'soloActions'; actions.className = 'solo-ctl';
     actions.innerHTML =
       '<button id="soloSubmit" class="primary go">' + IC.check + 'Submit answer</button>' +
       '<button id="soloTapBack" class="tapback" style="display:none">' + IC.tap + 'Tap it back<span class="tb-badge">' + TB_BONUS_HINT + '</span></button>' +
       '<button id="soloNext" class="go" style="display:none">' + IC.next + 'Next</button>';
-    if (ga) ga.appendChild(actions);
+    if (ga && ga.parentNode) ga.parentNode.insertBefore(actions, ga.nextSibling); else document.body.appendChild(actions);
 
     document.getElementById('soloPlay').onclick = playTarget;
     // Focus-layout dropdowns: Settings + Hints + Theme toggle their panels (one at a time).
@@ -3189,12 +4311,14 @@
       el.style.right = 'auto';
       el.style.top = Math.round(br.bottom + 6) + 'px';
     }
+    var _panelOpenedAt = 0;
     function togglePanel(cls, btn) {
       var on = !document.body.classList.contains(cls);
       document.body.classList.remove('settings-open', 'hints-open', 'theme-open');
       [stog, htog, ttog].forEach(function (x) { if (x) x.classList.remove('on'); });
       clearPanelPos();
       if (on) {
+        _panelOpenedAt = typeof performance !== 'undefined' ? performance.now() : 0;
         document.body.classList.add(cls); if (btn) btn.classList.add('on');
         var p = PANELS.filter(function (x) { return x.cls === cls; })[0];
         if (p) anchorPanel(p);
@@ -3209,11 +4333,12 @@
     if (stog) stog.onclick = function () { togglePanel('settings-open', stog); };
     if (htog) htog.onclick = function () { togglePanel('hints-open', htog); };
     if (ttog) ttog.onclick = function () { togglePanel('theme-open', ttog); };
-    // Click-outside-to-close: a tap anywhere that isn't an open panel or its toggle
-    // closes the dropdowns. Capture phase so it runs before per-control handlers,
-    // and we early-out when nothing is open so normal play is untouched.
+    // Click-outside-to-close. Guard: if a panel was opened < 250ms ago (same touch
+    // that opened it can trigger this handler on the next frame on mobile), bail out.
     document.addEventListener('pointerdown', function (e) {
       if (!anyPanelOpen()) return;
+      var now = typeof performance !== 'undefined' ? performance.now() : 0;
+      if (now - _panelOpenedAt < 250) return;
       var t = e.target;
       if (t.closest && (t.closest('#soloSettingsToggle') || t.closest('#soloHintsToggle') || t.closest('#soloThemeToggle'))) return; // toggles handle themselves
       for (var i = 0; i < PANELS.length; i++) {
@@ -3333,6 +4458,112 @@
       S.beatGuide = !S.beatGuide; gb.classList.toggle('on', S.beatGuide); save();
       if (!S.beatGuide && pulse.lastHl) { pulse.lastHl.classList.remove('solo-beat-on'); pulse.lastHl = null; }
     };
+    var qb = document.getElementById('soloMute');
+    if (qb) {
+      qb.classList.toggle('on', S.quiet);
+      qb.onclick = function () {
+        S.quiet = !S.quiet; qb.classList.toggle('on', S.quiet);
+        // swap icon so it's clear whether sound is silenced
+        qb.innerHTML = (S.quiet ? IC.mute : IC.sound) + 'Quiet';
+        if (!S.quiet) {
+          // clear any lingering flash when turning off
+          var fl = document.getElementById('beatFlash');
+          if (fl) fl.className = '';
+        }
+        save();
+      };
+      // Apply initial icon state
+      qb.innerHTML = (S.quiet ? IC.mute : IC.sound) + 'Quiet';
+    }
+
+    // ---- Keyboard tap shortcut: keyBeat + keyRhythm keys fire the tap zones ----
+    function keyLabel(k) { return k === ' ' ? 'Space' : k.toUpperCase(); }
+    function refreshKeyBtns() {
+      var bb = document.getElementById('keyBeatBtn'), rb = document.getElementById('keyRhythmBtn');
+      if (bb) bb.textContent = keyLabel(S.keyBeat);
+      if (rb) rb.textContent = keyLabel(S.keyRhythm);
+    }
+    refreshKeyBtns();
+
+    // Rebind: click a key button → it enters capture mode → next keydown sets the binding.
+    var capturing = null;   // 'beat' | 'rhythm' | null
+    function startCapture(which) {
+      capturing = which;
+      var bb = document.getElementById('keyBeatBtn'), rb = document.getElementById('keyRhythmBtn');
+      if (bb) bb.classList.toggle('capturing', which === 'beat');
+      if (rb) rb.classList.toggle('capturing', which === 'rhythm');
+      if (which === 'beat' && bb) bb.textContent = 'press key…';
+      if (which === 'rhythm' && rb) rb.textContent = 'press key…';
+    }
+    function endCapture() {
+      capturing = null;
+      var bb = document.getElementById('keyBeatBtn'), rb = document.getElementById('keyRhythmBtn');
+      if (bb) bb.classList.remove('capturing');
+      if (rb) rb.classList.remove('capturing');
+      refreshKeyBtns();
+    }
+    var bb2 = document.getElementById('keyBeatBtn'), rb2 = document.getElementById('keyRhythmBtn');
+    if (bb2) bb2.onclick = function (e) { e.stopPropagation(); startCapture(capturing === 'beat' ? null : 'beat'); if (capturing === null) endCapture(); };
+    if (rb2) rb2.onclick = function (e) { e.stopPropagation(); startCapture(capturing === 'rhythm' ? null : 'rhythm'); if (capturing === null) endCapture(); };
+
+    // Dedup timestamps for keyboard taps (mirrors bindZone's lastAt per zone).
+    var lastKeyAt = { beat: 0, rhythm: 0 };
+
+    // Global keydown: capture mode → rebind; normal mode → fire tap zone.
+    document.addEventListener('keydown', function (e) {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+      var k = e.key;
+      // Capture mode: next non-modifier key becomes the new binding.
+      if (capturing) {
+        if (k === 'Escape') { endCapture(); e.preventDefault(); return; }
+        if (k === 'Shift' || k === 'Control' || k === 'Alt' || k === 'Meta') return;
+        var norm = (k.length === 1) ? k.toLowerCase() : k;
+        if (capturing === 'beat') S.keyBeat = norm;
+        else S.keyRhythm = norm;
+        endCapture(); save(); e.preventDefault(); return;
+      }
+      // Normal mode: fire the matching tap zone directly (no synthetic event — zero latency).
+      if (!TB.open || !TB.metroOn) return;
+      if (e.repeat) return;
+      var kn = (k.length === 1) ? k.toLowerCase() : k;
+      var now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      if (kn === S.keyBeat) {
+        e.preventDefault();
+        if (now - lastKeyAt.beat < TAP_DEDUP_MS) return;
+        lastKeyAt.beat = now;
+        onBeatTap();
+        flashZone(document.getElementById('tbBeat'));
+      } else if (kn === S.keyRhythm) {
+        e.preventDefault();
+        if (now - lastKeyAt.rhythm < TAP_DEDUP_MS) return;
+        lastKeyAt.rhythm = now;
+        onRhythmTap();
+        flashZone(document.getElementById('tbRhythm'));
+      }
+    });
+    // keyup → relay to the rhythm zone for tap-and-hold grading (sustained notes).
+    document.addEventListener('keyup', function (e) {
+      if (capturing || !TB.open || !TB.metroOn) return;
+      var k = e.key;
+      var kn = (k.length === 1) ? k.toLowerCase() : k;
+      if (kn !== S.keyRhythm) return;
+      var z = document.getElementById('tbRhythm');
+      if (z) { var pe = new PointerEvent('pointerup', { bubbles: true, cancelable: true, isPrimary: true }); z.dispatchEvent(pe); }
+    });
+  }
+
+  // Kids theme = simplified guided-only mode. These helpers keep the guided path
+  // forced whenever that theme is active (on boot + on a live theme switch).
+  function kidsThemeActive() { return document.body.classList.contains('theme-kids'); }
+  function reconcileKidsMode() {
+    if (!kidsThemeActive()) return;               // only acts for the Kids theme
+    if (GUIDE.avail() && !S.guided) {             // switched INTO kids while in free play
+      S.guided = true;
+      GUIDE.applyLevel();
+      fillLevelOptions(); syncMeterPicker(); syncBarsPicker();
+      var ps = document.getElementById('soloPath'); if (ps) ps.value = 'guided';
+      save(); newRound();
+    }
   }
 
   function start() {
@@ -3354,10 +4585,33 @@
       rs.rhythmPatterns.mixedSC = (rs.rhythmPatterns.medium || []).concat(COMPOUND_FIGS);
     }
     load();
+    // Casual main-menu FREE-PLAY request (set by beatquest-casual.html before start()):
+    // force free play with EXACTLY the selected figures + chosen meter.
+    if (window.__freeSelection && window.__freeSelection.figures && window.__freeSelection.figures.length) {
+      S.guided = false;
+      S.freeFigures = window.__freeSelection.figures.slice();
+      setMeter(window.__freeSelection.meter === 'compound' ? '6/8' : '4/4');
+      S.level = 'all';
+      window.__freeForce = true;
+    } else { S.freeFigures = null; window.__freeForce = false; }
+    // KIDS theme is a simplified, GUIDED-ONLY mode — a young learner should never land
+    // in free play with the config hidden. Force the guided path on before the spine
+    // init below (which is engine-gated + degrades gracefully if the engine is absent).
+    if (kidsThemeActive() && !window.__freeForce) S.guided = true;
     // GUIDED SPINE init — needs window.LevelCore (the core/ engine bridge). The bridge
     // is a deferred module, so it may land a tick after start() first runs; we wait a
     // short, bounded time for it. If it truly never arrives, we degrade gracefully to
     // FREE PLAY (S.guided=false) so the game always boots.
+    // First guided boot with a fresh profile: offer the placement test (owner
+    // spec). Suppressed under every automated test seam and in ext-embed mode.
+    if (S.guided && window.LevelCore && !/[?&](levtest|tbtest|exttarget)=1/.test(location.search)) {
+      try {
+        var placedFlag = localStorage.getItem('beatquest-placed-' + (S.mode || 'dictation'));
+        var guidedData = JSON.parse(localStorage.getItem('beatquest-guided-' + (S.mode || 'dictation')) || 'null');
+        var freshProfile = !guidedData || ((!guidedData.idx || guidedData.idx === 0) && (!guidedData.mastered || !guidedData.mastered.length));
+        if (!placedFlag && freshProfile) setTimeout(function () { PLACE.offer(); }, 700);
+      } catch (e) {}
+    }
     if (S.guided && !window.LevelCore) {
       if (!start._lcWaits) start._lcWaits = 0;
       if (start._lcWaits < 25) { start._lcWaits++; setTimeout(start, 120); return; }
@@ -3381,6 +4635,14 @@
     rs.connected = true;
     buildHud();
     applyModeChrome();
+    // Live theme switch INTO Kids mid-session: force guided + rebuild (the config
+    // controls hide via CSS on their own; this fixes the underlying path). The picker
+    // is built by suite-theme.js and present by now; guard against double-binding.
+    var tsw = document.getElementById('themeSwitcher');
+    if (tsw && !tsw._kidsHook) {
+      tsw._kidsHook = true;
+      tsw.addEventListener('click', function () { setTimeout(reconcileKidsMode, 0); });
+    }
     S.groove = 100;
     // The teach screen for the FIRST level is shown by newRound() once that level's
     // round is actually built (newRound -> maybeTeachThisRound), so the warm-up mounts
@@ -3427,8 +4689,213 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wireEntry); else wireEntry();
   // Public surface.
   window.BeatQuestSolo = {
-    start: start, startTapping: startTapping, state: S
+    start: start, startTapping: startTapping, state: S,
+    // DEV/QA seam — jump anywhere on the ladder + fire the end screens. No effect on
+    // normal play; the on-screen level-jumper below only mounts with ?dev=1 in the URL.
+    _dev: {
+      // GUIDE.place has NO frontier guard (unlike gotoIndex) and marks levels below as
+      // proficient — exactly what a QA run through every level needs.
+      jump: function (i) { if (GUIDE.avail() && GUIDE.place(i, true)) { S.bonusRound = false; S.groove = 100; newRound(); return true; } return false; },
+      levels: function () { try { return GUIDE.ladder().map(function (l, k) { return { i: k, title: l.title, playable: GUIDE.playable(l) }; }); } catch (e) { return []; } },
+      curIdx: function () { return S.guidedIdx; },
+      gameOver: function () { showGameOver(); },
+      levelComplete: function (t) { showLevelComplete(t || 'Next Level'); },
+      killer: function () { startKillerRound(); }
+    }
   };
+
+  /* ---- DEV LEVEL-JUMPER (QA only, ?dev=1) --------------------------------------
+     A fixed-position overlay that scrolls through EVERY ladder level so the whole
+     progression can be walked without playing up to it. Purely additive: it mounts
+     only with ?dev=1, sits above the game in its own layer, and never touches the
+     normal layout. Also exposes buttons to fire the Game Over / Level Complete /
+     Killer screens directly for visual QA. */
+  if (/[?&]dev=1/.test(location.search)) {
+    var mountDev = function () {
+      if (!document.body || document.getElementById('bqDevPanel')) return;
+      var host = document.createElement('div');
+      host.id = 'bqDevPanel';
+      host.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:2147483000;background:rgba(20,22,34,.94);color:#eef1fb;font:12px/1.3 system-ui,sans-serif;padding:8px 10px;border-radius:10px;box-shadow:0 6px 22px rgba(0,0,0,.45);max-width:270px;pointer-events:auto;-webkit-tap-highlight-color:transparent';
+      host.innerHTML =
+        '<div style="font-weight:800;margin-bottom:6px;letter-spacing:.05em;opacity:.75">DEV · LEVEL SCROLL</div>' +
+        '<div style="display:flex;gap:5px;align-items:center;margin-bottom:6px">' +
+          '<button id="bqDevPrev" style="flex:0 0 auto;cursor:pointer">◀</button>' +
+          '<select id="bqDevSel" style="flex:1 1 auto;min-width:0;font:12px system-ui;padding:3px"></select>' +
+          '<button id="bqDevNext" style="flex:0 0 auto;cursor:pointer">▶</button>' +
+        '</div>' +
+        '<div style="display:flex;gap:5px;flex-wrap:wrap">' +
+          '<button id="bqDevGO" style="cursor:pointer">Game Over</button>' +
+          '<button id="bqDevLC" style="cursor:pointer">Level Done</button>' +
+          '<button id="bqDevKill" style="cursor:pointer">Killer</button>' +
+        '</div>';
+      document.body.appendChild(host);
+      var sel = host.querySelector('#bqDevSel');
+      var fill = function () {
+        var lv = window.BeatQuestSolo._dev.levels();
+        if (!lv.length) return false;
+        sel.innerHTML = lv.map(function (l) { return '<option value="' + l.i + '"' + (l.playable ? '' : ' disabled') + '>' + (l.i + 1) + ' · ' + l.title + (l.playable ? '' : ' (n/a)') + '</option>'; }).join('');
+        sel.value = window.BeatQuestSolo._dev.curIdx();
+        return true;
+      };
+      if (!fill()) { var t = setInterval(function () { if (fill()) clearInterval(t); }, 300); }
+      var jump = function (i) { if (window.BeatQuestSolo._dev.jump(i)) sel.value = i; else fill(); };
+      host.querySelector('#bqDevPrev').onclick = function () { jump(Math.max(0, (+sel.value) - 1)); };
+      host.querySelector('#bqDevNext').onclick = function () { jump((+sel.value) + 1); };
+      sel.onchange = function () { jump(+sel.value); };
+      host.querySelector('#bqDevGO').onclick = function () { window.BeatQuestSolo._dev.gameOver(); };
+      host.querySelector('#bqDevLC').onclick = function () { window.BeatQuestSolo._dev.levelComplete(); };
+      host.querySelector('#bqDevKill').onclick = function () { window.BeatQuestSolo._dev.killer(); };
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountDev);
+    else mountDev();
+  }
+  /* ======================================================================
+     EXTERNAL-TARGET seam — ONLY active with ?exttarget=1 in the URL. Lets an
+     embedding page (the MELODIC suite: M2 rhythm-first + notation-entry's
+     rhythm phase) hand THIS game an exact rhythm to dictate, instead of the
+     game generating its own — real reuse of the whole bank/drag/grade UI, not
+     a parallel rebuild. Zero effect in the normal game: nothing below runs
+     without the flag, and the newRound/submit/bankKey hooks are all gated on
+     EXT.active. Protocol (window.postMessage, parent <-> this iframe):
+       parent <- {type:'melodic-ext-ready'}                (we are booted)
+       parent -> {type:'melodic-ext-target',
+                  durations:['q','8','8',...],             (melodic codes: 'qd'
+                  meter:'2/4'}                              = dotted quarter etc.)
+       parent <- {type:'melodic-ext-unsupported', reason}  (can't express it)
+       parent <- {type:'melodic-ext-result',
+                  allCorrect, wrongBeats, totalBeats}      (after Submit)
+     Scope: simple quarter-beat meters (2/4, 3/4, 4/4) AND compound 6/8-family
+     (game beat = dotted quarter, one COMPOUND_FIGS figure per beat) — covers M2
+     (Hall Ch1-3), the 4/4·3/4 notation-entry rungs, and M15 (6/8). Irregular
+     meters (5/8·7/8, M25) fall back to the embedding page's own entry UI (it
+     handles 'melodic-ext-unsupported').
+     External rounds force guided OFF (they must not touch this game's own
+     ladder/mastery) and correction-mode OFF (one-shot grading — the embedding
+     page owns the round lifecycle).
+     ====================================================================== */
+  var EXT = { active: /[?&]exttarget=1/.test(location.search), pending: null, current: null };
+  /* Melodic duration code for one game-pattern vexflow entry: 'q'+dots -> 'qd',
+     rests keep their 'r' ('qr' both sides). */
+  function extCodeOf(v) {
+    var d = String(v.duration);
+    if (v.dots) d += 'd';
+    return d;
+  }
+  /* Convert melodic duration codes -> [{patternId,startBeat,beats}] measures,
+     using ONE bank family throughout (the student's tile bank is one family).
+     Tries 'medium' first (largest simple-meter family), then 'easy'. Returns
+     {target, bank} or null when some stretch has no matching pattern. */
+  function extConvert(durations, meter) {
+    if (!rs || !rs.rhythmPatterns || !Array.isArray(durations) || !durations.length) return null;
+    var parts = String(meter).split('/');
+    var top = parseInt(parts[0], 10), bottom = parseInt(parts[1], 10);
+    if (!(top > 0)) return null;
+    // Meter → game-beat mapping. Simple quarter-beat meters: 1 quarter per beat,
+    // quarter-family banks. Compound (6/8-family): the game's beat is the DOTTED
+    // QUARTER (1.5 quarters), one COMPOUND_FIGS figure per beat, top/3 beats/bar —
+    // exactly how the normal game plays 6/8 (see beatsForTs + the compound bank).
+    var beatsPerBar, quartersPerBeat, families;
+    if (bottom === 4) {
+      beatsPerBar = top; quartersPerBeat = 1; families = ['medium', 'easy'];
+    } else if (bottom === 8 && top % 3 === 0 && top > 3) {
+      beatsPerBar = top / 3; quartersPerBeat = 1.5; families = ['compound'];
+    } else {
+      return null; // irregular (5/8·7/8) etc. — the embedding page falls back
+    }
+    // Quarters a duration code occupies on the page — used to reject patterns
+    // whose NOTATED length differs from their GRID length (tuplets: triplet-
+    // quarters is three 'q' entries squeezed into 2 beats — matching a melodic
+    // sequence of three PLAIN quarters against it would silently change the
+    // rhythm; caught by the round-trip test, not hypothetical).
+    var EXT_Q = { w: 4, h: 2, q: 1, 8: 0.5, 16: 0.25 };
+    function extQuartersOf(v) {
+      var base = EXT_Q[String(v.duration).replace('r', '')] || 1;
+      return v.dots ? base * 1.5 : base;
+    }
+    for (var f = 0; f < families.length; f++) {
+      var pats = (rs.rhythmPatterns[families[f]] || []).filter(function (p) {
+        if (!p.vexflow || !p.vexflow.length) return false;
+        // grid length (beats × quarters-per-beat) must equal notated length
+        var q = 0;
+        for (var vi = 0; vi < p.vexflow.length; vi++) q += extQuartersOf(p.vexflow[vi]);
+        return Math.abs(q - (p.beats || 1) * quartersPerBeat) < 1e-9;
+      });
+      // longest figure first so multi-beat/multi-note patterns win over singles
+      pats = pats.slice().sort(function (a, b) { return b.vexflow.length - a.vexflow.length; });
+      var target = [], i = 0, ok = true;
+      while (ok && i < durations.length) {
+        var meas = [], beat = 1;
+        while (beat <= beatsPerBar && i < durations.length) {
+          var matched = null;
+          for (var pi = 0; pi < pats.length; pi++) {
+            var p = pats[pi];
+            if ((p.beats || 1) > beatsPerBar - beat + 1) continue;
+            if (p.vexflow.length > durations.length - i) continue;
+            var hit = true;
+            for (var k = 0; k < p.vexflow.length; k++) {
+              if (extCodeOf(p.vexflow[k]) !== String(durations[i + k])) { hit = false; break; }
+            }
+            if (hit) { matched = p; break; }
+          }
+          if (!matched) { ok = false; break; }
+          meas.push({ patternId: matched.id, startBeat: beat, beats: matched.beats || 1 });
+          beat += matched.beats || 1;
+          i += matched.vexflow.length;
+        }
+        // Every bar must come out EXACTLY full — melodic rhythms always fill whole
+        // bars, so a short bar means the conversion mis-parsed; fail to fallback.
+        if (ok && beat !== beatsPerBar + 1) ok = false;
+        if (ok) target.push(meas);
+        if (target.length > 32) { ok = false; }
+      }
+      if (ok && i >= durations.length) return { target: target, bank: families[f] };
+    }
+    return null;
+  }
+  if (EXT.active) {
+    window.addEventListener('message', function (ev) {
+      var d = ev && ev.data;
+      if (!d || d.type !== 'melodic-ext-target') return;
+      var conv = extConvert(d.durations, d.meter);
+      if (!conv) {
+        try { window.parent.postMessage({ type: 'melodic-ext-unsupported', reason: 'no single-family pattern expression for that rhythm/meter' }, '*'); } catch (e) {}
+        return;
+      }
+      EXT.pending = { target: conv.target, ts: d.meter, bank: conv.bank };
+      S.guided = false;
+      S.correctionMode = false;
+      // The initial self-generated round (before our target arrived) may have
+      // mounted the guided TEACH overlay — tear it down; external rounds are
+      // never teach-gated (guided is off) and it would sit on top of the round.
+      var teachOv = document.getElementById('teachOv');
+      if (teachOv && teachOv.parentNode) teachOv.parentNode.removeChild(teachOv);
+      // The EMBEDDING page owns progression + round lifecycle: hide the controls
+      // that would let the student swap the round out from under the external
+      // target (path/level pickers) or change grading semantics mid-round
+      // (fix-it toggle re-enables correction mode → non-terminal submits), and
+      // the in-iframe theme switcher (the parent page already has one).
+      if (!document.getElementById('extChromeCss')) {
+        var st = document.createElement('style');
+        st.id = 'extChromeCss';
+        st.textContent = '.solo-modesel,.solo-levelsel,.solo-actions .solo-cfg,#themeSwitcher{display:none !important}';
+        document.head.appendChild(st);
+      }
+      // The host page (tapping.html) titles itself "Tapping — Perform the Rhythm";
+      // inside MelodyQuest this round is DICTATION — retitle so the embedded game
+      // doesn't announce a different task than the one the student is doing.
+      var extH1 = document.querySelector('.header h1, h1');
+      if (extH1) extH1.textContent = 'Rhythm dictation';
+      newRound();
+    });
+    // Announce readiness once the game is genuinely booted (engine + first round).
+    var extPoll = setInterval(function () {
+      if (!rs || !S.target) return;
+      clearInterval(extPoll);
+      S.guided = false;
+      S.correctionMode = false;
+      try { window.parent.postMessage({ type: 'melodic-ext-ready' }, '*'); } catch (e) {}
+    }, 120);
+  }
   // Test seam — ONLY active with ?tbtest=1 in the URL. Exposes the tap-back internals
   // so the timing pipeline (single metronome clock, exact lock-count, onset alignment)
   // can be driven and asserted deterministically by automated traces. Zero effect in
@@ -3445,7 +4912,8 @@
       enterReady: enterReady, newRound: newRound, playTarget: playTarget,
       fillCorrect: revealCorrect, submit: submit, setMeasures: function (n) { S.measures = n; save(); newRound(); },
       tapLatency: function () { return TAP_LATENCY; },
-      tapTolerance: function () { return TAP_TOLERANCE; }
+      tapTolerance: function () { return TAP_TOLERANCE; },
+      showResults: showResults
     };
   }
   // Guided-spine test seam — ONLY active with ?levtest=1. Exposes the guided internals
@@ -3457,6 +4925,7 @@
       newRound: newRound, fillCorrect: revealCorrect, submit: submit,
       guidedRecord: guidedRecord, render: render, fillLevelOptions: fillLevelOptions,
       masteryView: function () { return GUIDE.masteryView(); },
+      PLACE: PLACE, GUIDEplace: function (i, mb) { return GUIDE.place(i, mb); },
       // Force the within-level ramp to the capstone bar count, regenerate at that size,
       // and place the exact correct answer — so submit() can pass the capstone gate
       // without a human notating 8 bars. Returns the new measure count.

@@ -1,0 +1,173 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Ear Arcade — Note Invaders</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;-webkit-user-select:none;user-select:none;}
+  html,body{height:100%;overflow:hidden;font-family:ui-monospace,"SFMono-Regular",Menlo,monospace;background:#04040c;color:#d8ffe6;}
+  .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:18px;background:radial-gradient(120% 80% at 50% 0%,#0a1024,#04040c 70%);}
+  .phone{position:relative;width:390px;height:800px;max-height:96vh;border-radius:40px;overflow:hidden;background:#05070f;box-shadow:0 40px 120px rgba(50,220,140,.14),0 4px 30px #000a;}
+  .phone.shake{animation:shk .32s;} @keyframes shk{0%,100%{transform:translate(0,0);}20%{transform:translate(-5px,3px);}40%{transform:translate(5px,-3px);}60%{transform:translate(-4px,-2px);}80%{transform:translate(4px,2px);}}
+  .stars{position:absolute;inset:0;} .stars i{position:absolute;width:2px;height:2px;background:#5affa0;opacity:.4;}
+  .scan{position:absolute;inset:0;pointer-events:none;z-index:10;background:repeating-linear-gradient(#0000 0 2px,#00000044 2px 3px);}
+  .hud{position:absolute;left:0;right:0;top:0;padding:20px 22px 0;z-index:6;display:flex;justify-content:space-between;font-size:.62rem;letter-spacing:1px;}
+  .hud b{display:block;font-size:.95rem;color:#fff;text-shadow:0 0 8px currentColor;}
+  .hud .l{color:#5affa0;} .hud .r{color:#ff5a8a;text-align:right;} .hud .m{color:#ffe23f;text-align:center;}
+  .banner{position:absolute;left:0;right:0;top:78px;text-align:center;z-index:8;color:#ffe23f;font-size:.9rem;letter-spacing:3px;text-shadow:0 0 12px #ffae00;opacity:0;pointer-events:none;}
+  .banner.show{animation:ban 1.9s ease-out;} @keyframes ban{0%{opacity:0;transform:scale(.7);}15%{opacity:1;transform:scale(1);}80%{opacity:1;}100%{opacity:0;}}
+  .cue{position:absolute;left:0;right:0;top:66px;text-align:center;z-index:6;font-size:.62rem;letter-spacing:2px;color:#ffe23f;text-shadow:0 0 8px #ffae00;}
+  .replay{position:absolute;left:50%;top:88px;transform:translateX(-50%);z-index:7;background:#0b1226;border:1px solid #5affa066;color:#5affa0;font-family:inherit;font-size:.6rem;letter-spacing:1px;padding:7px 14px;border-radius:8px;cursor:pointer;display:none;}
+  .field{position:absolute;left:0;right:0;top:118px;bottom:150px;z-index:4;overflow:hidden;}
+  .swarm{position:absolute;left:0;top:0;will-change:transform;}
+  .inv{position:absolute;width:52px;height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .inv svg{width:100%;height:100%;filter:drop-shadow(0 0 6px currentColor);}
+  .inv .lbl{position:absolute;font-size:.85rem;font-weight:900;color:#04040c;}
+  .inv.hit{animation:boom .3s forwards;} @keyframes boom{to{transform:scale(1.7);opacity:0;}}
+  .inv.sing{animation:sing .5s;} @keyframes sing{50%{transform:translateY(-4px) scale(1.08);}}
+  /* boss */
+  .boss{position:absolute;left:50%;top:24px;transform:translateX(-50%);width:150px;height:104px;cursor:pointer;z-index:5;color:#ff5a8a;}
+  .boss svg{width:100%;height:100%;filter:drop-shadow(0 0 14px currentColor);}
+  .boss.sing{animation:bsing .5s;} @keyframes bsing{50%{transform:translateX(-50%) scale(1.06);filter:brightness(1.5);}}
+  .boss.bad{color:#ff3b3b;} .boss.good{color:#7fd0ff;}
+  .hpwrap{position:absolute;left:50%;top:2px;transform:translateX(-50%);width:150px;height:9px;background:#0b1226;border:1px solid #ff5a8a55;border-radius:5px;overflow:hidden;z-index:6;display:none;}
+  .hp{height:100%;width:100%;background:linear-gradient(90deg,#ff3b6a,#ff9a3b);transition:width .25s;}
+  .cannon{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);z-index:5;width:60px;height:34px;}
+  .fire{position:absolute;left:50%;bottom:150px;transform:translateX(-50%);z-index:7;display:none;
+    background:linear-gradient(180deg,#ff5a8a,#c72d5c);color:#fff;border:none;font-family:inherit;font-weight:800;letter-spacing:1px;padding:12px 40px;border-radius:12px;font-size:.95rem;cursor:pointer;box-shadow:0 8px 0 #7a1636,0 14px 26px #0008;}
+  .beam{position:absolute;width:4px;background:linear-gradient(#fff,#5affa0);z-index:4;border-radius:2px;box-shadow:0 0 10px #5affa0;pointer-events:none;}
+  .px{position:absolute;z-index:8;width:5px;height:5px;pointer-events:none;}
+  .float{position:absolute;z-index:9;color:#ffe23f;font-size:.72rem;text-shadow:0 0 8px #ffae00;pointer-events:none;animation:rise .9s forwards;}
+  @keyframes rise{0%{opacity:0;transform:translateY(0);}20%{opacity:1;}100%{opacity:0;transform:translateY(-40px);}}
+  .foot{position:absolute;left:0;right:0;bottom:26px;text-align:center;z-index:7;}
+  .go{background:linear-gradient(180deg,#5affa0,#1cb877);color:#032;border:none;font-weight:800;font-family:inherit;padding:12px 30px;border-radius:12px;font-size:.9rem;cursor:pointer;box-shadow:0 8px 0 #0a6e4c,0 14px 26px #0008;letter-spacing:1px;}
+  .labsys{display:flex;gap:8px;justify-content:center;margin-bottom:12px;}
+  .labsys button{background:#0a1226;border:1px solid #5affa055;color:#9effc8;font-family:inherit;font-weight:700;font-size:.62rem;padding:7px 12px;border-radius:8px;cursor:pointer;}
+  .labsys button.on{background:#5affa0;color:#04120a;}
+  .hint{margin-top:9px;font-size:.58rem;opacity:.5;letter-spacing:.5px;line-height:1.4;padding:0 16px;}
+  .over{position:absolute;inset:0;z-index:12;background:#04040cdd;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;}
+  .over.show{display:flex;} .over h2{font-size:1.4rem;color:#ff5a8a;letter-spacing:2px;}
+</style></head><body>
+<div class="wrap"><div class="phone" id="phone">
+  <div class="stars" id="stars"></div>
+  <div class="hud"><div class="l">SCORE<b id="score">0</b></div><div class="m">COMBO<b id="combo">x0</b></div><div class="r">WAVE<b id="wave">1</b></div></div>
+  <div class="banner" id="banner"></div>
+  <div class="cue" id="cue">TAP START</div>
+  <button class="replay" id="replay">▶ HEAR</button>
+  <div class="field" id="field">
+    <div class="hpwrap" id="hpwrap"><div class="hp" id="hp"></div></div>
+    <div class="swarm" id="swarm"></div>
+  </div>
+  <div class="cannon" id="cannon"><svg viewBox="0 0 60 34"><rect x="26" y="0" width="8" height="14" fill="#5affa0"/><rect x="10" y="14" width="40" height="14" rx="4" fill="#39d98a"/><rect x="4" y="24" width="52" height="8" rx="3" fill="#1c8f5c"/></svg></div>
+  <button class="fire" id="fireBtn">FIRE ✦</button>
+  <div class="foot"><div class="labsys" id="labsys"><button data-s="num" class="on">1 3 5</button><button data-s="mov">do mi sol</button><button data-s="fix">fixed</button></div>
+    <button class="go" id="go">START</button><div class="hint" id="hint">Home sounds first. SHOOT the invader whose degree matches the note you hear.</div></div>
+  <div class="over" id="over"><h2 id="overttl">GAME OVER</h2><div id="oversub" style="opacity:.7;font-size:.8rem"></div><button class="go" id="again">PLAY AGAIN</button></div>
+  <div class="scan"></div>
+</div></div>
+<script>(()=>{
+  const st=document.getElementById('stars');for(let i=0;i<44;i++){const s=document.createElement('i');s.style.left=Math.random()*100+'%';s.style.top=Math.random()*100+'%';st.appendChild(s);}
+  const LAB={num:['1','2','3','4','5','6','7'],mov:['do','re','mi','fa','sol','la','ti'],fix:['do','re','mi','fa','sol','la','ti']};let SYS='num';
+  const COL={1:'#00e5ff',2:'#ffb347',3:'#ff3ccf',4:'#a78bfa',5:'#b6ff3a',6:'#ff8f6b',7:'#6bffd0'};
+  const DEGM={1:60,2:62,3:64,4:65,5:67,6:69,7:71};
+  const INKEY=[60,62,64,65,67,69,71], OUTKEY=[61,63,66,68,70], OUTLBL={61:'♯1',63:'♯2',66:'♯4',68:'♯5',70:'♭7'};
+  const phone=document.getElementById('phone'),field=document.getElementById('field'),swarm=document.getElementById('swarm'),cue=document.getElementById('cue'),banner=document.getElementById('banner');
+  const scoreEl=document.getElementById('score'),comboEl=document.getElementById('combo'),waveEl=document.getElementById('wave'),replayBtn=document.getElementById('replay');
+  const over=document.getElementById('over'),boss=mkBoss(),hpwrap=document.getElementById('hpwrap'),hpEl=document.getElementById('hp'),fireBtn=document.getElementById('fireBtn'),hintEl=document.getElementById('hint');
+  let AC=null;const hz=m=>440*Math.pow(2,(m-69)/12);
+  function play(midi,dur){try{AC=AC||new(window.AudioContext||webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type='square';o.frequency.value=hz(midi);o.connect(g);g.connect(AC.destination);const t=AC.currentTime,d=dur||.42;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.15,t+.02);g.gain.exponentialRampToValueAtTime(.001,t+d);o.start(t);o.stop(t+d+.02);}catch(e){}}
+  const toneDeg=(d,dur)=>play(DEGM[d],dur);
+  function zap(){try{AC=AC||new(window.AudioContext||webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type='sawtooth';o.frequency.setValueAtTime(880,AC.currentTime);o.frequency.exponentialRampToValueAtTime(140,AC.currentTime+.16);o.connect(g);g.connect(AC.destination);g.gain.setValueAtTime(.1,AC.currentTime);g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+.18);o.start();o.stop(AC.currentTime+.2);}catch(e){}}
+  const invSVG='<svg viewBox="0 0 44 36"><path d="M8 4h4v4h4V4h12v4h4V4h4v8h4v8h-4v4h4v8h-8v-4h-4v4H16v-4h-4v4H4v-8h4v-4H4v-8h4z" fill="currentColor"/></svg>';
+  function mkBoss(){const el=document.createElement('div');el.className='boss';el.innerHTML='<svg viewBox="0 0 150 104"><path d="M20 30h14V16h14v14h54V16h14v14h14v34h-14v14h14v22H108v-14H96v14H54v-14H42v14H8V78h14V64H8V30h12z" fill="currentColor"/><circle cx="58" cy="52" r="7" fill="#04040c"/><circle cx="92" cy="52" r="7" fill="#04040c"/></svg>';field.appendChild(el);el.style.display='none';el.onpointerdown=()=>fire();return el;}
+  const W=390;
+  let wave=1,score=0,combo=0,playing=false,mode='match',target=null,invs=[],marchT=null,dir=1,offX=0,offY=0,step=18;
+  // ORDER mode
+  let melody=[],mpos=0;
+  // BOSS mode
+  let bossHp=0,curBad=false,firedThis=false,bossT=null,bossY=24;
+  const setScore=()=>scoreEl.textContent=score, setCombo=()=>{comboEl.textContent='x'+combo;};
+  function showBanner(t){banner.textContent=t;banner.classList.remove('show');void banner.offsetWidth;banner.classList.add('show');}
+  function shake(){phone.classList.remove('shake');void phone.offsetWidth;phone.classList.add('shake');}
+  function anchorHome(cb){cue.textContent='HOME = '+LAB[SYS][0];play(60,.6);setTimeout(cb,950);}
+  function clearAll(){clearInterval(marchT);clearInterval(bossT);marchT=bossT=null;swarm.innerHTML='';invs=[];boss.style.display='none';hpwrap.style.display='none';fireBtn.style.display='none';swarm.style.transform='';offX=0;offY=0;}
+
+  function waveDef(w){const c=(w-1)%4;
+    if(c===0)return{type:'match',degs:[1,3,5],rows:2,cols:3,label:'WAVE '+w+' · TRIAD'};
+    if(c===1)return{type:'match',degs:[1,2,3,4,5],rows:2,cols:4,label:'WAVE '+w+' · PENTASCALE'};
+    if(c===2)return{type:'boss',label:'WAVE '+w+' · WRONG-NOTE BOSS'};
+    return{type:'order',len:3+Math.floor((w-1)/4),degs:[1,2,3,4,5],label:'WAVE '+w+' · MELODIC ORDER'};}
+
+  function startWave(){const def=waveDef(wave);mode=def.type;waveEl.textContent=wave;clearAll();showBanner(def.label);
+    if(mode==='match')return void anchorHome(()=>buildMatch(def));
+    if(mode==='boss')return void anchorHome(()=>buildBoss());
+    if(mode==='order')return void anchorHome(()=>buildOrder(def));}
+
+  // ---------- MATCH ----------
+  function buildMatch(def){replayBtn.style.display='inline-block';hintEl.textContent='SHOOT the invader whose degree matches the note you hear.';
+    const gapX=84,x0=(W-(def.cols-1)*gapX)/2-26;
+    for(let r=0;r<def.rows;r++)for(let c=0;c<def.cols;c++){const deg=def.degs[(r*def.cols+c)%def.degs.length];const el=mkInv(deg,x0+c*gapX,8+r*52);invs.push(el);}
+    // shuffle labels a bit so columns aren't sorted
+    invs.forEach(v=>{const d=def.degs[Math.floor(Math.random()*def.degs.length)];setDeg(v,d);});
+    marchT=setInterval(()=>march(false),820);nextTarget();}
+  function mkInv(deg,x,y){const el=document.createElement('div');el.className='inv';el.style.left=x+'px';el.style.top=y+'px';el._x=x;el._y=y;setDeg(el,deg);el.onpointerdown=()=>shoot(el);swarm.appendChild(el);return el;}
+  function setDeg(el,deg){el.dataset.deg=deg;el.style.color=COL[deg];el.innerHTML=invSVG+`<span class="lbl">${LAB[SYS][deg-1]}</span>`;}
+  function aliveInvs(){return invs.filter(v=>v.isConnected&&!v.classList.contains('hit'));}
+  function nextTarget(){const al=aliveInvs();if(!al.length){return winWave();}const degs=[...new Set(al.map(v=>+v.dataset.deg))];target=degs[Math.floor(Math.random()*degs.length)];cue.textContent='SHOOT WHAT YOU HEAR';setTimeout(()=>toneDeg(target),240);}
+  function shoot(el){if(!playing||mode==='boss')return;const deg=+el.dataset.deg;beamTo(el);zap();
+    if(mode==='match'){ if(deg===target){kill(el,deg);score+=100+wave*10+combo*5;combo++;setScore();setCombo();floatAt(el,'+'+(100+wave*10));setTimeout(nextTarget,260);}else{miss('MISS — LISTEN AGAIN');setTimeout(()=>toneDeg(target),380);} }
+    else if(mode==='order'){ if(deg===melody[mpos]){kill(el,deg);toneDeg(deg);mpos++;score+=80+combo*5;combo++;setScore();setCombo();floatAt(el,'✓');if(mpos>=melody.length)return winWave();}else{combo=0;setCombo();miss('WRONG ORDER — HEAR IT AGAIN');setTimeout(playMelody,500);} } }
+  function kill(el,deg){el.classList.add('hit');burstAt(el,COL[deg]);setTimeout(()=>el.remove(),260);}
+  function miss(msg){cue.textContent=msg;combo=0;setCombo();shake();phone.animate([{filter:'brightness(1)'},{filter:'brightness(.45) hue-rotate(-30deg)'},{filter:'brightness(1)'}],{duration:220});}
+  function march(isBoss){ // slide + step down
+    if(!playing)return;offX+=dir*10;if(Math.abs(offX)>34){dir*=-1;offY+=step;}
+    swarm.style.transform=`translate(${offX}px,${offY}px)`;
+    aliveInvs().forEach(v=>{v.classList.remove('sing');});
+    // reach bottom?
+    let low=0;aliveInvs().forEach(v=>{low=Math.max(low,v._y+offY);});
+    if(low>field.clientHeight-60)gameOver('INVADERS LANDED'); }
+
+  // ---------- ORDER ----------
+  function buildOrder(def){replayBtn.style.display='inline-block';hintEl.textContent='A melody plays. SHOOT the invaders in the SAME ORDER.';
+    melody=[];for(let i=0;i<def.len;i++)melody.push(def.degs[Math.floor(Math.random()*def.degs.length)]);mpos=0;
+    const uniq=[...new Set(melody)];const set=uniq.length>=melody.length?melody.slice():melody.slice();
+    const shuffled=set.map(d=>d).sort(()=>Math.random()-.5);
+    const gapX=Math.min(84,(W-40)/shuffled.length),x0=(W-(shuffled.length-1)*gapX)/2-26;
+    shuffled.forEach((d,i)=>invs.push(mkInv(d,x0+i*gapX,60)));
+    cue.textContent='LISTEN…';setTimeout(playMelody,500);}
+  function playMelody(){mpos=0;cue.textContent='LISTEN…';let i=0;const iv=setInterval(()=>{if(i>=melody.length){clearInterval(iv);cue.textContent='NOW SHOOT IN ORDER';return;}toneDeg(melody[i]);const idx=i;i++;},560);}
+
+  // ---------- BOSS ----------
+  function buildBoss(){replayBtn.style.display='inline-block';fireBtn.style.display='block';hintEl.textContent='The boss SINGS notes. FIRE only on the WRONG (out-of-key) note.';
+    bossHp=6;bossY=24;boss.style.top=bossY+'px';boss.style.display='block';hpwrap.style.display='block';hpEl.style.width='100%';
+    cue.textContent='FIRE ON THE WRONG NOTE';curBad=false;firedThis=true;
+    bossT=setInterval(bossTick,1650);setTimeout(bossSing,400);}
+  function bossSing(){if(!playing||mode!=='boss')return;
+    // if previous note was bad and player didn't fire -> boss creeps down (a "hit" on you)
+    if(curBad&&!firedThis){bossY+=14;boss.style.top=bossY+'px';shake();if(bossY>field.clientHeight-150)return gameOver('THE BOSS BROKE THROUGH');}
+    curBad=Math.random()<.42;firedThis=false;
+    const midi=curBad?OUTKEY[Math.floor(Math.random()*OUTKEY.length)]:INKEY[Math.floor(Math.random()*INKEY.length)];
+    boss._midi=midi;boss.classList.remove('good','bad','sing');void boss.offsetWidth;boss.classList.add('sing');play(midi,.6);}
+  function bossTick(){bossSing();}
+  function fire(){if(!playing||mode!=='boss'||firedThis)return;firedThis=true;zap();beamToBoss();
+    if(curBad){bossHp--;hpEl.style.width=(bossHp/6*100)+'%';combo++;score+=150+combo*10;setScore();setCombo();boss.classList.add('bad');burstAt(boss,'#ff3b3b');floatAt(boss,'WRONG NOTE!');if(bossHp<=0)return winWave();}
+    else{combo=0;setCombo();boss.classList.add('good');miss('THAT NOTE WAS IN KEY');} }
+
+  // ---------- shared fx ----------
+  function beamTo(el){const r=el.getBoundingClientRect(),p=phone.getBoundingClientRect(),tx=r.left-p.left+r.width/2,ty=r.top-p.top+r.height/2;beam(tx,ty);}
+  function beamToBoss(){const r=boss.getBoundingClientRect(),p=phone.getBoundingClientRect();beam(r.left-p.left+r.width/2,r.top-p.top+r.height-10);}
+  function beam(tx,ty){const b=document.createElement('div');b.className='beam';b.style.left=(W/2)+'px';const sy=phone.clientHeight-150;b.style.top=ty+'px';b.style.height=Math.max(0,sy-ty)+'px';phone.appendChild(b);b.animate([{opacity:1},{opacity:0}],{duration:180});setTimeout(()=>b.remove(),180);document.getElementById('cannon').animate([{transform:'translateX(-50%)'},{transform:'translateX(-50%) translateY(3px)'},{transform:'translateX(-50%)'}],{duration:130});}
+  function burstAt(el,col){const r=el.getBoundingClientRect(),p=phone.getBoundingClientRect(),cx=r.left-p.left+r.width/2,cy=r.top-p.top+r.height/2;for(let k=0;k<14;k++){const s=document.createElement('div');s.className='px';const cc=[col,'#fff','#ffe23f'][k%3];s.style.background=cc;s.style.boxShadow='0 0 6px '+cc;s.style.left=cx+'px';s.style.top=cy+'px';phone.appendChild(s);const a=k/14*Math.PI*2,d=28+Math.random()*40;s.animate([{transform:'translate(0,0)',opacity:1},{transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px)`,opacity:0}],{duration:440});setTimeout(()=>s.remove(),450);}shake();}
+  function floatAt(el,t){const r=el.getBoundingClientRect(),p=phone.getBoundingClientRect();const f=document.createElement('div');f.className='float';f.textContent=t;f.style.left=(r.left-p.left+r.width/2-14)+'px';f.style.top=(r.top-p.top)+'px';phone.appendChild(f);setTimeout(()=>f.remove(),900);}
+
+  function winWave(){clearInterval(marchT);clearInterval(bossT);marchT=bossT=null;showBanner('WAVE CLEARED!');score+=200;setScore();cue.textContent='';fireBtn.style.display='none';wave++;setTimeout(startWave,1300);}
+  function gameOver(t){playing=false;clearAll();document.getElementById('overttl').textContent=t;document.getElementById('oversub').textContent='Score '+score+' · reached Wave '+wave;over.classList.add('show');}
+  function start(){over.classList.remove('show');score=0;combo=0;wave=1;setScore();setCombo();playing=true;startWave();}
+
+  replayBtn.onpointerdown=()=>{if(!playing)return;if(mode==='match'&&target)toneDeg(target);else if(mode==='order')playMelody();else if(mode==='boss'&&boss._midi)play(boss._midi,.6);};
+  fireBtn.onpointerdown=fire;
+  document.getElementById('go').onpointerdown=start;document.getElementById('again').onpointerdown=start;
+  document.querySelectorAll('#labsys button').forEach(x=>x.onpointerdown=()=>{SYS=x.dataset.s;document.querySelectorAll('#labsys button').forEach(y=>y.classList.toggle('on',y===x));invs.forEach(v=>{const d=+v.dataset.deg;const l=v.querySelector('.lbl');if(l){l.textContent=LAB[SYS][d-1];l.style.fontSize=SYS==='num'?'.85rem':'.6rem';}});});
+  // test hook
+  window.__inv={start,jumpWave:w=>{wave=w;playing=true;over.classList.remove('show');startWave();},wave:()=>wave,mode:()=>mode,score:()=>score,
+    target:()=>target,shootDeg:d=>{const v=aliveInvs().find(x=>+x.dataset.deg===d);if(v)shoot(v);},aliveDegs:()=>aliveInvs().map(v=>+v.dataset.deg),
+    melody:()=>melody.slice(),mpos:()=>mpos,fire:()=>fire(),curBad:()=>curBad,bossHp:()=>bossHp,playing:()=>playing};
+})();</script></body></html>

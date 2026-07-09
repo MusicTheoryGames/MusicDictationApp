@@ -796,8 +796,14 @@
                 bottom: calc(env(safe-area-inset-bottom, 0px) + 7px) !important;
                 z-index: 50;
                 margin: 0; border-radius: 12px; padding: 7px 10px;
-                background: rgba(18, 18, 24, 0.93);
-                backdrop-filter: blur(10px);
+                /* !important: suite-theme.css sets `body.theme-mpc .rhythm-bank{
+                   background:...!important}` -- without !important here too, the
+                   theme rule always wins (same class+id specificity trap as #soloHud
+                   above, except this one is ALSO already !important on their side). */
+                background: rgb(17, 17, 23) !important;
+                /* REMOVED translateZ/will-change/backface-visibility -- transform +
+                   position:fixed on the same element is a known total-render-failure
+                   trigger on some iOS WebKit versions. See #soloHud above. */
                 border: 1px solid rgba(255, 255, 255, 0.16);
                 max-height: 46vh;            /* grow with tiles, but never past ~half the screen */
                 overflow-y: auto;            /* scroll inside the bank if there are even more */
@@ -827,7 +833,16 @@
                top follows the real bar height instead of a guess — this gives the
                top measure comfortable clearance on iPad (which has room) and keeps
                it clear on iPhone too. JS still refines padding-bottom to the live
-               bank height so the last row clears the bank. */
+               bank height so the last row clears the bank.
+               WARNING: this element's overflow-y:auto + position:fixed combo triggers
+               a real WebKit bug (bugs.webkit.org #160953 and related reports) where a
+               position:fixed DESCENDANT of it gets incorrectly clipped/never painted,
+               even though its layout geometry stays correct -- it just silently shows
+               nothing. #soloHud and #soloActions used to be inserted INSIDE this
+               element and hit exactly that; they are now inserted as body-level
+               siblings of #gameArea instead (see the JS that builds them in
+               solo-mode.js). Do NOT nest a new position:fixed element inside
+               .game-area.active -- put it as a body-level sibling instead. */
             .game-area.active {
                 position: fixed;
                 top: var(--solo-bar-h, 52px);
@@ -853,14 +868,32 @@
             #soloHud {
                 position: fixed !important; top: 0; left: 0; right: 0; z-index: 60;
                 padding: 2px 8px; margin: 0;
-                background: rgba(18, 18, 24, 0.95); backdrop-filter: blur(10px);
+                /* !important on background: suite-theme.css has PER-THEME overrides
+                   like `body.theme-mpc #soloHud{background:linear-gradient(...)}` --
+                   selector has a class + an id, so it's MORE SPECIFIC than this bare
+                   #soloHud rule and silently wins the cascade, even though this rule
+                   is the one written for the mobile fixed-bar context. That's what was
+                   actually causing the blank gap -- not a paint bug, a cascade bug. */
+                background: rgb(16, 16, 22) !important;
                 border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+                /* REMOVED: transform:translateZ(0)/will-change/backface-visibility.
+                   That combination (transform + position:fixed on the SAME element)
+                   is a known trigger for total render failure on some iOS WebKit
+                   versions -- the opposite of the fix it was meant to be. The debug
+                   outline data showed #soloHud painting NOTHING (not even its outline,
+                   which is a separate primitive from background) while a sibling
+                   fixed element with no transform (#beatFlash) painted fine. */
             }
             /* !important beats the HUD's JS-injected base styles (added after this
                sheet, so equal specificity would otherwise win on source order). */
             #soloHud .solo-stats { display: none !important; }   /* -> Settings dropdown */
+            /* SCORE/STREAK still need a home outside that dropdown -- .solo-stats
+               buries them behind a menu tap, which reads as "no gamification at all".
+               Reveal the compact widget instead; it lands in the unused space after
+               the theme icon (source order puts it right before that button). */
+            #soloHud .solo-quickstats { display: flex !important; }
             #soloHud #soloMsg { display: none !important; }
-            #soloHud .solo-actions { margin: 0 !important; gap: 6px; justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            #soloHud .solo-actions { margin: 0 !important; gap: 6px; justify-content: flex-start; flex-wrap: nowrap !important; overflow-x: auto; -webkit-overflow-scrolling: touch; }
             /* Everyday controls (Speed, Groove) sit compactly in the bar; drop their
                labels to save room (the dropdown + progress bar are self-evident). */
             .solo-actions .bar-item { flex: 0 0 auto; gap: 4px; white-space: nowrap; }
@@ -902,6 +935,87 @@
             body.settings-open #soloHud .solo-stats select { margin-left: 8px; padding: 6px; }
             body.hints-open .solo-actions .solo-hints .hints-label { opacity: 0.6; font-size: 0.78rem; letter-spacing: 0.08em; }
             body.hints-open .solo-actions .solo-hints .hint { justify-content: flex-start; }
+
+            /* ── TAPPING MODE: three distinct layout phases ──────────────────
+               body.tapping-mode   = always on (no bank, no submit, etc.)
+               body.tb-performing  = metro running through capture (full-screen tap)
+               body.tb-results-open = results visible (gamification + scrollable panel)
+               ────────────────────────────────────────────────────────────────────── */
+
+            /* Always-on: hide things that never belong in the tapping game */
+            body.tapping-mode #soloPlay,
+            body.tapping-mode #soloMetro,
+            body.tapping-mode #soloGuide,
+            body.tapping-mode #soloHintsToggle,
+            body.tapping-mode #soloMsg { display: none !important; }
+
+            /* Always-on: HIDE soloActions entirely. Submit/TapBack have no launcher in
+               tapping mode and Next is 100% redundant with the inline results panel's
+               own Next button (same onclick=newRound) -- but unlike the results Next,
+               this one shows the INSTANT a round starts (newTappingRound), so without
+               this rule the shared "keep it reachable" rule below floats a fixed red
+               NEXT pill over the tap zones for the entire performance. */
+            body.tapping-mode #soloActions {
+                display: none !important;
+            }
+
+            /* ── PERFORMING phase: slim HUD + full-screen layout ── */
+            body.tb-performing .solo-actions .bar-item,
+            body.tb-performing #soloMastery { display: none !important; }
+
+            body.tb-performing #soloHud .solo-actions {
+                justify-content: flex-end !important;
+            }
+
+            /* Game area becomes a fixed flex column filling the viewport below the HUD */
+            body.tb-performing .game-area.active {
+                padding: 0 !important;
+                display: flex !important; flex-direction: column;
+                overflow: hidden !important;
+            }
+
+            /* Staff: compact strip at top */
+            body.tb-performing .answer-area {
+                flex: 0 0 auto; margin: 0 !important;
+                padding: 6px 8px !important; border-radius: 0 !important;
+            }
+
+            /* Inline panel fills remaining height below the staff */
+            body.tb-performing #tbInline {
+                flex: 1 1 0; min-height: 0; display: flex; flex-direction: column;
+            }
+            body.tb-performing .tb-inline-panel {
+                flex: 1 1 0 !important; min-height: 0;
+                border-radius: 0 !important;
+                border-left: none !important; border-right: none !important; border-bottom: none !important;
+                overflow: hidden;
+            }
+            /* Tap zones: fixed smaller height so more rhythm is visible above */
+            body.tb-performing .tb-inline-panel .tb-zones {
+                flex: 0 0 auto !important;
+                height: 26vh !important; min-height: 80px; max-height: 160px;
+            }
+            /* Setup controls (tempo/start): fill remaining space above zones */
+            body.tb-performing .tb-inline-panel .tb-setup {
+                flex: 1 1 0; overflow-y: auto;
+            }
+
+            /* ── RESULTS phase: normal scrollable layout with gamification ── */
+            body.tb-results-open .game-area.active {
+                overflow-y: auto !important;
+                display: block !important;
+                padding: 8px 8px 80px !important;
+            }
+            body.tb-results-open #tbInline {
+                display: block !important;
+            }
+            body.tb-results-open .tb-inline-panel {
+                overflow-y: visible !important;
+                flex: 0 0 auto !important;
+            }
+            body.tb-results-open #soloMastery {
+                display: block !important;
+            }
 
             /* Portrait: block the cramped game and ask the user to rotate */
             body.app-portrait .game-area.active { display: none; }
@@ -956,17 +1070,17 @@
                 justify-content: flex-start !important; flex-wrap: nowrap !important;
                 overflow-x: auto; -webkit-overflow-scrolling: touch;
             }
-            /* Groove becomes a COMPACT fixed-width inline indicator — it must NOT
-               grow to fill the row (that, combined with the narrow phone width,
-               pushed the bar onto a 2nd line). Drop the % text; the fill conveys
-               the level. Overrides the iPad `flex:1 1 auto` rule above. */
+            /* Groove fills the middle of the row (between Settings and the theme/
+               quickstats/score group at the far right) instead of sitting cramped
+               at a fixed width. `.solo-actions` is already flex-wrap:nowrap with
+               overflow-x:auto, so there's no 2nd-line risk -- excess content would
+               scroll horizontally, not wrap, so groove is safe to flex and grow. */
             .solo-actions .solo-stat.groove {
-                flex: 0 0 auto !important; min-width: 0 !important; gap: 4px !important;
+                flex: 1 1 auto !important; min-width: 70px !important; gap: 6px !important;
             }
             .solo-actions .solo-stat.groove .solo-bar {
-                flex: 0 0 auto !important; width: 36px !important; max-width: 36px !important; min-width: 36px !important;
+                flex: 1 1 auto !important; width: auto !important; max-width: none !important; min-width: 40px !important;
             }
-            .solo-actions .solo-stat.groove #soloGroovePct { display: none !important; }
             /* Genuinely compact phone tiles. `!important` so this beats the 90px
                iPad rule above (equal specificity, earlier in source) AND the 150px
                desktop base rule. 84px reads as clearly compact on an iPhone. */
@@ -1010,7 +1124,7 @@
         #rotateGate .rotate-sub { opacity: 0.72; font-size: 0.95rem; line-height: 1.45; }
     </style>
     <!-- Suite theme skins (cosmetic only — does not affect the notation engine) -->
-    <link rel="stylesheet" href="suite-theme.css?v=20260628-tapping-inline">
+    <link rel="stylesheet" href="suite-theme.css?v=20260701-bricks">
 </head>
 <body>
     <div class="header">
@@ -1128,7 +1242,7 @@
         })();
     </script>
     <script type="module" src="rhythm-student.js?v=20260627ah"></script>
-    <script src="suite-theme.js"></script>
+    <script src="suite-theme.js?v=20260701-kidsmode"></script>
     <!-- Guided-level ENGINE bridge: loads core/ (curriculum, ladder, mastery,
          grading) over HTTP and exposes window.LevelCore. Must precede solo-mode.js,
          which waits for it (window.LevelCore / the levelcore-ready event). -->
@@ -1136,7 +1250,7 @@
     <!-- TEACH content (window.TEACH_CONTENT): per-level intro copy the teach
          screens read. DATA only; classic global, must precede solo-mode.js. -->
     <script src="teach-content.js?v=20260629-teach"></script>
-    <script src="solo-mode.js?v=20260629-teach"></script>
+    <script src="solo-mode.js?v=20260701-mastery"></script>
     <!-- TAPPING boot: this page is always the tapping game. The shared solo-mode.js
          auto-boots when the URL carries ?mode=tapping; for a clean bare URL we also
          wire the Start button to BeatQuestSolo.startTapping() directly. The button's

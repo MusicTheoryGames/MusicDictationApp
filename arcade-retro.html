@@ -1,0 +1,70 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Ear Arcade — Retro (concept)</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;}
+  html,body{height:100%;overflow:hidden;background:#050307;font-family:"Press Start 2P",ui-monospace,"SFMono-Regular",Menlo,monospace;color:#e9fff5;}
+  .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:18px;background:radial-gradient(circle at 50% 30%,#160a1e,#050307 70%);}
+  .phone{position:relative;width:390px;height:800px;max-height:96vh;border-radius:40px;overflow:hidden;background:#07060d;
+    box-shadow:0 30px 90px rgba(255,60,200,.14),0 0 0 3px #1a1030 inset,0 4px 24px #000a;}
+  .screen{position:absolute;inset:14px;border-radius:26px;background:radial-gradient(120% 90% at 50% 40%,#0d0722,#060411);overflow:hidden;
+    box-shadow:inset 0 0 60px #000c,inset 0 0 0 2px #2a1650;}
+  .scan{position:absolute;inset:0;pointer-events:none;z-index:9;background:repeating-linear-gradient(#0000 0 2px,#00000055 2px 3px);mix-blend-mode:multiply;}
+  .vig{position:absolute;inset:0;pointer-events:none;z-index:8;box-shadow:inset 0 0 90px #000d;border-radius:26px;}
+  .stars{position:absolute;inset:0;}
+  .stars i{position:absolute;width:2px;height:2px;background:#8a6bff;opacity:.5;}
+  .hud{position:absolute;left:0;right:0;top:0;padding:24px 20px 0;z-index:6;display:flex;justify-content:space-between;font-size:.6rem;line-height:1.8;}
+  .hud .c{color:#00e5ff;text-shadow:0 0 6px #00e5ff;} .hud .m{color:#ff3ccf;text-shadow:0 0 6px #ff3ccf;text-align:right;}
+  .hud b{display:block;color:#fff;font-size:.85rem;text-shadow:0 0 8px currentColor;}
+  .wave{position:absolute;left:0;right:0;top:120px;text-align:center;z-index:6;color:#ffe23f;font-size:.62rem;text-shadow:0 0 8px #ffae00;letter-spacing:2px;
+    animation:blink 1.1s steps(1) infinite;}
+  @keyframes blink{50%{opacity:.35;}}
+  .cue{position:absolute;left:0;right:0;top:172px;text-align:center;z-index:6;color:#9be9ff;font-size:.52rem;letter-spacing:1px;opacity:.8;}
+  .field{position:absolute;left:0;right:0;bottom:150px;display:flex;justify-content:center;gap:16px;z-index:5;}
+  .blk{position:relative;width:92px;height:92px;cursor:pointer;image-rendering:pixelated;
+    background:linear-gradient(180deg,#12203a,#0a1224);border:3px solid #00e5ff;
+    box-shadow:0 0 14px #00e5ff66,inset 0 0 14px #00e5ff22,4px 4px 0 #001a2a;
+    display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:#eafffb;text-shadow:0 0 8px #00e5ff;}
+  .blk:nth-child(2){border-color:#ff3ccf;box-shadow:0 0 14px #ff3ccf66,inset 0 0 14px #ff3ccf22,4px 4px 0 #2a0022;text-shadow:0 0 8px #ff3ccf;}
+  .blk:nth-child(3){border-color:#b6ff3a;box-shadow:0 0 14px #b6ff3a66,inset 0 0 14px #b6ff3a22,4px 4px 0 #142a00;text-shadow:0 0 8px #b6ff3a;}
+  .blk.active{animation:jit .5s steps(2) infinite;filter:brightness(1.5);}
+  @keyframes jit{50%{transform:translate(1px,-1px);}}
+  .blk.hit{animation:bhit .25s steps(3);}
+  @keyframes bhit{0%{transform:scale(1);filter:brightness(3);}100%{transform:scale(1);}}
+  .float{position:absolute;z-index:9;color:#ffe23f;font-size:.7rem;text-shadow:0 0 8px #ffae00;pointer-events:none;animation:rise .9s steps(6) forwards;}
+  @keyframes rise{0%{opacity:0;transform:translateY(0);}20%{opacity:1;}100%{opacity:0;transform:translateY(-48px);}}
+  .px{position:absolute;z-index:8;width:6px;height:6px;pointer-events:none;image-rendering:pixelated;}
+  .foot{position:absolute;left:0;right:0;bottom:34px;text-align:center;z-index:7;}
+  .labsys{display:flex;gap:8px;justify-content:center;margin-bottom:12px;}
+  .labsys button{background:#0a0820;border:2px solid #8a6bff;color:#c7b6ff;font-family:inherit;font-size:.5rem;padding:8px 10px;border-radius:4px;cursor:pointer;}
+  .labsys button.on{background:#8a6bff;color:#0a0820;}
+  .hint{font-size:.5rem;color:#7a6baa;opacity:.8;letter-spacing:1px;}
+</style></head><body>
+<div class="wrap"><div class="phone" id="phone"><div class="screen">
+  <div class="stars" id="stars"></div>
+  <div class="hud"><div class="c">1UP<b id="score">000000</b></div><div class="m">COMBO<b id="combo">x0</b></div></div>
+  <div class="wave">- WAVE 3 : TRIAD -</div>
+  <div class="cue">HIT THE DEGREE YOU HEAR</div>
+  <div class="field" id="field"></div>
+  <div class="foot"><div class="labsys" id="labsys"><button data-s="num" class="on">1 3 5</button><button data-s="mov">DO MI SOL</button><button data-s="fix">FIXED</button></div><div class="hint">CONCEPT · INSERT EAR · IDENTIFY BY SOUND</div></div>
+  <div class="vig"></div><div class="scan"></div>
+</div></div></div>
+<script>(()=>{
+  const st=document.getElementById('stars');for(let i=0;i<40;i++){const s=document.createElement('i');s.style.left=Math.random()*100+'%';s.style.top=Math.random()*70+'%';if(Math.random()<.3)s.style.width=s.style.height='3px';st.appendChild(s);}
+  const LAB={num:['1','2','3','4','5','6','7'],mov:['DO','RE','MI','FA','SOL','LA','TI'],fix:['DO','RE','MI','FA','SOL','LA','TI']};let SYS='num';
+  const T=[{deg:1,c:'#00e5ff'},{deg:3,c:'#ff3ccf'},{deg:5,c:'#b6ff3a'}],field=document.getElementById('field'),phone=document.getElementById('phone');
+  const blk=T.map(t=>{const el=document.createElement('div');el.className='blk';el.dataset.deg=t.deg;el.textContent=LAB[SYS][t.deg-1];el.onpointerdown=()=>hit(t.deg,el,t.c);field.appendChild(el);return el;});
+  const relabel=()=>blk.forEach((el,i)=>{el.textContent=LAB[SYS][T[i].deg-1];el.style.fontSize=SYS==='num'?'1.5rem':'.85rem';});
+  let AC=null;const hz=d=>({1:523.25,3:659.25,5:783.99})[d]||523;
+  function tone(d){try{AC=AC||new(window.AudioContext||webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type='square';o.frequency.value=hz(d);o.connect(g);g.connect(AC.destination);const t=AC.currentTime;g.gain.setValueAtTime(.14,t);g.gain.setValueAtTime(.14,t+.08);g.gain.exponentialRampToValueAtTime(.001,t+.3);o.start(t);o.stop(t+.32);}catch(e){}}
+  const scoreEl=document.getElementById('score'),comboEl=document.getElementById('combo');let score=0,c=0,active=1;
+  const pad=n=>String(n).padStart(6,'0');
+  function ping(){blk.forEach(b=>b.classList.remove('active'));active=T[Math.floor(Math.random()*3)].deg;blk[T.findIndex(x=>x.deg===active)].classList.add('active');tone(active);}
+  function hit(d,el,col){tone(d);el.classList.remove('hit');void el.offsetWidth;el.classList.add('hit');setTimeout(()=>el.classList.remove('hit'),250);
+    if(d===active){c++;score+=100+c*20;scoreEl.textContent=pad(score);comboEl.textContent='x'+c;burst(el,col);const r=el.getBoundingClientRect(),p=phone.getBoundingClientRect();const f=document.createElement('div');f.className='float';f.textContent='+'+(100+c*20);f.style.left=(r.left-p.left+28)+'px';f.style.top=(r.top-p.top)+'px';phone.appendChild(f);setTimeout(()=>f.remove(),900);}
+    else{c=0;comboEl.textContent='x0';phone.animate([{filter:'brightness(1)'},{filter:'brightness(.4) hue-rotate(-40deg)'},{filter:'brightness(1)'}],{duration:200});}}
+  function burst(el,col){const r=el.getBoundingClientRect(),p=phone.getBoundingClientRect(),cx=r.left-p.left+r.width/2,cy=r.top-p.top+r.height/2;
+    for(let k=0;k<12;k++){const s=document.createElement('div');s.className='px';const cc=[col,'#ffffff','#ffe23f'][k%3];s.style.background=cc;s.style.boxShadow='0 0 6px '+cc;s.style.left=cx+'px';s.style.top=cy+'px';const a=k/12*Math.PI*2,d=30+Math.random()*40;phone.appendChild(s);s.animate([{transform:'translate(0,0)',opacity:1},{transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px)`,opacity:0}],{duration:400,easing:'steps(6)'});setTimeout(()=>s.remove(),420);}}
+  ping();setInterval(ping,1500);
+  document.querySelectorAll('#labsys button').forEach(x=>x.onpointerdown=()=>{SYS=x.dataset.s;document.querySelectorAll('#labsys button').forEach(y=>y.classList.toggle('on',y===x));relabel();});
+})();</script></body></html>

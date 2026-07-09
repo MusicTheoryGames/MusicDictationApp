@@ -1,0 +1,75 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Ear Arcade — Sky Hop (pitch height)</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;}
+  html,body{height:100%;overflow:hidden;font-family:-apple-system,"SF Pro Display","Segoe UI",system-ui,sans-serif;background:#061024;color:#eaf2ff;}
+  .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:18px;background:#04081a;}
+  .phone{position:relative;width:390px;height:800px;max-height:96vh;border-radius:40px;overflow:hidden;
+    background:linear-gradient(180deg,#0a1a4a 0%,#123a7a 40%,#3b8fd6 78%,#8fd4ff 100%);box-shadow:0 40px 120px rgba(40,120,220,.25),0 4px 30px #000a;}
+  .stars{position:absolute;inset:0;} .stars i{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;opacity:.6;}
+  .cloud{position:absolute;background:#ffffff;opacity:.85;border-radius:40px;filter:blur(.5px);}
+  .hud{position:absolute;left:0;right:0;top:0;padding:22px 22px 0;z-index:6;display:flex;justify-content:space-between;align-items:flex-start;}
+  .brand{font-weight:900;letter-spacing:.08em;font-size:.9rem;}.brand small{display:block;font-weight:500;font-size:.6rem;opacity:.6;}
+  .lives{font-size:1.1rem;letter-spacing:2px;}
+  .h{position:absolute;right:22px;top:66px;text-align:right;z-index:6;} .h b{font-size:1.6rem;font-weight:900;} .h small{display:block;font-size:.55rem;letter-spacing:.2em;opacity:.6;}
+  .cue{position:absolute;left:0;right:0;top:120px;text-align:center;z-index:6;font-size:.82rem;letter-spacing:.1em;opacity:.8;text-transform:uppercase;}
+  .stage{position:absolute;left:0;right:0;top:150px;bottom:120px;z-index:4;}
+  .ledge{position:absolute;left:50%;transform:translateX(-50%);width:150px;height:34px;border-radius:16px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.3rem;color:#0a2a1a;
+    background:linear-gradient(180deg,#9be36a,#5cc24a);box-shadow:0 8px 0 #3f9a34,0 12px 18px #0004;transition:transform .1s;}
+  .ledge.l1{background:linear-gradient(180deg,#9be36a,#5cc24a);box-shadow:0 8px 0 #3a8a2e,0 12px 18px #0004;}
+  .ledge.l3{background:linear-gradient(180deg,#ffd36b,#f0a93a);box-shadow:0 8px 0 #b47a17,0 12px 18px #0004;}
+  .ledge.l5{background:linear-gradient(180deg,#7fd0ff,#3f9ae0);box-shadow:0 8px 0 #1f6bab,0 12px 18px #0004;color:#062a44;}
+  .ledge .tag{position:absolute;left:12px;top:2px;font-size:.5rem;font-weight:800;opacity:.45;letter-spacing:.08em;text-transform:uppercase;}
+  .ledge .lb{font-size:1.4rem;}
+  .hopper{position:absolute;left:50%;width:52px;height:52px;transform:translateX(-50%);z-index:5;transition:none;}
+  .foot{position:absolute;left:0;right:0;bottom:22px;text-align:center;z-index:7;}
+  .go{background:linear-gradient(180deg,#ffd36b,#f0a93a);color:#5a3800;border:none;font-weight:800;padding:12px 30px;border-radius:16px;font-size:1rem;cursor:pointer;box-shadow:0 8px 0 #b47a17,0 14px 26px #0008;}
+  .labsys{display:flex;gap:8px;justify-content:center;margin-bottom:12px;}
+  .labsys button{background:#ffffff1c;border:1px solid #ffffff3a;color:#eaf2ff;font-weight:700;font-size:.72rem;padding:6px 13px;border-radius:999px;cursor:pointer;}
+  .labsys button.on{background:#ffffff36;border-color:#fff;}
+  .hint{margin-top:10px;font-size:.7rem;opacity:.55;}
+  .puff{position:absolute;z-index:6;width:8px;height:8px;border-radius:50%;background:#fff;pointer-events:none;}
+</style></head><body>
+<div class="wrap"><div class="phone" id="phone">
+  <div class="stars" id="stars"></div>
+  <div class="cloud" style="top:220px;left:40px;width:70px;height:22px"></div>
+  <div class="cloud" style="top:420px;left:250px;width:56px;height:18px"></div>
+  <div class="hud"><div class="brand">SKY HOP<small>hop to the note's height</small></div><div class="lives" id="lives">♥♥♥</div></div>
+  <div class="h"><b id="score">0</b><small>HEIGHT</small></div>
+  <div class="cue" id="cue">Tap Start</div>
+  <div class="stage" id="stage">
+    <div class="ledge l5" data-deg="5" style="top:6%"><span class="tag">high</span><span class="lb">5̂</span></div>
+    <div class="ledge l3" data-deg="3" style="top:40%"><span class="tag">mid</span><span class="lb">3̂</span></div>
+    <div class="ledge l1" data-deg="1" style="top:74%"><span class="tag">low</span><span class="lb">1̂</span></div>
+    <div class="hopper" id="hopper" style="top:74%"><svg width="52" height="52" viewBox="0 0 52 52"><ellipse cx="26" cy="46" rx="16" ry="5" fill="#00000022"/><circle cx="26" cy="26" r="18" fill="#ff8f4c"/><circle cx="19" cy="22" r="4.5" fill="#fff"/><circle cx="33" cy="22" r="4.5" fill="#fff"/><circle cx="20" cy="23" r="2" fill="#222"/><circle cx="34" cy="23" r="2" fill="#222"/><path d="M20 32q6 5 12 0" stroke="#7a3a12" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg></div>
+  </div>
+  <div class="foot"><div class="labsys" id="labsys"><button data-s="num" class="on">1̂ 3̂ 5̂</button><button data-s="mov">Moveable do</button><button data-s="fix">Fixed do</button></div>
+    <button class="go" id="go">Start</button><div class="hint">A note plays — hop to the ledge at its PITCH HEIGHT (high note = high ledge).</div></div>
+</div></div>
+<script>(()=>{
+  const st=document.getElementById('stars');for(let i=0;i<50;i++){const s=document.createElement('i');s.style.left=Math.random()*100+'%';s.style.top=Math.random()*40+'%';st.appendChild(s);}
+  const LAB={num:['1̂','2̂','3̂','4̂','5̂','6̂','7̂'],mov:['do','re','mi','fa','sol','la','ti'],fix:['do','re','mi','fa','sol','la','ti']};let SYS='num';
+  const DEG=[1,3,5],ledges=[...document.querySelectorAll('.ledge')],phone=document.getElementById('phone'),hopper=document.getElementById('hopper'),cue=document.getElementById('cue'),stage=document.getElementById('stage');
+  const relabel=()=>ledges.forEach(l=>{l.querySelector('.lb').textContent=LAB[SYS][+l.dataset.deg-1];});
+  let AC=null;const midi=d=>({1:60,3:64,5:67})[d],hz=m=>440*Math.pow(2,(m-69)/12);
+  function tone(d){try{AC=AC||new(window.AudioContext||webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type='triangle';o.frequency.value=hz(midi(d));o.connect(g);g.connect(AC.destination);const t=AC.currentTime;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.28,t+.02);g.gain.exponentialRampToValueAtTime(.001,t+.6);o.start(t);o.stop(t+.62);}catch(e){}}
+  const scoreEl=document.getElementById('score'),livesEl=document.getElementById('lives');
+  let target=1,score=0,lives=3,playing=false,curTop=74;
+  function ask(){target=DEG[Math.floor(Math.random()*3)];tone(target);cue.textContent='which height?';}
+  function anchorHome(cb){ cue.textContent='home = '+LAB[SYS][0]; const low=ledges.find(l=>+l.dataset.deg===1); if(low)low.animate([{filter:'brightness(1.7)'},{filter:'brightness(1)'}],{duration:750}); tone(1); setTimeout(cb,950); }
+  function start(){score=0;lives=3;livesEl.textContent='♥♥♥';scoreEl.textContent='0';playing=true;setTop(74);anchorHome(ask);}
+  function setTop(t){curTop=t;hopper.style.top=t+'%';}
+  ledges.forEach(l=>l.onpointerdown=()=>{ if(!playing){tone(+l.dataset.deg);return;} const d=+l.dataset.deg; tone(d);
+    if(d===target){ const tt=parseFloat(l.style.top); hop(tt); score+=10; scoreEl.textContent=score; puff(); cue.textContent='up you go!'; setTimeout(ask,650); }
+    else { lives--; livesEl.textContent='♥'.repeat(Math.max(0,lives)); l.animate([{transform:'translateX(-50%) translateY(0)'},{transform:'translateX(-50%) translateY(6px)'},{transform:'translateX(-50%) translateY(0)'}],{duration:200}); wob(); if(lives<=0){playing=false;cue.textContent='Fell! Tap Start.';} else cue.textContent='missed — listen again'; setTimeout(()=>{if(playing)tone(target);},500); }
+  });
+  function hop(tt){ hopper.animate([{top:curTop+'%'},{top:(Math.min(curTop,tt)-14)+'%',offset:.5},{top:tt+'%'}],{duration:420,easing:'cubic-bezier(.3,-.4,.4,1)'}); setTimeout(()=>setTop(tt),400);
+    // world "climbs": shift ledges down a touch then reset (feel of ascending)
+    stage.animate([{transform:'translateY(0)'},{transform:'translateY(10px)'},{transform:'translateY(0)'}],{duration:420}); }
+  function wob(){hopper.animate([{transform:'translateX(-50%)'},{transform:'translateX(-58%)'},{transform:'translateX(-42%)'},{transform:'translateX(-50%)'}],{duration:220});}
+  function puff(){const r=hopper.getBoundingClientRect(),p=phone.getBoundingClientRect();for(let k=0;k<8;k++){const s=document.createElement('div');s.className='puff';s.style.left=(r.left-p.left+26)+'px';s.style.top=(r.top-p.top+40)+'px';phone.appendChild(s);const a=Math.random()*Math.PI*2,d=20+Math.random()*30;s.animate([{transform:'translate(0,0)',opacity:.9},{transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d+16}px)`,opacity:0}],{duration:500});setTimeout(()=>s.remove(),520);}}
+  document.getElementById('go').onpointerdown=start;
+  document.querySelectorAll('#labsys button').forEach(x=>x.onpointerdown=()=>{SYS=x.dataset.s;document.querySelectorAll('#labsys button').forEach(y=>y.classList.toggle('on',y===x));relabel();});
+})();</script></body></html>

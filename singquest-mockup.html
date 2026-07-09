@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>SingQuest — design mockup</title>
+<style>
+  :root{
+    --ink:#33405e; --muted:#8791ad; --line:#e7ecfb;
+    --accent:#5b6ee1; --accent2:#8a6ee6;      /* SingQuest voice-violet */
+    --go1:#34d17f; --go2:#22b083;              /* the family green CTA */
+    --warm1:#eaf3ff; --warm2:#f3edff; --warm3:#ffeef6;
+    --hit:#2fbf87; --near:#f2b134; --miss:#e2726e; --oct:#7c9cf5;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; font-family:ui-rounded,"SF Pro Rounded","Nunito","Segoe UI",system-ui,sans-serif; color:var(--ink); }
+  body{ background:#dfe7fb; display:flex; flex-wrap:wrap; gap:26px; justify-content:center; padding:26px; }
+  .phone{ width:430px; height:868px; border-radius:38px; overflow:hidden; position:relative;
+          background:linear-gradient(165deg,var(--warm1),var(--warm2) 55%,var(--warm3));
+          box-shadow:0 18px 60px rgba(70,90,160,.28); display:flex; flex-direction:column; }
+  .cap{ position:absolute; bottom:10px; left:0; right:0; text-align:center; font-size:11px; color:var(--muted); font-weight:800; letter-spacing:.06em; }
+
+  /* ---------- shared wordmark ---------- */
+  .brand{ display:flex; align-items:center; justify-content:center; gap:9px; padding:26px 0 4px; }
+  .brand svg{ width:30px; height:30px; }
+  .brand h1{ margin:0; font-size:34px; font-weight:900; letter-spacing:-.02em;
+             background:linear-gradient(92deg,var(--accent),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .tag{ text-align:center; color:var(--muted); font-weight:800; font-size:14px; margin:2px 0 16px; }
+
+  /* ---------- SCREEN 1 : landing ---------- */
+  .tabs{ margin:0 20px 16px; background:#fff; border-radius:16px; padding:6px; display:flex; box-shadow:0 6px 20px rgba(90,110,180,.12); }
+  .tabs button{ flex:1; border:0; background:transparent; font-family:inherit; font-weight:900; font-size:15px; color:var(--muted); padding:12px; border-radius:11px; }
+  .tabs button.on{ background:linear-gradient(180deg,#f4f6ff,#eaeeff); color:var(--accent); box-shadow:inset 0 0 0 1.5px #dfe4ff; }
+  .card{ margin:0 20px; background:#fff; border-radius:22px; padding:20px; box-shadow:0 10px 30px rgba(90,110,180,.14); }
+  .card p.lead{ margin:0 0 16px; font-size:15px; line-height:1.5; font-weight:600; color:#4a5578; }
+  .kicker{ font-size:11px; font-weight:900; letter-spacing:.08em; color:var(--muted); margin-bottom:10px; }
+  .chips{ display:flex; gap:10px; }
+  .chip{ flex:1; background:linear-gradient(180deg,#fbfcff,#f4f7ff); border:1.5px solid #e9edff; border-radius:15px; padding:13px 8px; text-align:center; }
+  .chip .ico{ width:30px; height:30px; margin:0 auto 7px; color:var(--accent); }
+  .chip small{ display:block; font-weight:800; font-size:12px; color:#5a6488; line-height:1.25; }
+  .chip b{ display:block; font-size:11px; color:var(--muted); font-weight:800; margin-top:3px; }
+  .cta{ margin:20px 20px 0; }
+  .cta button{ width:100%; border:0; border-radius:18px; padding:18px; font-family:inherit; font-weight:900; font-size:18px; color:#fff;
+               background:linear-gradient(135deg,var(--go1),var(--go2)); box-shadow:0 10px 24px rgba(34,176,131,.4); display:flex; align-items:center; justify-content:center; gap:9px; }
+
+  /* ---------- SCREEN 2 : the lesson (teach-then-do) ---------- */
+  .hud{ display:flex; align-items:center; justify-content:space-between; padding:14px 18px 4px; }
+  .hbrand{ display:flex; align-items:center; gap:7px; font-weight:900; font-size:17px;
+           background:linear-gradient(92deg,var(--accent),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .hbrand svg{ width:20px; height:20px; }
+  .cog{ width:34px; height:34px; border-radius:11px; background:#fff; box-shadow:0 3px 10px rgba(90,110,180,.16); display:flex; align-items:center; justify-content:center; color:var(--muted); }
+  .tabrow{ display:flex; justify-content:space-between; padding:2px 16px 0; }
+  .htab{ background:#fff; border-radius:12px; padding:6px 12px; font-size:12px; font-weight:900; color:#59638a; box-shadow:0 3px 10px rgba(90,110,180,.13); display:flex; align-items:center; gap:8px; }
+  .pips{ display:flex; gap:4px; }
+  .pips i{ width:8px; height:8px; border-radius:50%; background:#dfe4f7; }
+  .pips i.on{ background:var(--near); }
+  .flame{ width:16px; height:16px; color:#ff8c42; }
+
+  .stage{ flex:1; margin:12px 16px 18px; border-radius:26px; background:#fff; position:relative;
+          box-shadow:0 0 0 7px #34c987, 0 12px 30px rgba(60,150,110,.22); padding:16px 16px 20px; display:flex; flex-direction:column; }
+  /* three-step guide */
+  .steps{ display:flex; gap:6px; justify-content:center; margin:2px 0 12px; }
+  .step{ display:flex; align-items:center; gap:6px; font-size:11px; font-weight:900; color:var(--muted); background:#f3f5fd; padding:6px 10px; border-radius:20px; }
+  .step.on{ color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:0 4px 12px rgba(110,110,230,.34); }
+  .step.done{ color:var(--hit); background:#e7f8f0; }
+  .step .n{ width:16px; height:16px; border-radius:50%; background:rgba(255,255,255,.35); display:flex; align-items:center; justify-content:center; font-size:10px; }
+  .step.on .n{ background:rgba(255,255,255,.28); }
+
+  .prompt{ text-align:center; font-weight:900; font-size:20px; margin:2px 8px 4px; }
+  .sub{ text-align:center; color:var(--muted); font-weight:700; font-size:13px; margin-bottom:10px; }
+
+  /* the PITCH LANE — rich, not a needle */
+  .lane{ flex:1; position:relative; border-radius:18px; margin:0 4px; overflow:hidden;
+         background:linear-gradient(180deg,#f7f9ff,#eef2ff); border:1.5px solid #e7ecfb; min-height:250px; }
+  .gridline{ position:absolute; left:0; right:0; height:1px; background:#e4e9f9; }
+  .target{ position:absolute; left:8px; right:8px; height:44px; border-radius:12px;
+           background:linear-gradient(90deg,rgba(47,191,135,.16),rgba(47,191,135,.26));
+           border:2px dashed #48c98f; display:flex; align-items:center; }
+  .target .lab{ font-size:12px; font-weight:900; color:#1f9c6d; margin-left:12px; letter-spacing:.05em; }
+  .target .doh{ position:absolute; right:12px; font-size:22px; font-weight:900; color:#28b07f; }
+  /* the voice dot with a friendly face */
+  .voice{ position:absolute; left:50%; transform:translateX(-50%); width:52px; height:52px; border-radius:50%;
+          background:radial-gradient(circle at 38% 34%,#8fa6ff,#5b6ee1); box-shadow:0 8px 18px rgba(91,110,225,.45), 0 0 0 6px rgba(91,110,225,.14);
+          display:flex; align-items:center; justify-content:center; }
+  .voice .eye{ position:absolute; width:6px; height:6px; border-radius:50%; background:#fff; top:19px; }
+  .voice .eye.l{ left:16px; } .voice .eye.r{ right:16px; }
+  .voice .mo{ position:absolute; bottom:15px; width:14px; height:7px; border-bottom:3px solid #fff; border-radius:0 0 10px 10px; }
+  .voice .tail{ position:absolute; left:-64px; top:50%; width:64px; height:4px; border-radius:4px;
+                background:linear-gradient(90deg,rgba(91,110,225,0),rgba(91,110,225,.55)); }
+  .trace{ position:absolute; left:0; bottom:0; height:60%; width:100%; }
+
+  .coach{ text-align:center; font-weight:900; font-size:15px; margin:12px 6px 0; color:#4a5578; }
+  .coach .up{ color:var(--accent); }
+  .act{ margin-top:12px; display:flex; gap:10px; }
+  .act .ghost{ flex:0 0 auto; border:1.5px solid #e2e8f6; background:#fff; color:#5a6488; font-family:inherit; font-weight:900; font-size:14px; padding:14px 16px; border-radius:15px; display:flex; align-items:center; gap:8px; }
+  .act .go{ flex:1; border:0; border-radius:15px; font-family:inherit; font-weight:900; font-size:16px; color:#fff;
+            background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:0 8px 20px rgba(110,110,230,.34); display:flex; align-items:center; justify-content:center; gap:8px; }
+  .groovebadge{ position:absolute; right:16px; bottom:-13px; background:#fff; border-radius:11px; padding:4px 11px; font-size:11px; font-weight:900; letter-spacing:.05em; color:#22b083; box-shadow:0 3px 10px rgba(90,110,180,.16); display:flex; align-items:center; gap:6px; }
+  .groovebadge svg{ width:15px; height:15px; }
+  .label{ position:absolute; top:12px; left:0; right:0; text-align:center; font-size:11px; font-weight:900; letter-spacing:.1em; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- ============ SCREEN 1 : LANDING (family sibling) ============ -->
+<div class="phone">
+  <div class="label">SCREEN 1 · LANDING</div>
+  <div class="brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="url(#g)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <defs><linearGradient id="g" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#5b6ee1"/><stop offset="1" stop-color="#8a6ee6"/></linearGradient></defs>
+      <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v4"/><path d="M9 21h6"/></svg>
+    <h1>SingQuest</h1>
+  </div>
+  <div class="tag">Learn to sing in tune — from your very first note</div>
+
+  <div class="tabs">
+    <button class="on">Guided Journey</button>
+    <button>Free Play</button>
+  </div>
+
+  <div class="card">
+    <p class="lead">We <b>find your voice</b>, then teach one note at a time — <b>listen, sing along, then solo</b>. No music reading needed to start.</p>
+    <div class="kicker">YOUR FIRST LESSON · LEVEL 1</div>
+    <div class="chips">
+      <div class="chip">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v4"/></svg>
+        <small>Find your voice</small><b>where you're comfy</b>
+      </div>
+      <div class="chip">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.4"/></svg>
+        <small>Match a note</small><b>hit the target</b>
+      </div>
+      <div class="chip">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        <small>Sing it back</small><b>your first tune</b>
+      </div>
+    </div>
+  </div>
+
+  <div class="cta">
+    <button>Start singing
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+    </button>
+  </div>
+  <div class="cap">nothing recorded · analysed live &amp; discarded</div>
+</div>
+
+<!-- ============ SCREEN 2 : THE LESSON (teach-then-do) ============ -->
+<div class="phone">
+  <div class="label">SCREEN 2 · S1 MATCH — "we do" (sing with me)</div>
+  <div class="hud">
+    <div class="hbrand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="url(#g2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="g2" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#5b6ee1"/><stop offset="1" stop-color="#8a6ee6"/></linearGradient></defs><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v4"/></svg>
+      SingQuest
+    </div>
+    <div class="cog"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 0 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H1a2 2 0 0 1 0-4h.1A1.6 1.6 0 0 0 4.6 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9 2.6h.1A2 2 0 0 1 13 2.6V3a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.4Z"/></svg></div>
+  </div>
+  <div class="tabrow">
+    <div class="htab">LEVEL 1 <span class="pips"><i class="on"></i><i></i><i></i><i></i></span></div>
+    <div class="htab"><svg class="flame" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2s5 4 5 9a5 5 0 0 1-10 0c0-1 .3-2 .8-2.6C7 10 8 12 9 12c0-3 3-4 3-10Z"/></svg>3 · SCORE 240</div>
+  </div>
+
+  <div class="stage">
+    <div class="steps">
+      <div class="step done"><span class="n">✓</span>Listen</div>
+      <div class="step on"><span class="n">2</span>Sing with me</div>
+      <div class="step"><span class="n">3</span>Your turn</div>
+    </div>
+    <div class="prompt">Sing with me — lock onto the note</div>
+    <div class="sub">I'm holding it with you. Slide your voice up to the green band.</div>
+
+    <div class="lane">
+      <div class="gridline" style="top:18%"></div>
+      <div class="gridline" style="top:38%"></div>
+      <div class="gridline" style="top:78%"></div>
+      <!-- target band (do) -->
+      <div class="target" style="top:26%"><span class="lab">TARGET · do</span><span class="doh">do</span></div>
+      <!-- your voice, currently a bit below, sliding up -->
+      <div class="voice" style="top:52%">
+        <span class="tail"></span>
+        <span class="eye l"></span><span class="eye r"></span><span class="mo"></span>
+      </div>
+    </div>
+
+    <div class="coach">Almost there — <span class="up">slide up</span> a little</div>
+    <div class="act">
+      <button class="ghost"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9V3Z"/></svg>Hear it</button>
+      <button class="go"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M6 11a6 6 0 0 0 12 0"/></svg>Singing…</button>
+    </div>
+    <div class="groovebadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.4"/></svg>GROOVE</div>
+  </div>
+  <div class="cap">rich pitch lane · sing-with-me guide · coaching, not a tuner</div>
+</div>
+
+</body>
+</html>

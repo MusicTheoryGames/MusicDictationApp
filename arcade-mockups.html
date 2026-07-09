@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ear Arcade — skin mockups</title>
+<style>
+  :root { font-family: -apple-system, "Segoe UI", system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #14151a; color: #e8e8ea; padding: 26px 16px 60px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; letter-spacing: .02em; }
+  .sub { opacity: .6; margin: 0 0 26px; font-size: .95rem; max-width: 720px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 26px; align-items: flex-start; }
+  .card { width: 340px; }
+  .cap { font-weight: 800; margin: 12px 2px 2px; font-size: 1.05rem; }
+  .capdesc { opacity: .6; font-size: .82rem; margin: 0 2px 0; }
+  .screen { width: 340px; height: 560px; border-radius: 26px; overflow: hidden; position: relative;
+    box-shadow: 0 18px 50px rgba(0,0,0,.5); border: 6px solid #0c0d10; }
+  .pop { animation: pop 1.6s ease-in-out infinite; }
+  @keyframes pop { 0%,70%,100% { transform: translateY(0) scale(1); } 82% { transform: translateY(-14px) scale(1.06); } }
+  .glowpulse { animation: gp 1.4s ease-in-out infinite; }
+  @keyframes gp { 0%,100% { opacity: .25; transform: scale(.8); } 50% { opacity: .9; transform: scale(1.15); } }
+
+  /* ============ SKIN A — NEON ARCADE ============ */
+  .A { background: radial-gradient(120% 90% at 50% 0%, #1a0b3a, #05010f 70%); color: #eafcff; font-family: "Trebuchet MS", sans-serif; }
+  .A .top { padding: 18px 18px 6px; display: flex; justify-content: space-between; align-items: center; }
+  .A .title { font-weight: 900; letter-spacing: .12em; color: #16f0ff; text-shadow: 0 0 12px #16f0ff88; font-size: .95rem; }
+  .A .pips { display: flex; gap: 5px; }
+  .A .pips i { width: 9px; height: 9px; border-radius: 2px; background: #2a1f55; box-shadow: inset 0 0 3px #000; }
+  .A .pips i.on { background: #ff3df0; box-shadow: 0 0 8px #ff3df0; }
+  .A .score { text-align: center; margin: 6px 0; }
+  .A .score b { font-size: 2.1rem; color: #ffe44d; text-shadow: 0 0 16px #ffae00aa; letter-spacing: .04em; }
+  .A .combo { color: #39ff8b; font-weight: 900; text-shadow: 0 0 10px #39ff8b88; letter-spacing: .1em; }
+  .A .field { position: absolute; inset: 210px 0 24px; display: flex; justify-content: center; align-items: flex-end; gap: 16px;
+    background: repeating-linear-gradient(90deg, transparent 0 38px, #16f0ff11 38px 39px),
+                linear-gradient(#0000 60%, #16f0ff10); }
+  .A .pad { width: 84px; height: 108px; border-radius: 16px; border: 2px solid #16f0ff; background: linear-gradient(180deg,#12083a,#0a0522);
+    box-shadow: 0 0 14px #16f0ff55, inset 0 0 20px #16f0ff22; display: flex; align-items: center; justify-content: center;
+    font-size: 2.2rem; font-weight: 900; color: #eafcff; }
+  .A .pad.mag { border-color: #ff3df0; box-shadow: 0 0 20px #ff3df0aa, inset 0 0 22px #ff3df033; color:#fff; text-shadow:0 0 14px #ff3df0; }
+  .A .scan { position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(#0000 0 3px, #0004 3px 4px); }
+
+  /* ============ SKIN B — BUBBLY KIDS ============ */
+  .B { background: linear-gradient(180deg,#8fe3ff,#c9f5e4 60%,#fff4c2); color: #2a2a3a; font-family: "Baloo", "Comic Sans MS", system-ui, sans-serif; }
+  .B .top { padding: 16px 18px 4px; display: flex; justify-content: space-between; align-items: center; }
+  .B .title { font-weight: 900; color: #ff7aa8; font-size: 1rem; }
+  .B .pips { display: flex; gap: 6px; }
+  .B .pips i { width: 12px; height: 12px; border-radius: 50%; background: #ffffff88; border: 2px solid #ffffffcc; }
+  .B .pips i.on { background: #ffd23f; border-color: #ffb703; }
+  .B .score { text-align: center; margin: 4px 0 0; }
+  .B .score b { font-size: 2rem; color: #7b3fe4; }
+  .B .combo { display:inline-block; background:#ffd23f; color:#7a4b00; font-weight:900; padding:3px 12px; border-radius:999px; box-shadow:0 3px 0 #e0a800; }
+  .B .field { position: absolute; inset: 200px 0 26px; display: flex; justify-content: center; align-items: flex-end; gap: 16px; }
+  .B .jar { width: 88px; height: 120px; border-radius: 24px 24px 30px 30px; display: flex; flex-direction:column; align-items: center; justify-content: flex-end;
+    box-shadow: 0 8px 0 rgba(0,0,0,.12), inset 0 -10px 0 rgba(0,0,0,.08); position: relative; padding-bottom: 12px; }
+  .B .jar b { font-size: 2.1rem; font-weight: 900; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.18); }
+  .B .jar.p1 { background: #ff7aa8; } .B .jar.p2 { background: #56c7ff; } .B .jar.p3 { background: #9be15d; }
+  .B .face { position:absolute; top:14px; width:46px; height:20px; }
+  .B .star { position: absolute; top: 168px; left: 50%; transform: translateX(-50%); }
+
+  /* ============ SKIN C — CLEAN MODERN ============ */
+  .C { background: #f4f6fb; color: #1c2230; font-family: -apple-system, "Segoe UI", sans-serif; }
+  .C .top { padding: 22px 22px 8px; }
+  .C .title { font-weight: 800; font-size: 1.05rem; }
+  .C .bar { height: 8px; background: #e5e9f2; border-radius: 99px; margin-top: 10px; overflow: hidden; }
+  .C .bar i { display: block; height: 100%; width: 42%; background: #4f7cff; border-radius: 99px; }
+  .C .row { display: flex; justify-content: space-between; align-items: center; padding: 12px 22px; }
+  .C .score b { font-size: 1.7rem; font-weight: 800; }
+  .C .combo { background: #eaf0ff; color: #2f57d6; font-weight: 700; padding: 4px 12px; border-radius: 99px; font-size: .85rem; }
+  .C .field { position: absolute; inset: 240px 0 30px; display: flex; justify-content: center; align-items: flex-start; gap: 14px; }
+  .C .tile { width: 88px; height: 96px; border-radius: 20px; background: #fff; border: 2px solid #e5e9f2; box-shadow: 0 6px 16px rgba(30,50,90,.06);
+    display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 800; color: #2a3346; }
+  .C .tile.hit { border-color: #22c55e; background: #ecfdf3; color: #16a34a; box-shadow: 0 0 0 4px #22c55e22; }
+  .C .cue { position: absolute; top: 150px; left: 50%; transform: translateX(-50%); width: 54px; height: 54px; border-radius: 50%; background: #4f7cff; }
+
+  /* ============ SKIN D — CLASSIC WHACK-A-MOLE ============ */
+  .D { background: linear-gradient(180deg,#7ec8ff,#bfe89a 42%); color: #3a2a12; font-family: "Rockwell", Georgia, serif; }
+  .D .banner { margin: 12px auto 0; width: 84%; text-align: center; background: #e23b3b; color: #fff; font-weight: 900; letter-spacing: .06em;
+    padding: 8px; border-radius: 10px; box-shadow: 0 5px 0 #9e1f1f; border: 3px solid #fff; }
+  .D .row { display: flex; justify-content: space-between; padding: 10px 20px; align-items: center; }
+  .D .score b { font-size: 1.6rem; font-weight: 900; color: #6b3e12; }
+  .D .combo { background:#ffd23f; border:2px solid #b47700; color:#6b3e12; font-weight:900; padding:2px 10px; border-radius:8px; }
+  .D .grass { position: absolute; inset: 210px 0 0; background: linear-gradient(#8bd45a,#5aa832); border-top: 6px solid #4a9128; }
+  .D .holes { position: absolute; inset: 250px 0 24px; display: grid; grid-template-columns: repeat(3,1fr); gap: 18px 14px; padding: 0 26px; }
+  .D .hole { position: relative; align-self: end; }
+  .D .dirt { width: 84px; height: 30px; border-radius: 50%; background: radial-gradient(#3a2a17,#221708); box-shadow: inset 0 6px 8px #000a; }
+  .D .mole { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); width: 64px; height: 62px; border-radius: 50% 50% 44% 44%;
+    background: radial-gradient(circle at 50% 34%, #b98a5a, #8a5f34); box-shadow: inset 0 -6px 8px #0004, 0 4px 6px #0003;
+    display: flex; align-items: center; justify-content: center; }
+  .D .mole b { position: absolute; top: -22px; background: #fff8e1; border: 2px solid #b47700; border-radius: 8px; padding: 0 8px; font-size: 1.3rem; font-weight: 900; color: #6b3e12; }
+  .D .eyes { position:absolute; top: 16px; width: 30px; display:flex; justify-content: space-between; }
+  .D .eyes span { width: 7px; height: 7px; background:#201207; border-radius:50%; }
+</style>
+</head>
+<body>
+  <h1>Ear Arcade — game-skin mockups</h1>
+  <p class="sub">Same mechanic in every skin: a note plays, you whack the correctly-<b>labelled</b> target for the degree you hear
+    (so 1̂ vs 3̂ discrimination always holds). These are static visual concepts — pick a direction and I'll build it for real.</p>
+
+  <div class="grid">
+
+    <!-- A: NEON ARCADE -->
+    <div class="card">
+      <div class="screen A">
+        <div class="top"><span class="title">EAR ARCADE</span>
+          <span class="pips"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span></div>
+        <div class="score"><b>4,820</b><div class="combo">COMBO ×7</div></div>
+        <div class="field">
+          <div class="pad">1̂</div>
+          <div class="pad mag pop">3̂</div>
+          <div class="pad">5̂</div>
+        </div>
+        <div class="scan"></div>
+      </div>
+      <div class="cap">A · Neon Arcade</div>
+      <p class="capdesc">Retro cabinet: glowing pads, scanlines, big juicy score. The lit pad is the note sounding now.</p>
+    </div>
+
+    <!-- B: BUBBLY KIDS -->
+    <div class="card">
+      <div class="screen B">
+        <div class="top"><span class="title">Ear Arcade</span>
+          <span class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span></div>
+        <div class="score"><b>1,240</b> <span class="combo">×5 combo!</span></div>
+        <svg class="star pop" width="54" height="54" viewBox="0 0 24 24"><path fill="#ffd23f" stroke="#ffb703" stroke-width="1" d="M12 2l2.9 6.3 6.9.7-5.1 4.6 1.4 6.8L12 17.8 5.9 20.4 7.3 13.6 2.2 9l6.9-.7z"/></svg>
+        <div class="field">
+          <div class="jar p1"><svg class="face" viewBox="0 0 46 20"><circle cx="14" cy="6" r="3" fill="#fff"/><circle cx="32" cy="6" r="3" fill="#fff"/><circle cx="14" cy="6" r="1.4" fill="#222"/><circle cx="32" cy="6" r="1.4" fill="#222"/><path d="M14 13q9 6 18 0" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg><b>1̂</b></div>
+          <div class="jar p2 pop"><svg class="face" viewBox="0 0 46 20"><circle cx="14" cy="6" r="3" fill="#fff"/><circle cx="32" cy="6" r="3" fill="#fff"/><circle cx="14" cy="6" r="1.4" fill="#222"/><circle cx="32" cy="6" r="1.4" fill="#222"/><path d="M14 13q9 6 18 0" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg><b>3̂</b></div>
+          <div class="jar p3"><svg class="face" viewBox="0 0 46 20"><circle cx="14" cy="6" r="3" fill="#fff"/><circle cx="32" cy="6" r="3" fill="#fff"/><circle cx="14" cy="6" r="1.4" fill="#222"/><circle cx="32" cy="6" r="1.4" fill="#222"/><path d="M14 13q9 6 18 0" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg><b>5̂</b></div>
+        </div>
+      </div>
+      <div class="cap">B · Bubbly Kids</div>
+      <p class="capdesc">Friendly characters, candy colours, bouncy star rewards. Warm + playful for younger students.</p>
+    </div>
+
+    <!-- C: CLEAN MODERN -->
+    <div class="card">
+      <div class="screen C">
+        <div class="top"><div class="title">Ear Arcade</div><div class="bar"><i></i></div></div>
+        <div class="row"><div class="score"><b>2,050 pts</b></div><div class="combo">×6 streak</div></div>
+        <div class="cue glowpulse"></div>
+        <div class="field">
+          <div class="tile">1̂</div>
+          <div class="tile hit">3̂</div>
+          <div class="tile">5̂</div>
+        </div>
+      </div>
+      <div class="cap">C · Clean Modern</div>
+      <p class="capdesc">Tasteful + minimal (Duolingo-ish). One accent, soft cards, a calm pulse cue. Grown-up + premium.</p>
+    </div>
+
+    <!-- D: CLASSIC WHACK-A-MOLE -->
+    <div class="card">
+      <div class="screen D">
+        <div class="banner">EAR ARCADE</div>
+        <div class="row"><div class="score"><b>3,300</b></div><div class="combo">×8</div></div>
+        <div class="grass"></div>
+        <div class="holes">
+          <div class="hole"><div class="dirt"></div><div class="mole"><b>1̂</b><span class="eyes"><span></span><span></span></span></div></div>
+          <div class="hole"><div class="dirt"></div><div class="mole pop"><b>3̂</b><span class="eyes"><span></span><span></span></span></div></div>
+          <div class="hole"><div class="dirt"></div><div class="mole"><b>5̂</b><span class="eyes"><span></span><span></span></span></div></div>
+          <div class="hole"><div class="dirt"></div></div>
+          <div class="hole"><div class="dirt"></div></div>
+          <div class="hole"><div class="dirt"></div></div>
+        </div>
+      </div>
+      <div class="cap">D · Classic Whack-a-Mole</div>
+      <p class="capdesc">Literal moles popping from holes holding degree signs; carnival banner. The most "game", most nostalgic.</p>
+    </div>
+
+  </div>
+</body>
+</html>

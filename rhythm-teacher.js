@@ -267,7 +267,7 @@ class RhythmTeacher {
                 roomData
             );
 
-            console.log('Firebase rhythm room created:', this.roomCode);
+            console.log('Firebase rhythm room created:', this.roomCode, 'with measureCount:', this.measureCount);
         } catch (error) {
             console.error('Error creating Firebase room:', error);
         }
@@ -629,37 +629,44 @@ class RhythmTeacher {
 
     async broadcastToStudents(type, data) {
         try {
-            const updates = {};
+            const roomRef = window.firebase.ref(window.firebase.database, `rhythm-rooms/${this.roomCode}`);
 
             if (type === 'new-rhythm') {
-                updates[`rhythm-rooms/${this.roomCode}/currentRhythm`] = this.currentRhythm;
-                updates[`rhythm-rooms/${this.roomCode}/exerciseActive`] = true;
-                updates[`rhythm-rooms/${this.roomCode}/revealedBeats`] = [];
-                updates[`rhythm-rooms/${this.roomCode}/measureCount`] = this.measureCount;
-                updates[`rhythm-rooms/${this.roomCode}/difficulty`] = this.currentDifficulty;
-                updates[`rhythm-rooms/${this.roomCode}/tempo`] = this.tempo;
-                updates[`rhythm-rooms/${this.roomCode}/timeSignature`] = this.timeSignature;
-                // Clear previous student answers
-                updates[`rhythm-rooms/${this.roomCode}/studentAnswers`] = {};
-                console.log('Teacher setting exerciseActive to true for room:', this.roomCode);
-            } else if (type === 'play-rhythm') {
-                updates[`rhythm-rooms/${this.roomCode}/playCommand`] = {
-                    timestamp: window.firebase.serverTimestamp(),
-                    tempo: data.tempo
+                const roomUpdates = {
+                    currentRhythm: this.currentRhythm,
+                    exerciseActive: true,
+                    revealedBeats: [],
+                    measureCount: this.measureCount,
+                    difficulty: this.currentDifficulty,
+                    tempo: this.tempo,
+                    timeSignature: this.timeSignature,
+                    studentAnswers: {}
                 };
+                console.log('Teacher setting exerciseActive to true for room:', this.roomCode);
+                console.log('Teacher broadcasting updates:', roomUpdates);
+                console.log('Current teacher state - measureCount:', this.measureCount, 'timeSignature:', this.timeSignature);
+
+                await window.firebase.set(roomRef, roomUpdates);
+            } else if (type === 'play-rhythm') {
+                await window.firebase.set(
+                    window.firebase.ref(window.firebase.database, `rhythm-rooms/${this.roomCode}/playCommand`),
+                    {
+                        timestamp: window.firebase.serverTimestamp(),
+                        tempo: data.tempo
+                    }
+                );
             } else if (type === 'reveal-beat') {
-                updates[`rhythm-rooms/${this.roomCode}/revealedBeats`] = this.revealedBeats;
+                await window.firebase.set(
+                    window.firebase.ref(window.firebase.database, `rhythm-rooms/${this.roomCode}/revealedBeats`),
+                    this.revealedBeats
+                );
             } else if (type === 'reveal-all') {
-                updates[`rhythm-rooms/${this.roomCode}/revealedBeats`] = [1, 2, 3, 4];
-                updates[`rhythm-rooms/${this.roomCode}/exerciseActive`] = false;
+                const roomUpdates = {
+                    revealedBeats: [1, 2, 3, 4],
+                    exerciseActive: false
+                };
+                await window.firebase.set(roomRef, roomUpdates);
             }
-
-            console.log('Teacher broadcasting updates:', updates);
-
-            await window.firebase.set(
-                window.firebase.ref(window.firebase.database, '/'),
-                updates
-            );
 
             console.log('Broadcasting to students via Firebase completed:', type, data);
         } catch (error) {

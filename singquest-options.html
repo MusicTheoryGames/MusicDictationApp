@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SingQuest — design options</title>
+<style>
+  :root{
+    --ink:#33405e; --muted:#8791ad; --accent:#5b6ee1; --accent2:#8a6ee6;
+    --go1:#34d17f; --go2:#22b083; --hit:#2fbf87;
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:ui-rounded,"SF Pro Rounded","Nunito","Segoe UI",system-ui,sans-serif; color:var(--ink);
+        background:#c9d3ee; display:grid; grid-template-columns:repeat(2,440px); gap:30px; justify-content:center; padding:30px; }
+  .phone{ width:440px; height:760px; border-radius:34px; overflow:hidden; position:relative; display:flex; flex-direction:column;
+          box-shadow:0 16px 46px rgba(60,80,150,.3); }
+  .optlabel{ position:absolute; top:0; left:0; right:0; z-index:5; text-align:center; font-size:12px; font-weight:900; letter-spacing:.06em;
+             padding:8px; color:#fff; background:rgba(40,50,80,.42); backdrop-filter:blur(3px); }
+  .optlabel small{ display:block; font-weight:800; opacity:.85; letter-spacing:.02em; margin-top:1px; }
+
+  /* shared lesson bits */
+  .hud{ display:flex; align-items:center; justify-content:space-between; padding:40px 18px 6px; }
+  .wm{ display:flex; align-items:center; gap:7px; font-weight:900; font-size:17px; }
+  .wm svg{ width:20px; height:20px; }
+  .tabs{ display:flex; justify-content:space-between; padding:2px 16px 0; }
+  .tab{ border-radius:12px; padding:6px 11px; font-size:11.5px; font-weight:900; display:flex; align-items:center; gap:7px; }
+  .pips{ display:flex; gap:4px; } .pips i{ width:7px; height:7px; border-radius:50%; }
+  .steps{ display:flex; gap:5px; justify-content:center; margin:12px 0; }
+  .step{ font-size:10.5px; font-weight:900; padding:5px 9px; border-radius:16px; display:flex; align-items:center; gap:5px; }
+  .step .n{ width:15px; height:15px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9px; }
+  .prompt{ text-align:center; font-weight:900; font-size:18px; margin:0 10px 3px; }
+  .sub{ text-align:center; font-weight:700; font-size:12px; margin:0 14px 12px; }
+  .coach{ text-align:center; font-weight:900; font-size:14px; margin:12px 8px 0; }
+  .act{ display:flex; gap:9px; padding:12px 16px 0; }
+  .act .go{ flex:1; border:0; border-radius:14px; font-family:inherit; font-weight:900; font-size:15px; color:#fff; padding:14px;
+            display:flex; align-items:center; justify-content:center; gap:7px; }
+  .act .ghost{ border-radius:14px; font-family:inherit; font-weight:900; font-size:13px; padding:14px 15px; display:flex; align-items:center; gap:6px; }
+
+  /* ============ A · WARM VOICE-BUDDY ============ */
+  .A{ background:linear-gradient(165deg,#eaf3ff,#f3edff 55%,#ffeef6); }
+  .A .wm{ background:linear-gradient(92deg,var(--accent),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .A .cog{ color:var(--muted); }
+  .A .tab{ background:#fff; color:#59638a; box-shadow:0 3px 10px rgba(90,110,180,.13); }
+  .A .pips i{ background:#dfe4f7; } .A .pips i.on{ background:#f2b134; }
+  .A .flame{ color:#ff8c42; }
+  .A .stage{ flex:1; margin:6px 16px 20px; border-radius:24px; background:#fff; box-shadow:0 0 0 6px #34c987, 0 12px 26px rgba(60,150,110,.2); padding:14px; display:flex; flex-direction:column; position:relative; }
+  .A .step.done{ color:var(--hit); background:#e7f8f0; } .A .step.on{ color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent2)); } .A .step.off{ color:var(--muted); background:#f3f5fd; }
+  .A .lane{ flex:1; position:relative; border-radius:16px; background:linear-gradient(180deg,#f7f9ff,#eef2ff); border:1.5px solid #e7ecfb; min-height:230px; overflow:hidden; }
+  .A .target{ position:absolute; left:8px; right:8px; top:24%; height:42px; border-radius:11px; background:linear-gradient(90deg,rgba(47,191,135,.16),rgba(47,191,135,.28)); border:2px dashed #48c98f; display:flex; align-items:center; }
+  .A .target .lab{ font-size:11px; font-weight:900; color:#1f9c6d; margin-left:11px; letter-spacing:.05em; } .A .target .doh{ position:absolute; right:12px; font-size:20px; font-weight:900; color:#28b07f; }
+  .A .voice{ position:absolute; left:50%; top:52%; transform:translateX(-50%); width:50px; height:50px; border-radius:50%; background:radial-gradient(circle at 38% 34%,#8fa6ff,#5b6ee1); box-shadow:0 8px 16px rgba(91,110,225,.4),0 0 0 6px rgba(91,110,225,.14); }
+  .A .voice .e{ position:absolute; width:6px; height:6px; border-radius:50%; background:#fff; top:18px; } .A .voice .e.l{ left:15px; } .A .voice .e.r{ right:15px; }
+  .A .voice .m{ position:absolute; bottom:14px; left:50%; transform:translateX(-50%); width:13px; height:6px; border-bottom:3px solid #fff; border-radius:0 0 9px 9px; }
+  .A .coach{ color:#4a5578; } .A .coach .u{ color:var(--accent); }
+  .A .go{ background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:0 7px 16px rgba(110,110,230,.3); }
+  .A .ghost{ border:1.5px solid #e2e8f6; background:#fff; color:#5a6488; }
+
+  /* ============ B · ON THE STAFF ============ */
+  .B{ background:linear-gradient(165deg,#eef4ff,#f6f1ff); }
+  .B .wm{ color:#4a4470; } .B .cog{ color:#9a94c0; }
+  .B .tab{ background:#fff; color:#5a5480; box-shadow:0 3px 10px rgba(100,90,170,.14); }
+  .B .pips i{ background:#e0dcf2; } .B .pips i.on{ background:#8a6ee6; } .B .flame{ color:#ff8c42; }
+  .B .stage{ flex:1; margin:6px 16px 20px; border-radius:24px; background:#fff; box-shadow:0 0 0 6px #8a6ee6, 0 12px 26px rgba(120,100,200,.22); padding:14px; display:flex; flex-direction:column; }
+  .B .step.done{ color:#7a5fd0; background:#efeaff; } .B .step.on{ color:#fff; background:linear-gradient(135deg,#7b6ee6,#a06ee0); } .B .step.off{ color:var(--muted); background:#f4f2fd; }
+  .B .staffwrap{ flex:1; position:relative; border-radius:16px; background:linear-gradient(180deg,#fbfaff,#f3f0ff); border:1.5px solid #eae5fb; min-height:230px; display:flex; align-items:center; padding:0 18px; overflow:hidden; }
+  .B .staff{ position:relative; width:100%; height:120px; }
+  .B .staff .ln{ position:absolute; left:0; right:0; height:2px; background:#cfc7ea; }
+  .B .clef{ position:absolute; left:2px; top:8px; font-size:82px; line-height:.8; color:#7a5fd0; font-family:Georgia,serif; }
+  .B .note{ position:absolute; width:30px; height:22px; border-radius:50%; transform:rotate(-18deg); }
+  .B .note.target{ left:64%; background:rgba(122,95,208,.18); border:2.5px dashed #7a5fd0; }
+  .B .note.you{ left:64%; background:radial-gradient(circle at 40% 35%,#78e0b0,#2fbf87); box-shadow:0 4px 12px rgba(47,191,135,.5); }
+  .B .deg{ position:absolute; right:16px; top:12px; font-size:18px; font-weight:900; color:#7a5fd0; }
+  .B .coach{ color:#54507e; } .B .coach .u{ color:#2fbf87; }
+  .B .go{ background:linear-gradient(135deg,#7b6ee6,#a06ee0); box-shadow:0 7px 16px rgba(130,110,220,.3); }
+  .B .ghost{ border:1.5px solid #e7e2f7; background:#fff; color:#5a5480; }
+
+  /* ============ C · PITCH-PIPE (vertical) ============ */
+  .C{ background:linear-gradient(165deg,#e8fbf3,#eaf3ff); }
+  .C .wm{ color:#1f8f6a; } .C .cog{ color:#7bb8a0; }
+  .C .tab{ background:#fff; color:#3f7a68; box-shadow:0 3px 10px rgba(60,150,110,.15); }
+  .C .pips i{ background:#d3ecdf; } .C .pips i.on{ background:#22b083; } .C .flame{ color:#ff8c42; }
+  .C .stage{ flex:1; margin:6px 16px 20px; border-radius:24px; background:#fff; box-shadow:0 0 0 6px #34c987, 0 12px 26px rgba(60,150,110,.2); padding:14px; display:flex; flex-direction:column; }
+  .C .step.done{ color:var(--hit); background:#e2f7ee; } .C .step.on{ color:#fff; background:linear-gradient(135deg,#22b083,#1f9c6d); } .C .step.off{ color:var(--muted); background:#eef5f1; }
+  .C .piperow{ flex:1; display:flex; align-items:stretch; gap:16px; min-height:230px; padding:6px 8px; }
+  .C .pipe{ width:92px; border-radius:46px; background:linear-gradient(180deg,#eef6f2,#e0efe8); border:2px solid #cfe8dc; position:relative; overflow:hidden; box-shadow:inset 0 4px 10px rgba(0,0,0,.05); }
+  .C .fill{ position:absolute; left:0; right:0; bottom:0; height:48%; border-radius:0 0 46px 46px; background:linear-gradient(180deg,#6fe0b1,#22b083); box-shadow:0 -3px 14px rgba(34,176,131,.5); }
+  .C .tline{ position:absolute; left:-6px; right:-6px; top:26%; height:0; border-top:3px dashed #159d6c; }
+  .C .tflag{ position:absolute; right:-4px; top:calc(26% - 13px); background:#159d6c; color:#fff; font-size:11px; font-weight:900; padding:3px 8px; border-radius:8px; }
+  .C .side{ flex:1; display:flex; flex-direction:column; justify-content:center; gap:14px; }
+  .C .big{ font-size:15px; font-weight:900; line-height:1.4; color:#2c5f4e; }
+  .C .marker{ display:inline-flex; align-items:center; gap:7px; background:#e2f7ee; color:#1f8f6a; font-weight:900; font-size:13px; padding:8px 12px; border-radius:12px; }
+  .C .coach{ color:#2c5f4e; } .C .coach .u{ color:#159d6c; }
+  .C .go{ background:linear-gradient(135deg,#22b083,#1f9c6d); box-shadow:0 7px 16px rgba(34,176,131,.34); }
+  .C .ghost{ border:1.5px solid #d6ece1; background:#fff; color:#3f7a68; }
+
+  /* ============ D · STUDIO (dark arcade / MelodyQuest sibling) ============ */
+  .D{ background:linear-gradient(160deg,#20242e,#12141a); color:#e7ebf5; }
+  .D .wm{ color:#cdd6ea; letter-spacing:.14em; font-size:15px; }
+  .D .cog{ color:#79839c; }
+  .D .tab{ background:#272c38; color:#aeb7cf; box-shadow:inset 0 0 0 1px #333a49, 0 2px 6px rgba(0,0,0,.4); }
+  .D .pips i{ background:#3a4152; } .D .pips i.on{ background:#f2b134; } .D .flame{ color:#ff8c42; }
+  .D .stage{ flex:1; margin:6px 16px 20px; border-radius:22px; background:linear-gradient(180deg,#262b36,#1c2029); border:1px solid #333a49; box-shadow:0 0 0 4px #0d0f14, inset 0 1px 0 rgba(255,255,255,.04); padding:14px; display:flex; flex-direction:column; position:relative; }
+  .D .prompt{ color:#eef2fb; } .D .sub{ color:#8b93a9; }
+  .D .step.done{ color:#4fd39b; background:#1d2a25; } .D .step.on{ color:#fff; background:linear-gradient(135deg,#3f6bd8,#7a4fd0); } .D .step.off{ color:#79839c; background:#242a35; }
+  .D .meter{ flex:1; position:relative; border-radius:16px; background:radial-gradient(120% 100% at 50% 0%,#2b3242,#161a22); border:1px solid #39415360; min-height:230px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .D .track{ position:absolute; left:22px; right:22px; height:20px; border-radius:12px; background:#141821; box-shadow:inset 0 2px 6px rgba(0,0,0,.6); }
+  .D .zone{ position:absolute; left:44%; width:20%; top:-6px; bottom:-6px; border-radius:10px; background:rgba(79,211,155,.16); border:1.5px solid #4fd39b; }
+  .D .orb{ position:absolute; left:37%; top:50%; transform:translate(-50%,-50%); width:34px; height:34px; border-radius:50%; background:radial-gradient(circle at 40% 35%,#8fe9ff,#33b4e8); box-shadow:0 0 18px 4px rgba(51,180,232,.7); }
+  .D .doh{ position:absolute; left:calc(54%); top:22px; color:#4fd39b; font-weight:900; font-size:15px; }
+  .D .coach{ color:#c4cbdd; } .D .coach .u{ color:#57c8ff; }
+  .D .go{ background:linear-gradient(135deg,#3f6bd8,#7a4fd0); box-shadow:0 7px 18px rgba(70,90,200,.45); }
+  .D .ghost{ border:1px solid #3a4152; background:#272c38; color:#aeb7cf; }
+</style>
+</head>
+<body>
+
+<!-- ======= A ======= -->
+<div class="phone A">
+  <div class="optlabel">OPTION A · VOICE BUDDY<small>warm sibling · friendly character in a pitch lane</small></div>
+  <div class="hud"><div class="wm"><svg viewBox="0 0 24 24" fill="none" stroke="url(#ga)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ga" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#5b6ee1"/><stop offset="1" stop-color="#8a6ee6"/></linearGradient></defs><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v4"/></svg>SingQuest</div><div class="cog"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.3 1a7 7 0 0 0-1.7-1l-.4-2.5H10l-.4 2.5a7 7 0 0 0-1.7 1l-2.3-1-2 3.4 2 1.6a7 7 0 0 0 0 2l-2 1.6 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"/></svg></div></div>
+  <div class="tabs"><div class="tab">LVL 1 <span class="pips"><i class="on"></i><i></i><i></i></span></div><div class="tab"><svg class="flame" viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 2s5 4 5 9a5 5 0 0 1-10 0c0-1 .3-2 .8-2.6C7 10 8 12 9 12c0-3 3-4 3-10Z"/></svg>3 · 240</div></div>
+  <div class="stage">
+    <div class="steps"><div class="step done"><span class="n">✓</span>Listen</div><div class="step on"><span class="n">2</span>Sing with me</div><div class="step off"><span class="n">3</span>Your turn</div></div>
+    <div class="prompt">Sing with me</div><div class="sub">I'm holding it with you — slide up to the green band</div>
+    <div class="lane"><div class="target"><span class="lab">TARGET · do</span><span class="doh">do</span></div><div class="voice"><span class="e l"></span><span class="e r"></span><span class="m"></span></div></div>
+    <div class="coach">Almost — <span class="u">slide up</span> a little</div>
+    <div class="act"><button class="ghost"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9V3Z"/></svg>Hear it</button><button class="go">Singing…</button></div>
+  </div>
+</div>
+
+<!-- ======= B ======= -->
+<div class="phone B">
+  <div class="optlabel">OPTION B · ON THE STAFF<small>warm · real notation from day one, your pitch snaps to the staff</small></div>
+  <div class="hud"><div class="wm"><svg viewBox="0 0 24 24" fill="none" stroke="#7a5fd0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v4"/></svg>SingQuest</div><div class="cog"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.3 1a7 7 0 0 0-1.7-1l-.4-2.5H10l-.4 2.5a7 7 0 0 0-1.7 1l-2.3-1-2 3.4 2 1.6a7 7 0 0 0 0 2l-2 1.6 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"/></svg></div></div>
+  <div class="tabs"><div class="tab">LVL 1 <span class="pips"><i class="on"></i><i></i><i></i></span></div><div class="tab"><svg class="flame" viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 2s5 4 5 9a5 5 0 0 1-10 0c0-1 .3-2 .8-2.6C7 10 8 12 9 12c0-3 3-4 3-10Z"/></svg>3 · 240</div></div>
+  <div class="stage">
+    <div class="steps"><div class="step done"><span class="n">✓</span>Listen</div><div class="step on"><span class="n">2</span>Sing with me</div><div class="step off"><span class="n">3</span>Your turn</div></div>
+    <div class="prompt">Sing with me</div><div class="sub">Match the dashed note — you're the green one</div>
+    <div class="staffwrap"><div class="staff">
+      <div class="ln" style="top:20px"></div><div class="ln" style="top:44px"></div><div class="ln" style="top:68px"></div><div class="ln" style="top:92px"></div><div class="ln" style="top:116px"></div>
+      <div class="clef">&#119070;</div>
+      <div class="note target" style="top:57px"></div>
+      <div class="note you" style="top:80px"></div>
+      <div class="deg">do</div>
+    </div></div>
+    <div class="coach">So close — <span class="u">up a step</span> to the note</div>
+    <div class="act"><button class="ghost"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9V3Z"/></svg>Hear it</button><button class="go">Singing…</button></div>
+  </div>
+</div>
+
+<!-- ======= C ======= -->
+<div class="phone C">
+  <div class="optlabel">OPTION C · PITCH PIPE<small>warm · fill the tube up to the note — tactile &amp; gamey</small></div>
+  <div class="hud"><div class="wm"><svg viewBox="0 0 24 24" fill="none" stroke="#1f8f6a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v4"/></svg>SingQuest</div><div class="cog"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.3 1a7 7 0 0 0-1.7-1l-.4-2.5H10l-.4 2.5a7 7 0 0 0-1.7 1l-2.3-1-2 3.4 2 1.6a7 7 0 0 0 0 2l-2 1.6 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"/></svg></div></div>
+  <div class="tabs"><div class="tab">LVL 1 <span class="pips"><i class="on"></i><i></i><i></i></span></div><div class="tab"><svg class="flame" viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 2s5 4 5 9a5 5 0 0 1-10 0c0-1 .3-2 .8-2.6C7 10 8 12 9 12c0-3 3-4 3-10Z"/></svg>3 · 240</div></div>
+  <div class="stage">
+    <div class="steps"><div class="step done"><span class="n">✓</span>Listen</div><div class="step on"><span class="n">2</span>Sing with me</div><div class="step off"><span class="n">3</span>Your turn</div></div>
+    <div class="prompt">Sing with me</div><div class="sub">Fill the pipe up to the line</div>
+    <div class="piperow">
+      <div class="pipe"><div class="tline"></div><div class="tflag">do</div><div class="fill"></div></div>
+      <div class="side"><div class="big">Your voice fills the pipe. Reach the <b>do</b> line and hold it steady.</div><div class="marker"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 19V5"/><path d="M6 11l6-6 6 6"/></svg>a little higher</div></div>
+    </div>
+    <div class="coach">Almost — <span class="u">a touch higher</span></div>
+    <div class="act"><button class="ghost"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9V3Z"/></svg>Hear it</button><button class="go">Singing…</button></div>
+  </div>
+</div>
+
+<!-- ======= D ======= -->
+<div class="phone D">
+  <div class="optlabel">OPTION D · STUDIO<small>dark arcade · matches MelodyQuest · neon pitch meter</small></div>
+  <div class="hud"><div class="wm"><svg viewBox="0 0 24 24" fill="none" stroke="#cdd6ea" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M6 11a6 6 0 0 0 12 0"/><path d="M12 17v4"/></svg>SINGQUEST</div><div class="cog"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.6-2-3.4-2.3 1a7 7 0 0 0-1.7-1l-.4-2.5H10l-.4 2.5a7 7 0 0 0-1.7 1l-2.3-1-2 3.4 2 1.6a7 7 0 0 0 0 2l-2 1.6 2 3.4 2.3-1a7 7 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7 7 0 0 0 1.7-1l2.3 1 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"/></svg></div></div>
+  <div class="tabs"><div class="tab">LVL 1 <span class="pips"><i class="on"></i><i></i><i></i></span></div><div class="tab"><svg class="flame" viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 2s5 4 5 9a5 5 0 0 1-10 0c0-1 .3-2 .8-2.6C7 10 8 12 9 12c0-3 3-4 3-10Z"/></svg>3 · 240</div></div>
+  <div class="stage">
+    <div class="steps"><div class="step done"><span class="n">✓</span>Listen</div><div class="step on"><span class="n">2</span>Sing with me</div><div class="step off"><span class="n">3</span>Your turn</div></div>
+    <div class="prompt">Sing with me</div><div class="sub">Center the glow in the green zone</div>
+    <div class="meter"><div class="doh">do</div><div class="track"><div class="zone"></div></div><div class="orb"></div></div>
+    <div class="coach">Almost — <span class="u">ease up</span> into the zone</div>
+    <div class="act"><button class="ghost"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9V3Z"/></svg>Hear it</button><button class="go">Singing…</button></div>
+  </div>
+</div>
+
+</body>
+</html>

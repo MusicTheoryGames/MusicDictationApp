@@ -1,0 +1,75 @@
+/* ==================== 05 · KIDS — "Building Blocks" =======================
+   Bold, chunky toy-block identity for young learners: thick dark outlines, hard
+   offset shadows (the stacked-block look), bright primary colors, a light
+   graph-paper "baseplate" background, rounded Baloo 2 lettering. GENERIC building-
+   block styling only — no "LEGO" name, logo, minifigure or branded trade dress.
+   CRITICAL RULE (unchanged): the NOTATION stays REAL — noteheads/stems/flags/rests
+   are universal image glyphs (untouched here) and --bar-ink is DARK so bar lines
+   read like published music. Only the CHROME turns playful. Primary palette:
+   red #e6413a · blue #2f7ee0 · green #4caf50 · sunshine #ffd23f · ink #2b2b2b. */
+body.theme-kids{
+  font-family:'Baloo 2',system-ui,sans-serif;color:#2b2b2b;
+  /* light "baseplate" grid */
+  background:
+    linear-gradient(#eadfbe 1px, transparent 1px),
+    linear-gradient(90deg,#eadfbe 1px, transparent 1px),
+    #fdf4dd !important;
+  background-size:30px 30px, 30px 30px, auto !important;
+}
+body.theme-kids .header h1{font-family:'Baloo 2';font-weight:800;letter-spacing:.01em;color:#2b2b2b;text-shadow:3px 3px 0 #ffd23f}
+body.theme-kids .status-bar{background:#fff;border:3px solid #2b2b2b;border-radius:10px;color:#2b2b2b;box-shadow:4px 4px 0 #2b2b2b}
+body.theme-kids #connectedRoom,body.theme-kids #connectionStatus{font-family:'Baloo 2';font-weight:700;color:#2f7ee0}
+/* panels: white BLOCKS — thick dark border + hard offset shadow (stacked look) */
+body.theme-kids .rhythm-bank,body.theme-kids .answer-area{
+  background:#fff !important;border:4px solid #2b2b2b !important;border-radius:14px !important;
+  box-shadow:6px 6px 0 #2b2b2b !important;backdrop-filter:none !important}
+body.theme-kids .rhythm-bank h3,body.theme-kids .answer-area h3{font-family:'Baloo 2';font-weight:800;letter-spacing:.02em;color:#2f7ee0}
+/* bank tiles: block pads (the NOTE GLYPH inside is an untouched image) */
+body.theme-kids .rhythm-tile{background:#fff !important;border:3px solid #2b2b2b !important;border-radius:10px !important;
+  box-shadow:4px 4px 0 #2b2b2b !important;color:#2b2b2b !important}
+body.theme-kids .rhythm-tile:hover{border-color:#2f7ee0 !important;box-shadow:4px 4px 0 #2f7ee0 !important}
+/* HUD: a bright sunshine BLOCK bar (OPAQUE — safe on the mobile fixed bar). Higher
+   specificity than the pages' `#soloHud{background:...!important}` mobile rule
+   (class+id beats id), so this wins and the bar is a bold block, not dark. */
+body.theme-kids #soloHud{background:#ffd23f !important;border:4px solid #2b2b2b !important;border-radius:12px;
+  color:#2b2b2b;box-shadow:5px 5px 0 #2b2b2b}
+body.theme-kids #soloHud .solo-stat>span,body.theme-kids #soloHud .solo-toggle{color:#5a4a10;font-family:'Baloo 2';font-weight:800;letter-spacing:.02em;text-transform:none}
+body.theme-kids #soloHud .solo-stat b{color:#2b2b2b}
+body.theme-kids #soloHud select{font-family:'Baloo 2';font-weight:800;background:#fff;color:#2b2b2b;border:2px solid #2b2b2b;border-radius:8px}
+body.theme-kids #soloHud select option{color:#2b2b2b}
+/* block buttons: thick dark border, bold fill, hard offset shadow + press-down */
+body.theme-kids .solo-ctl button{font-family:'Baloo 2';font-weight:800;letter-spacing:.01em;text-transform:none;
+  color:#2b2b2b;background:#fff;border:3px solid #2b2b2b;border-radius:10px;box-shadow:4px 4px 0 #2b2b2b}
+body.theme-kids .solo-ctl button:hover{background:#fff7e0}
+body.theme-kids .solo-ctl button:active{transform:translate(2px,2px);box-shadow:2px 2px 0 #2b2b2b}
+body.theme-kids .solo-ctl button.go{color:#fff;background:#e6413a;border-color:#2b2b2b;box-shadow:4px 4px 0 #2b2b2b}
+body.theme-kids .solo-ctl button.toggle.on{color:#fff;background:#4caf50;border-color:#2b2b2b;box-shadow:4px 4px 0 #2b2b2b}
+body.theme-kids #soloHud button.play{color:#fff;background:#4caf50;border:3px solid #2b2b2b;box-shadow:4px 4px 0 #2b2b2b}
+body.theme-kids #soloHud button.play:hover{background:#57bd63}
+/* keep bar lines DARK so notation looks like real published music */
+body.theme-kids .answer-staff{--bar-ink:#2b2b2b}
+body.theme-kids #soloHud{--groove-ok:#4caf50}
+/* tap-back / nudge / count-off overlays take the BLUE block accent */
+body.theme-kids .tapback-ov,body.theme-kids .tb-inline-panel,body.theme-kids .tb-countoff-inline{--tb-accent:#2f7ee0}
+body.theme-kids #soloTapBack{background:#e6413a;color:#fff;font-family:'Baloo 2';font-weight:800;border:3px solid #2b2b2b;border-radius:10px;box-shadow:4px 4px 0 #2b2b2b}
+/* the inline tap-back panel + tap zones become bold blocks in kids mode */
+body.theme-kids .tb-inline-panel{background:#fff !important;border:4px solid #2b2b2b !important;color:#2b2b2b;box-shadow:6px 6px 0 #2b2b2b}
+body.theme-kids .tb-zone{background:#fff;border:3px solid #2b2b2b;color:#2b2b2b;box-shadow:4px 4px 0 #2b2b2b}
+body.theme-kids .tb-beat{background:#dcebff}
+body.theme-kids .tb-rhythm{background:#ffe1df}
+body.theme-kids .tb-instruct{color:#2f7ee0;font-weight:800}
+body.theme-kids .tb-zone .tb-zhint{color:#6a6a6a}
+/* KIDS = a simplified, guided-only MODE (not just a skin). Hide the teacher/
+   power-user config so a young learner sees only the rhythm + Play + perform
+   controls; the curriculum (or a teacher assignment) decides meter/level/bars.
+   solo-mode.js also forces Guided when this theme is active (belt + suspenders).
+   SCORE/STREAK/BONUS stats stay (gamification); only the CONFIG stats are hidden. */
+body.theme-kids .solo-modesel,                 /* PATH (Guided/Free) */
+body.theme-kids .solo-metersel,                /* METER */
+body.theme-kids .solo-levelsel,                /* LEVEL */
+body.theme-kids .solo-barsel,                  /* BARS */
+body.theme-kids .solo-keybind,                 /* BEAT/RHYTHM key rebind */
+body.theme-kids .solo-cfg,                     /* Fix-it mode */
+body.theme-kids .solo-hints,                   /* the five-button hint row */
+body.theme-kids #soloHintsToggle,              /* mobile Hints dropdown toggle */
+body.theme-kids #soloSettingsToggle{display:none !important}  /* mobile Settings toggle (its panel is now empty) */

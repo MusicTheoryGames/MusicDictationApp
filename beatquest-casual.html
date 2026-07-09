@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- viewport-fit=cover is REQUIRED for env(safe-area-inset-*) to resolve to non-zero
+         on notched iPhones. Without it the insets are always 0 and the fixed top bar
+         (#soloHud) ends up under the iOS status bar in home-screen / standalone mode. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <!-- Home-screen (PWA) standalone: no Safari chrome, so the web app fills the whole
+         screen including under the status bar. The status-bar-style + the safe-area
+         insets (honored in CSS) keep the slim bar below the status bar and reachable. -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Rhythm">
+    <title>BeatQuest — Rhythm Dictation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(140deg, #2d3436 0%, #636e72 100%);
+            min-height: 100vh;
+            /* Allow the page to scroll. Previously height:100vh + overflow:hidden
+               clipped the answer staff below the fold on shorter desktop windows,
+               making the "whiteboard" disappear entirely. */
+            overflow-y: auto;
+            color: white;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 10px;
+            /* Consistent header height across themes (Arcade's pixel font is
+               short and was shifting the whole layout up vs the other skins). */
+            min-height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .login-form {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 400px;
+            margin: 0 auto 30px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .login-form.hidden {
+            display: none;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(45deg, #2d3436, #636e72);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+        }
+
+        .game-area {
+            display: none;
+            flex: 1;
+            /* Let the body scroll instead of a nested scroll container, so the
+               answer staff is always reachable on short windows. */
+            overflow: visible;
+        }
+
+        .game-area.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .status-bar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .rhythm-bank {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            flex-shrink: 0;
+        }
+
+        .rhythm-bank h3 {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .rhythm-tiles {
+            /* Flex-wrap with FIXED-width tiles so each tile is always the same
+               size no matter how many figures the level shows (2 or 18). */
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            /* Cap the bank so it can't push the answer staff off-screen; it
+               scrolls internally if there are more tiles than fit. */
+            max-height: 28vh;
+            overflow-y: auto;
+        }
+
+        .rhythm-tile {
+            width: 150px;          /* fixed size — consistent across all levels */
+            flex: 0 0 150px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(16px) saturate(180%);
+            border-radius: 18px;
+            padding: 0;
+            cursor: grab;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.6),
+                inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+                0 1px 2px rgba(255, 255, 255, 0.1);
+            text-align: center;
+            color: #333;
+            font-size: 0.8rem;
+            min-height: 90px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .rhythm-tile::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+        }
+
+        .rhythm-tile svg {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .rhythm-tile:hover {
+            /* No movement/zoom — each theme supplies a colored outline on hover. */
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .rhythm-tile.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .answer-area {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            /* Size to the staff's content — no flex-grow dead space. */
+            flex: 0 0 auto;
+        }
+
+        .answer-area h3 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+        }
+
+        .measure-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .answer-staff {
+            background: white;
+            border-radius: 8px;
+            padding: 10px 40px 10px 16px;   /* trimmed vertical buffer — tiles shouldn't float in a big white box */
+            position: relative;
+            /* Fill the width like the rhythm bank (capped so beat cells/notes
+               don't get oversized on ultra-wide screens). Horizontal only —
+               vertical staff/time-sig tuning is untouched. */
+            width: 100%;
+            max-width: 1500px;
+            /* Multi-line: the panel sizes to its stacked rows. Each .staff-container
+               row carries the responsive height (moved from here) so a single row
+               keeps its exact look while extra rows just add height. */
+        }
+
+        .answer-staff-label {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #333;
+        }
+
+        .staff-container {
+            position: relative;
+            /* Each staff LINE carries the responsive height (was on .answer-staff),
+               so one row keeps its original look and extra rows stack below it. */
+            height: clamp(140px, 14vw, 210px);
+            margin-top: 0;
+        }
+
+        /* Vertical gap between stacked staff lines (rows 2+). The first row has no
+           gap so a single-row staff is pixel-identical to before. */
+        .staff-container + .staff-container {
+            margin-top: 30px;
+        }
+
+        .staff-lines {
+            position: absolute;
+            width: 100%;
+            top: 0;
+            height: 100%;     /* full-height wrapper so the line anchors reliably */
+        }
+
+        .staff-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;       /* clearly visible */
+            background: #333;
+            top: 44%;          /* upper-middle; stems + numbers fit below */
+        }
+
+        .percussion-clef {
+            position: absolute;
+            left: 10px;
+            top: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+            z-index: 5;
+        }
+
+        /* Time signature at the left of the answer staff. Centered vertically on
+           the staff line (top:39px = staff-lines top 30 + staff-line top 9), so
+           the line passes between the two stacked numbers. */
+        .answer-time-sig {
+            position: absolute;
+            left: 2px;
+            top: 44%;
+            /* -50% centers the GAP between the two numbers on the staff line, so
+               the line sits in clear space for ANY digit (not at a box edge,
+               which clipped full-height glyphs like 8). */
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* Each number in its own tight box, with a generous gap so the staff
+               line passes through clear space between ANY two digits (a full
+               glyph like 8 was overflowing a tight line-box into the line). */
+            line-height: 0.8;
+            gap: 0.26em;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-variant-numeric: lining-nums tabular-nums;
+            font-feature-settings: "lnum" 1, "tnum" 1;
+            font-weight: 700;
+            /* ~2x larger, scaling with the staff. Vertically centered on the
+               staff line (top:44% + translateY(-50%)) so the line stays exactly
+               between the two numbers. */
+            font-size: clamp(34px, 4.6vw, 62px);
+            color: #333;
+            z-index: 5;
+        }
+
+        /* Inline time signature for CHANGING-METER mode — a flex slot in the cell
+           row, shown at the start of each measure where the meter changes (Hall's
+           convention). Numbers straddle the staff line like the leading time sig. */
+        .answer-ts-inline {
+            flex: 0 0 auto;
+            align-self: stretch;
+            position: relative;
+            min-width: 1.5em;
+            margin: 0 0.3em 0 0.08em;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-variant-numeric: lining-nums tabular-nums;
+            font-feature-settings: "lnum" 1, "tnum" 1;
+            font-weight: 700;
+            font-size: clamp(30px, 4vw, 52px);
+            color: var(--bar-ink, #333);
+            z-index: 5;
+        }
+        /* Stack the two numbers and center the GAP on the staff line (top:44% +
+           translateY(-50%)) — identical to the leading .answer-time-sig so they
+           line up exactly. */
+        .answer-ts-inline .ts-stack {
+            position: absolute;
+            left: 50%;
+            top: 44%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 0.8;
+            gap: 0.24em;
+        }
+
+        /* Top-of-measure row: the measure number, then (at a simple<->compound
+           change) the beat-equivalence image directly to its right. Anchored
+           top-left of the measure's first element — consistent and countable. */
+        .ts-top {
+            position: absolute;
+            top: 1px;
+            left: 3px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+            z-index: 7;
+            pointer-events: none;
+        }
+        .ts-top .mnum {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--bar-ink, #333);
+            opacity: 0.55;
+        }
+        .ts-equiv {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .ts-equiv img { height: 26px; width: auto; display: block; }
+        .ts-equiv b { font: 700 16px Georgia, serif; color: var(--bar-ink, #333); }
+
+        .beat-divisions {
+            position: absolute;
+            /* Anchor to both edges (not width:100%) so the inline margin-left/right
+               shrink the beat row to fit — otherwise width:100% + margin-left
+               pushes the last cell + double bar off the right edge. */
+            left: 0;
+            right: 0;
+            height: 100%;
+            display: flex;
+        }
+
+        .beat-drop-zone {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        /* Bar line between measures — last cell of each measure EXCEPT the final
+           double bar. Uses .final-cell (set only on the very last cell of the last
+           row) so each row's own trailing measure still gets a normal bar line.
+           Colour comes from --bar-ink (each theme sets it to its staff ink). */
+        .beat-drop-zone.measure-end:not(.final-cell) {
+            /* Bar line between measures. No margin (border is inside the cell via
+               box-sizing) so EVERY cell is the exact same width and bar lines
+               stack vertically across stacked lines. */
+            border-right: 3px solid var(--bar-ink, #333);
+        }
+        /* Final cell carries a matching (invisible) border so its row's cells are
+           the exact same width as every other row -> bar lines align perfectly. */
+        .beat-drop-zone.final-cell {
+            border-right: 3px solid transparent;
+        }
+
+        /* Final double bar — drawn at the right edge of the very last cell of the
+           last row. Because the beat row now ends exactly where the staff line
+           ends (W), the double bar always terminates flush with the staff line. */
+        .beat-drop-zone.final-cell::after {
+            content: '';
+            position: absolute;
+            right: 0; /* == staff line's right end */
+            top: 0;
+            bottom: 0;
+            width: 7px;
+            /* thin line + gap + thick line (thick flush with the end) */
+            background: linear-gradient(90deg, var(--bar-ink, #333) 0 2px, transparent 2px 4px, var(--bar-ink, #333) 4px 7px);
+        }
+
+        /* Beat indicators inside white area */
+        .beat-drop-zone::before {
+            content: attr(data-beat);
+            position: absolute;
+            /* At the bottom of the (now scaling) cell — always below the notes. */
+            bottom: 6px;
+            /* Anchored to the beat ONSET (cell's left edge) so the number sits
+               where the beat actually starts and notes line up under it. */
+            left: 0;
+            transform: translateX(-50%);
+            font-size: 1.2rem;
+            color: #ddd;
+            font-weight: 300;
+            z-index: 0;
+        }
+        /* Each measure's first beat sits right after a bar line. The gap is PADDING
+           (inside the cell), not margin — so the cell's box (and the beat-guide
+           highlight) spans bar-line to bar-line and lines up with the bar lines,
+           while the note + number are inset for breathing room. Same inset on
+           every measure keeps cells equal width / bar lines stacked. */
+        .beat-drop-zone[data-beat="1"] {
+            padding-left: 14px;
+        }
+        /* Inset the notation + number by the padding (absolute children are
+           positioned from the padding box, so they need the explicit offset). */
+        .beat-drop-zone[data-beat="1"] .beat-notation {
+            left: 14px; right: 0; width: auto;
+        }
+        .beat-drop-zone[data-beat="1"]::before {
+            left: 14px;
+        }
+
+        .beat-drop-zone.drag-over {
+            background: rgba(255, 107, 107, 0.12);
+            /* Clear border around the target cell (inset so it doesn't shift layout). */
+            box-shadow: inset 0 0 0 2px rgba(255, 107, 107, 0.7);
+            border-radius: 4px;
+        }
+        /* (Beat number now rides ABOVE the drag preview — see buildDragImage — so it's
+           never hidden under the finger; the cell just gets the border.) */
+
+        .beat-drop-zone.filled {
+            background: rgba(76, 175, 80, 0.1);
+        }
+
+        .beat-drop-zone.continuation {
+            background: rgba(76, 175, 80, 0.1); /* Green instead of yellow */
+        }
+
+        .beat-drop-zone.revealed {
+            background: rgba(52, 152, 219, 0.1);
+        }
+
+        .beat-notation {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ============================================================
+           FRIENDLY TILES SKIN (opt-in: .answer-staff.tiles-skin)
+           An "everyday piano student" view: NO realistic staff line —
+           each beat is a plain empty BOX you drag the rhythm up into.
+           Keeps time signature + bar lines (as gaps) + beat numbers.
+           Reuses the exact same .beat-drop-zone cells, drag-drop, meter
+           and compound logic; ONLY the look changes. Never affects the
+           embedded Level-4 grid (that never sets .tiles-skin).
+           ============================================================ */
+        .answer-staff.tiles-skin .staff-line { display: none; }
+        .answer-staff.tiles-skin .percussion-clef { display: none; }
+        .answer-staff.tiles-skin .staff-container { height: clamp(96px, 13vw, 150px); }
+        .answer-staff.tiles-skin .beat-divisions { align-items: stretch; padding: 6px 0; }
+        .answer-staff.tiles-skin .beat-drop-zone {
+            border: 2px dashed rgba(0, 0, 0, 0.22);
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.035);
+            margin: 0 4px;
+            transition: border-color .18s, background .18s;
+        }
+        /* Bar line between measures = a wider GAP, not a printed line. */
+        .answer-staff.tiles-skin .beat-drop-zone.measure-end:not(.final-cell) {
+            border-right: 2px dashed rgba(0, 0, 0, 0.22);
+            margin-right: 18px;
+        }
+        .answer-staff.tiles-skin .beat-drop-zone.final-cell { border-right: 2px dashed rgba(0, 0, 0, 0.22); }
+        .answer-staff.tiles-skin .beat-drop-zone.final-cell::after { display: none; }
+        /* Empty-box hint dot (hidden once a note is dropped). */
+        .answer-staff.tiles-skin .beat-drop-zone:not(.filled):not(.continuation) .beat-notation::before {
+            content: '';
+            width: 7px; height: 7px; border-radius: 50%;
+            background: rgba(0, 0, 0, 0.14);
+        }
+        .answer-staff.tiles-skin .beat-drop-zone.filled,
+        .answer-staff.tiles-skin .beat-drop-zone.continuation {
+            border-style: solid;
+            border-color: rgba(76, 175, 80, 0.6);
+            background: rgba(76, 175, 80, 0.10);
+        }
+        .answer-staff.tiles-skin .beat-drop-zone.drag-over {
+            border-color: rgba(255, 107, 107, 0.85);
+            background: rgba(255, 107, 107, 0.12);
+        }
+        /* Time signature: no staff line to straddle, so center it in the box row. */
+        .answer-staff.tiles-skin .answer-time-sig { top: 50%; }
+
+        /* Toggle pill above the answer area. */
+        .skin-toggle {
+            display: inline-flex; align-items: center; gap: 8px;
+            margin: 0 0 8px 2px; padding: 6px 12px;
+            border: 1px solid rgba(0,0,0,0.18); border-radius: 999px;
+            background: rgba(255,255,255,0.75); color: #333;
+            font-size: 0.82rem; font-weight: 700; cursor: pointer;
+        }
+        .skin-toggle .dot { width: 10px; height: 10px; border-radius: 50%; background: #bbb; }
+        .skin-toggle.on .dot { background: #16c2b0; }
+
+        /* A dropped rhythm PNG. Width is set inline as (beats * 100%) of one
+           responsive beat cell, so it scales with the screen and spans its
+           continuation beats. object-fit keeps the aspect ratio; object-position
+           pins the noteheads onto the single staff line. */
+        .placed-note {
+            position: absolute;
+            left: 0;
+            /* width is set inline to (beats * 100%) to span the pattern's beats;
+               assets are width-proportional to beats, so height (auto) is identical
+               for every pattern at any screen size. Anchored left so inner notes
+               align to their beats. */
+            top: 44%;
+            /* Nudge up just enough that the staff line clears the noteheads
+               (the line cut through them when centered, worst when notes are
+               small at 8+ bars). Stem still crosses the line; % scales with note
+               size so the clearance holds at every zoom. */
+            transform: translateY(-66%);
+            height: auto;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-select: none;
+            z-index: 2;
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            font-size: 9px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .feedback {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-weight: 600;
+        }
+
+        .feedback.success {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4caf50;
+        }
+
+        .feedback.error {
+            background: rgba(244, 67, 54, 0.2);
+            border: 1px solid #f44336;
+        }
+
+        .feedback.info {
+            background: rgba(52, 152, 219, 0.2);
+            border: 1px solid #3498db;
+        }
+
+
+        /* Tablet Layout */
+        @media (max-width: 1024px) {
+            .answer-staff {
+                width: 95vw;
+                max-width: 800px;
+                padding: 15px 35px 15px 15px;
+            }
+
+            .rhythm-bank {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 12px;
+                padding: 15px;
+            }
+
+            .rhythm-tile {
+                min-height: 100px;
+                padding: 0;
+            }
+        }
+
+        /* Landscape orientation hint */
+        @media (max-width: 768px) and (orientation: portrait) {
+            .game-area::before {
+                content: "Tip: Rotate to landscape for a better experience";
+                display: block;
+                text-align: center;
+                background: rgba(255, 255, 255, 0.1);
+                padding: 8px;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                font-size: 0.8rem;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+        }
+
+        /* Mobile Layout - Large phones and small tablets */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.5rem;
+                margin: 15px 0;
+            }
+
+            .answer-staff {
+                width: 95vw;
+                max-width: 700px;
+                padding: 12px 25px 12px 12px;
+            }
+
+            /* .staff-container keeps its base responsive clamp height here. */
+
+            .beat-drop-zone {
+                min-height: 70px;
+            }
+
+            .beat-drop-zone::before {
+                font-size: 1rem;
+                bottom: 3px;
+            }
+
+            .rhythm-bank {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
+                padding: 10px;
+            }
+
+            .rhythm-tile {
+                min-height: 80px;
+                padding: 0;
+                font-size: 0.7rem;
+            }
+
+            .remove-btn {
+                width: 20px;
+                height: 20px;
+                font-size: 10px;
+                top: -10px;
+                right: -10px;
+            }
+
+            /* Touch-friendly interactions */
+            .rhythm-tile:active {
+                transform: scale(0.98);
+                background: rgba(255, 255, 255, 1);
+            }
+
+            .beat-drop-zone:active {
+                background: rgba(76, 175, 80, 0.15);
+            }
+        }
+
+        /* Small Mobile Phones */
+        @media (max-width: 400px) {
+            .header h1 {
+                font-size: 1.3rem;
+                margin: 10px 0;
+            }
+
+            .answer-staff {
+                width: 98vw;
+                max-width: none;
+                padding: 10px 20px 10px 10px;
+                margin: 0 auto;
+            }
+
+            .staff-container {
+                height: 90px;     /* per-row height (moved off .answer-staff) */
+            }
+
+            .beat-drop-zone {
+                min-height: 60px;
+            }
+
+            .beat-drop-zone::before {
+                font-size: 0.9rem;
+                bottom: 2px;
+            }
+
+            .rhythm-bank {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 6px;
+                padding: 8px;
+            }
+
+            .rhythm-tile {
+                min-height: 70px;
+                padding: 0;
+                font-size: 0.65rem;
+            }
+
+            .remove-btn {
+                width: 18px;
+                height: 18px;
+                font-size: 9px;
+                top: -9px;
+                right: -9px;
+            }
+
+            /* Smaller VexFlow notation on mobile */
+            .beat-notation svg {
+                transform: translateX(-50%) scale(1.1) !important;
+            }
+        }
+
+        /* Very small phones */
+        @media (max-width: 360px) {
+            .answer-staff {
+                width: 99vw;
+                padding: 8px 15px 8px 8px;
+            }
+
+            .staff-container {
+                height: 80px;     /* per-row height (moved off .answer-staff) */
+            }
+
+            .beat-drop-zone {
+                min-height: 55px;
+            }
+
+            .beat-drop-zone::before {
+                font-size: 0.8rem;
+                bottom: 1px;
+            }
+
+            .rhythm-bank {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 4px;
+                padding: 6px;
+            }
+
+            .rhythm-tile {
+                min-height: 40px;
+                font-size: 0.6rem;
+            }
+
+            /* Even smaller notation for tiny screens */
+            .beat-notation svg {
+                transform: translateX(-50%) scale(1.0) !important;
+            }
+        }
+
+        /* Focus-layout toggles exist only on touch screens (shown in the mobile
+           block below); desktop keeps everything inline. */
+        .focus-only { display: none; }
+
+        /* ============================================================
+           MOBILE (touch) — single horizontal scrolling staff
+           + rhythm bank pinned to the bottom as a strip. Orientation is
+           driven by a body class (set in JS from innerW vs innerH) because
+           the CSS `orientation` media feature is unreliable in emulators.
+           ============================================================ */
+        @media (pointer: coarse) and (max-width: 1400px) {
+            .header { display: none; }                 /* reclaim vertical space */
+            .measure-container { margin-bottom: 4px; } /* rows stack vertically; page scrolls */
+            .answer-area { padding: 8px; }
+            /* Compact staff: the desktop row is 140–210px tall with a big gap
+               between the notes and the beat numbers. Shrink it hard on phones so
+               more rows fit and notes/bar lines feel proportionally larger. */
+            /* Responsive: phones ~94px, but TALLER on iPad where wider cells make
+               the note glyphs bigger (a fixed height collided with the numbers). */
+            .staff-container { height: clamp(94px, 10vw, 128px); }
+            .staff-container + .staff-container { margin-top: 8px; }
+            /* Staff line + notes + time sig together at 50%: the note glyph extends
+               well below the line (notehead sits low in the glyph), so the notes
+               have to come up enough that the glyph bottom clears the beat numbers,
+               which stay put at the bottom. */
+            .staff-line { top: 50%; }
+            .placed-note { top: 50%; transform: translateY(-66%) scale(1.22); transform-origin: left center; }
+            .answer-time-sig { top: 50%; font-size: 30px !important; }   /* was up to 62px */
+            .answer-ts-inline .ts-stack { top: 50%; }
+            .beat-drop-zone::before { font-size: 0.85rem; bottom: 4px; }  /* beat # near the line */
+            /* Bar lines: a segment CENTERED on the staff line (equal above/below),
+               not the full-height border which ran far above the line. */
+            .beat-drop-zone.measure-end:not(.final-cell) { border-right: none; }
+            .beat-drop-zone.measure-end:not(.final-cell)::after {
+                content: ''; position: absolute; right: 0;
+                top: 22%; bottom: 22%;          /* 22%..78% -> centered on 50% */
+                width: 3px; background: var(--bar-ink, #333);
+            }
+            .beat-drop-zone.final-cell::after { top: 22%; bottom: 22%; }   /* center the final double bar too */
+            /* Pin the bank to the bottom. It WRAPS into multiple rows and grows
+               with the number of tiles (so all choices are visible), capped so it
+               can't eat the whole screen — then it scrolls internally.
+               !important overrides per-theme `position: relative` (suite-theme.css). */
+            .rhythm-bank {
+                position: fixed !important;
+                /* Lifted off the very bottom edge so dragging a tile doesn't trigger
+                   the iOS home-swipe / app-switcher gesture. Side insets float it. */
+                left: 8px !important; right: 8px !important;
+                bottom: calc(env(safe-area-inset-bottom, 0px) + 7px) !important;
+                z-index: 50;
+                margin: 0; border-radius: 12px; padding: 7px 10px;
+                /* !important: suite-theme.css sets `body.theme-mpc .rhythm-bank{
+                   background:...!important}` -- without !important here too, the
+                   theme rule always wins (same class+id specificity trap as #soloHud
+                   above, except this one is ALSO already !important on their side). */
+                background: rgb(17, 17, 23) !important;
+                /* REMOVED translateZ/will-change/backface-visibility -- transform +
+                   position:fixed on the same element is a known total-render-failure
+                   trigger on some iOS WebKit versions. See #soloHud above. */
+                border: 1px solid rgba(255, 255, 255, 0.16);
+                max-height: 46vh;            /* grow with tiles, but never past ~half the screen */
+                overflow-y: auto;            /* scroll inside the bank if there are even more */
+            }
+            .rhythm-bank h3 { display: none; }
+            .rhythm-tiles {
+                flex-wrap: wrap;             /* multiple rows so every choice shows */
+                overflow-x: visible;
+                max-height: none;
+                justify-content: center;
+                gap: 8px;
+                padding-bottom: 2px;
+            }
+            /* iPad tiles stay at the touch-comfortable 90px (the phone-only block
+               below shrinks them further on small landscape phones). */
+            .rhythm-tile { width: 90px; flex: 0 0 90px; min-height: 52px; }
+            /* ===== STAFF SCROLL REGION (iPad + iPhone fix) =====
+               Previously the whole page scrolled and the top of the staff / time
+               signature slid UNDER the fixed top bar (#soloHud, top:0). Instead,
+               turn the active game area into a bounded scroll box wedged BETWEEN
+               the fixed slim bar and the fixed bank (pinned bottom): its content
+               scrolls WITHIN this box and can never hide behind the bar. The bar +
+               bank are position:fixed and escape this box, staying pinned to the
+               viewport. If the staff fits, the box simply doesn't scroll.
+               `top` tracks the LIVE bar height via --solo-bar-h (synced by the
+               inline script below; falls back to 52px before it runs), so the box
+               top follows the real bar height instead of a guess — this gives the
+               top measure comfortable clearance on iPad (which has room) and keeps
+               it clear on iPhone too. JS still refines padding-bottom to the live
+               bank height so the last row clears the bank.
+               WARNING: this element's overflow-y:auto + position:fixed combo triggers
+               a real WebKit bug (bugs.webkit.org #160953 and related reports) where a
+               position:fixed DESCENDANT of it gets incorrectly clipped/never painted,
+               even though its layout geometry stays correct -- it just silently shows
+               nothing. #soloHud and #soloActions used to be inserted INSIDE this
+               element and hit exactly that; they are now inserted as body-level
+               siblings of #gameArea instead (see the JS that builds them in
+               solo-mode.js). Do NOT nest a new position:fixed element inside
+               .game-area.active -- put it as a body-level sibling instead. */
+            .game-area.active {
+                position: fixed;
+                top: var(--solo-bar-h, 52px);
+                bottom: 0; left: 0; right: 0;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
+                padding: 8px 8px 96px;   /* clear the fixed bank (JS refines bottom) */
+            }
+            /* Theme cosmetics that fight the controls on small screens */
+            #themeSwitcher { display: none !important; }   /* was covering Speed/Bars */
+            .dq-screws { display: none !important; }       /* corner bolts collided with tiles */
+
+            /* ===== FOCUS LAYOUT: slim top bar (Play + Settings + Hints) =====
+               Everything else collapses into dropdown panels so the staff + bank
+               own the screen. */
+            .focus-only { display: inline-flex !important; }   /* show the two toggles */
+            /* FIXED (not sticky — sticky fails inside the flex column on iOS, so the
+               bar scrolled away). Always pinned to the very top. This is the iPad +
+               iPhone shared bar; the phone-only block below slims it further. The
+               fixed position is what makes the staff-clearance scroll region work
+               (it gives --solo-bar-h a stable reference on BOTH iPad and iPhone). */
+            #soloHud {
+                position: fixed !important; top: 0; left: 0; right: 0; z-index: 60;
+                padding: 2px 8px; margin: 0;
+                /* !important on background: suite-theme.css has PER-THEME overrides
+                   like `body.theme-mpc #soloHud{background:linear-gradient(...)}` --
+                   selector has a class + an id, so it's MORE SPECIFIC than this bare
+                   #soloHud rule and silently wins the cascade, even though this rule
+                   is the one written for the mobile fixed-bar context. That's what was
+                   actually causing the blank gap -- not a paint bug, a cascade bug. */
+                background: rgb(16, 16, 22) !important;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+                /* REMOVED: transform:translateZ(0)/will-change/backface-visibility.
+                   That combination (transform + position:fixed on the SAME element)
+                   is a known trigger for total render failure on some iOS WebKit
+                   versions -- the opposite of the fix it was meant to be. The debug
+                   outline data showed #soloHud painting NOTHING (not even its outline,
+                   which is a separate primitive from background) while a sibling
+                   fixed element with no transform (#beatFlash) painted fine. */
+            }
+            /* !important beats the HUD's JS-injected base styles (added after this
+               sheet, so equal specificity would otherwise win on source order). */
+            #soloHud .solo-stats { display: none !important; }   /* -> Settings dropdown */
+            /* SCORE/STREAK still need a home outside that dropdown -- .solo-stats
+               buries them behind a menu tap, which reads as "no gamification at all".
+               Reveal the compact widget instead; it lands in the unused space after
+               the theme icon (source order puts it right before that button). */
+            #soloHud .solo-quickstats { display: flex !important; }
+            #soloHud #soloMsg { display: none !important; }
+            #soloHud .solo-actions { margin: 0 !important; gap: 6px; justify-content: flex-start; flex-wrap: nowrap !important; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            /* Everyday controls (Speed, Groove) sit compactly in the bar; drop their
+               labels to save room (the dropdown + progress bar are self-evident). */
+            .solo-actions .bar-item { flex: 0 0 auto; gap: 4px; white-space: nowrap; }
+            .solo-actions .bar-item > span { display: none; }
+            /* Groove fills whatever space is left between Settings and the Theme icon
+               (on iPad this spreads the controls across the bar and pushes the theme
+               icon to the far right — its prior, non-crammed look). The phone-only
+               block below overrides this to a compact fixed-width indicator. */
+            .solo-actions .solo-stat.groove { flex: 1 1 auto !important; min-width: 90px !important; }
+            .solo-actions .solo-stat.groove .solo-bar { flex: 1 1 auto !important; width: auto !important; max-width: none !important; }
+            .solo-actions .icon-only { padding: 4px 8px; }
+            /* Theme: palette icon at the far right (Groove's flex pushes it there) */
+            #soloThemeToggle { margin-left: 0; flex: 0 0 auto; }
+            body.theme-open #themeSwitcher {
+                display: flex !important; flex-direction: column; gap: 6px;
+                position: fixed; top: calc(var(--solo-bar-h, 52px) + 4px); right: 6px; left: auto; z-index: 70;
+                width: max-content;
+                background: rgba(20, 20, 28, 0.97);
+                border: 1px solid rgba(255, 255, 255, 0.18);
+                border-radius: 12px; padding: 12px;
+                box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+            }
+            .solo-actions .solo-cfg,
+            .solo-actions .solo-hints { display: none !important; }   /* metro/guide/fixit + hints out of the bar */
+            /* Settings / Hints dropdown panel — sized to its CONTENT (not full width),
+               anchored at the left under the toggles; capped so it can't overflow. */
+            body.settings-open #soloHud .solo-stats,
+            body.hints-open .solo-actions .solo-hints {
+                display: flex !important; flex-direction: column; align-items: stretch; gap: 10px;
+                position: fixed; top: calc(var(--solo-bar-h, 52px) + 4px); left: 6px; right: auto; z-index: 70;
+                width: max-content; max-width: calc(100vw - 12px);
+                background: rgba(20, 20, 28, 0.97);
+                border: 1px solid rgba(255, 255, 255, 0.18);
+                border-radius: 12px; padding: 14px;
+                max-height: 72vh; overflow-y: auto;
+                box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+            }
+            body.settings-open #soloHud .solo-stats .solo-stat { width: 100%; justify-content: space-between; gap: 14px; }
+            body.settings-open #soloHud .solo-stats select { margin-left: 8px; padding: 6px; }
+            body.hints-open .solo-actions .solo-hints .hints-label { opacity: 0.6; font-size: 0.78rem; letter-spacing: 0.08em; }
+            body.hints-open .solo-actions .solo-hints .hint { justify-content: flex-start; }
+
+            /* Portrait: block the cramped game and ask the user to rotate */
+            body.app-portrait .game-area.active { display: none; }
+            body.app-portrait .game-area.active ~ #rotateGate {
+                display: flex;
+                position: fixed; inset: 0; z-index: 9999;
+                background: linear-gradient(140deg, #2d3436 0%, #16191a 100%);
+                color: #fff;
+                align-items: center; justify-content: center;
+                text-align: center; padding: 28px;
+            }
+        }
+
+        /* ============================================================
+           PHONE-ONLY COMPACTING (landscape phones, NOT iPad)
+           The block above gives BOTH iPad and iPhone the focus layout +
+           staff-clearance scroll region. iPad has plenty of horizontal room,
+           so it keeps the spread-out bar (groove stretches, theme icon pushed
+           to the far right) and 90px tiles. Phones in landscape are short and
+           narrow, so here — and ONLY here — we slim the bar to a tight single
+           row, drop the groove % text, shrink the groove to a fixed-width
+           indicator, and shrink the tiles further.
+
+           Gate: `max-height: 500px` cleanly separates phone landscape (iPhone
+           ~390–430px tall) from iPad landscape (≥768px tall) and from iPad
+           portrait (which is rotate-gated anyway). Verified: iPhone 844×390 and
+           932×430 MATCH; iPad 1024×768 and 1180×820 do NOT. Coupled with
+           pointer:coarse so it never touches desktop. */
+        @media (pointer: coarse) and (max-height: 500px) {
+            /* Slim the bar hard and FORCE a single nowrap row. `!important`
+               throughout beats the HUD's JS-injected base styles (solo-mode.js
+               appends them to <head> AFTER this sheet, so at equal specificity
+               they win on source order — without these the bar reverts to desktop
+               padding and its actions row wraps to a 2nd line, ~120px tall,
+               covering the top of the staff). */
+            #soloHud {
+                /* Honor the safe-area insets on every side. In iOS standalone (home
+                   screen) there is no Safari chrome, so the web app fills the screen
+                   under the status bar and behind the landscape notch; without these
+                   insets the slim bar slid under the status bar / behind the notch and
+                   was unreachable. viewport-fit=cover (meta) makes these resolve > 0.
+                   The taller bar feeds --solo-bar-h (measured live), so the staff scroll
+                   region below starts under the bar automatically. */
+                margin: 0 !important;
+                padding-top: calc(4px + env(safe-area-inset-top, 0px)) !important;
+                padding-right: calc(8px + env(safe-area-inset-right, 0px)) !important;
+                padding-bottom: 4px !important;
+                padding-left: calc(8px + env(safe-area-inset-left, 0px)) !important;
+            }
+            #soloHud .solo-actions {
+                margin: 0 !important; gap: 6px !important; align-items: center !important;
+                justify-content: flex-start !important; flex-wrap: nowrap !important;
+                overflow-x: auto; -webkit-overflow-scrolling: touch;
+            }
+            /* Groove fills the middle of the row (between Settings and the theme/
+               quickstats/score group at the far right) instead of sitting cramped
+               at a fixed width. `.solo-actions` is already flex-wrap:nowrap with
+               overflow-x:auto, so there's no 2nd-line risk -- excess content would
+               scroll horizontally, not wrap, so groove is safe to flex and grow. */
+            .solo-actions .solo-stat.groove {
+                flex: 1 1 auto !important; min-width: 70px !important; gap: 6px !important;
+            }
+            .solo-actions .solo-stat.groove .solo-bar {
+                flex: 1 1 auto !important; width: auto !important; max-width: none !important; min-width: 40px !important;
+            }
+            /* Genuinely compact phone tiles. `!important` so this beats the 90px
+               iPad rule above (equal specificity, earlier in source) AND the 150px
+               desktop base rule. 84px reads as clearly compact on an iPhone. */
+            .rhythm-tile {
+                width: 84px !important;
+                flex: 0 0 84px !important;
+                min-height: 52px !important;
+            }
+            /* ===== BUG 1: keep Submit / Tap-back / Next ALWAYS reachable =====
+               #soloActions is the last child of .game-area.active, which on iPhone is
+               the FIXED, bounded scroll region. As a normal flow child it scrolled with
+               the (8-bar) staff and ended up hidden behind the fixed bank at the bottom —
+               unreachable. Pin it as a fixed row floating directly ABOVE the bank instead,
+               so it is tappable no matter how long the staff is. Its `bottom` is set by JS
+               (syncBankPad) to the live bank height + gap so it always hugs the bank top.
+               Only the buttons themselves catch pointer events, so taps pass through the
+               transparent gutter to the staff/bank behind it. */
+            .game-area.active #soloActions {
+                position: fixed !important;
+                left: 8px; right: 8px;
+                bottom: calc(env(safe-area-inset-bottom, 0px) + 7px); /* JS refines to bank top */
+                z-index: 55;                 /* above the bank (z-index:50) */
+                margin: 0 !important;
+                padding: 0 !important;
+                border-top: none !important; /* the under-staff divider made no sense floating */
+                pointer-events: none;        /* transparent gutter passes touches through */
+                justify-content: center;
+                gap: 10px;
+            }
+            .game-area.active #soloActions button {
+                pointer-events: auto;        /* but the buttons themselves are tappable */
+                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45); /* lift off the busy bank below */
+            }
+        }
+
+        /* ===== Rotate gate styling (visibility handled above) ===== */
+        #rotateGate { display: none; }
+        #rotateGate .rotate-inner { max-width: 340px; }
+        #rotateGate svg { width: 78px; height: 78px; stroke: #fff; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 20px; }
+        #rotateGate .rotate-title { font-size: 1.45rem; font-weight: 700; margin-bottom: 12px; }
+        #rotateGate .rotate-sub { opacity: 0.72; font-size: 0.95rem; line-height: 1.45; }
+    </style>
+    <!-- Suite theme skins (cosmetic only — does not affect the notation engine) -->
+    <link rel="stylesheet" href="suite-theme.css?v=20260701-bricks">
+<style id="casual-skin-css">
+/* ============================================================
+   CASUAL / KID-FRIENDLY SKIN — standalone only (body.casual-skin).
+   Bright, rounded, big & easy. Overrides whatever theme is active
+   and hides the grown-up chrome. Engine/levels untouched.
+   ============================================================ */
+body.casual-skin{
+  background:linear-gradient(165deg,#e9f4ff 0%,#f1ecff 48%,#ffeef4 100%) fixed!important;
+  color:#333a52!important;
+  font-family:ui-rounded,"SF Pro Rounded","Baloo 2","Nunito","Segoe UI",system-ui,sans-serif!important;
+}
+/* hide grown-up chrome: theme switcher, decorative screws/VU/score, keyboard hints, theme toggle */
+body.casual-skin #themeSwitcher,
+body.casual-skin .dq-screws,
+body.casual-skin .dq-extra,
+body.casual-skin .keybind-btn,
+body.casual-skin #soloThemeToggle{ display:none!important; }
+
+/* header */
+body.casual-skin .header{ min-height:auto!important; }
+body.casual-skin .header h1{
+  color:#5b6ee1!important; font-weight:900!important; font-size:1.7rem!important;
+  text-shadow:none!important; letter-spacing:-.01em!important;
+}
+/* top solo bar */
+/* NOTE: no backdrop-filter — it makes #soloHud a containing block for the
+   position:fixed hints/settings panels, trapping them behind the answer area. */
+/* NO header container: the header is transparent, so collapsed there's just the Play button
+   hanging on the page. The white "controls" panel is the .ctrl-drawer, which only appears
+   (slides down) when you swipe Play down. */
+body.casual-skin #soloHud{ background:transparent!important; border:none!important; }
+body.casual-skin #soloMsg{ color:#5b6ee1!important; font-weight:800!important; }
+
+/* panels as light friendly cards */
+body.casual-skin .answer-area,
+body.casual-skin .rhythm-bank,
+body.casual-skin .status-bar{
+  background:#ffffff!important; border:2px solid #e8ecf8!important; border-radius:22px!important;
+  box-shadow:0 12px 30px rgba(90,110,170,.12)!important; backdrop-filter:none!important;
+}
+body.casual-skin .rhythm-bank h3,
+body.casual-skin .answer-staff-label{
+  color:#9098b4!important; font-weight:800!important; text-transform:uppercase!important;
+  letter-spacing:.05em!important; font-size:.76rem!important;
+}
+body.casual-skin .answer-staff{ background:transparent!important; box-shadow:none!important; border:none!important; }
+
+/* ANSWER SLOTS = empty versions of the bank tiles (same card look/size, just empty) */
+body.casual-skin.tiles-skin .beat-drop-zone{
+  background:#ffffff!important; border:2px dashed #ccd6ef!important; border-radius:16px!important;
+  min-height:96px!important; margin:0 5px!important; position:relative!important;
+  box-shadow:0 4px 12px rgba(90,110,170,.07)!important;
+}
+body.casual-skin .beat-drop-zone::before{ color:#b7c0dc!important; font-weight:800!important; font-size:.9rem!important; }
+body.casual-skin .answer-time-sig,
+body.casual-skin .answer-ts-inline{ color:#5b6ee1!important; }
+body.casual-skin .beat-drop-zone.filled,
+body.casual-skin .beat-drop-zone.continuation{
+  background:#eafcf1!important; border:2px solid #57cc8a!important; border-bottom:5px solid #3fb576!important;
+}
+/* A FILLED measure-end tile kept a dashed-grey RIGHT border (the bar-line border) that clashed
+   with the green fill — green on 3 sides, dashed on the right. The bar line is the ::after bar
+   in the gap, so make the filled cell's right border green too (specificity beats the .measure-end rule). */
+body.casual-skin.tiles-skin .beat-drop-zone.filled.measure-end:not(.final-cell),
+body.casual-skin.tiles-skin .beat-drop-zone.continuation.measure-end:not(.final-cell){ border-right:2px solid #57cc8a!important; }
+body.casual-skin .beat-drop-zone.drag-over{ border-color:#ff7a5c!important; background:#fff0ea!important; box-shadow:none!important; }
+/* BAR LINE between measures (drawn in the gap) */
+body.casual-skin.tiles-skin .beat-drop-zone.measure-end:not(.final-cell){ margin-right:20px!important; border-right:2px dashed #ccd6ef!important; }
+body.casual-skin.tiles-skin .beat-drop-zone.measure-end:not(.final-cell)::after{
+  content:''!important; display:block!important; position:absolute!important; right:-12px!important;
+  top:12%!important; bottom:12%!important; width:3px!important; background:#333a52!important; border-radius:2px!important;
+}
+/* FINAL DOUBLE BAR at the end */
+body.casual-skin.tiles-skin .beat-drop-zone.final-cell{ margin-right:14px!important; }
+body.casual-skin.tiles-skin .beat-drop-zone.final-cell::after{
+  content:''!important; display:block!important; position:absolute!important; right:-13px!important;
+  top:12%!important; bottom:12%!important; width:6px!important;
+  background:linear-gradient(90deg,#333a52 0 2px, transparent 2px 3px, #333a52 3px 6px)!important;
+}
+/* remove Quiet mode + light the Speed dropdown */
+body.casual-skin #soloMute{ display:none!important; }
+body.casual-skin select{ background:#fff!important; color:#333a52!important; border:2px solid #e2e8f6!important; border-radius:10px!important; font-weight:800!important; }
+
+/* bank tiles — big chunky cards */
+body.casual-skin .rhythm-tile{
+  width:var(--slot-w)!important; flex:0 0 var(--slot-w)!important; min-height:var(--slot-h)!important;
+  background:#ffffff!important; color:#333a52!important; backdrop-filter:none!important;
+  border:2px solid #e8ecf8!important; border-bottom:5px solid #d7deef!important; border-radius:18px!important;
+  box-shadow:0 6px 16px rgba(90,110,170,.10)!important;
+}
+body.casual-skin .rhythm-tile:hover{ border-color:#9db4f0!important; }
+body.casual-skin .rhythm-tile .rhythm-name{ color:#8a90a8!important; font-weight:800!important; }
+
+/* BIG friendly buttons */
+body.casual-skin #soloPlay,
+body.casual-skin button.primary.play{
+  background:linear-gradient(180deg,#51d6a6,#22b083)!important; color:#fff!important; border:none!important;
+  border-radius:16px!important; font-weight:900!important; font-size:1.05rem!important; padding:15px 26px!important;
+  text-transform:none!important; box-shadow:0 6px 0 #128a63!important;
+}
+body.casual-skin #soloSubmit,
+body.casual-skin button.primary.go{
+  background:linear-gradient(180deg,#ff9a5b,#ff5f74)!important; color:#fff!important; border:none!important;
+  border-radius:16px!important; font-weight:900!important; font-size:1.05rem!important; padding:15px 26px!important;
+  text-transform:none!important; box-shadow:0 6px 0 #d43a52!important;
+}
+body.casual-skin .toggle{
+  background:#eef2fb!important; color:#5b6480!important; border:2px solid #e2e8f6!important;
+  border-radius:999px!important; font-weight:800!important; padding:9px 15px!important; text-transform:none!important;
+}
+/* Metronome + Beat guide stay SVG + TEXT (the header collapses as a whole via the
+   Play-drawer, so individual buttons don't need to shrink). */
+
+/* Option E — GROOVE is the border of the WHOLE answer AREA, and the area FILLS the region
+   below the header (flex:1) so the frame encircles everything, not just the small tiles box.
+   Colour driven continuously by S.groove via --groove-col. */
+body.casual-skin .solo-stat.groove{ display:none!important; }
+/* The frame's border is now the depleting GROOVE RING (SVG, drawn by updateGrooveRing) — a grey
+   track + a colour fill that drains. So no solid CSS border here; keep the soft groove glow. */
+body.casual-skin .answer-area{ position:relative!important; flex:1 1 auto!important; display:flex!important; flex-direction:column!important; border:none!important; border-radius:18px!important; box-shadow:0 0 22px var(--groove-glow,rgba(34,176,131,.22))!important; transition:box-shadow .3s!important; margin-top:16px!important; }
+body.casual-skin .answer-area .groove-ring{ position:absolute!important; inset:0!important; width:100%!important; height:100%!important; pointer-events:none!important; overflow:visible!important; z-index:1!important; }
+body.casual-skin .answer-area .groove-ring .gr-track{ fill:none; stroke:#e2e8f6; stroke-width:6; }
+body.casual-skin .answer-area .groove-ring .gr-fill{ fill:none; stroke-width:6; stroke-linecap:round; transition:stroke .25s ease; }
+body.casual-skin .answer-staff{ border:none!important; box-shadow:none!important; background:transparent!important; }
+/* disc-labelled groove badge on the frame's lower-left */
+/* Groove badge STRADDLES the frame's bottom border (like the LEVEL/SCORE tabs straddle the
+   top), and its disc SVG renders as a proper RING in the groove colour — it was a filled black
+   dot because it sits outside .solo-ctl so never got fill:none;stroke. */
+body.casual-skin .answer-area .groove-badge{ position:absolute!important; right:14px; bottom:-13px; left:auto; display:flex; align-items:center; gap:6px; font-size:.72rem; font-weight:800; letter-spacing:.04em; color:var(--groove-col,#22b083); background:#fff; padding:3px 11px; border-radius:10px; border:1px solid #e7ecf8; box-shadow:0 1px 6px rgba(90,110,170,.14); z-index:6; }
+body.casual-skin .answer-area .groove-badge .ic{ width:16px!important; height:16px!important; fill:none!important; stroke:var(--groove-col,#22b083)!important; stroke-width:1.6!important; }
+/* LEVEL+pips (left) and SCORE/STREAK (right) docked as TABS on the frame's top edge.
+   ID-qualified so they beat the old #soloMastery / .solo-quickstats header rules. */
+body.casual-skin .answer-area #soloMastery.frame-tab,
+body.casual-skin .answer-area #soloQuickStats.frame-tab{ position:absolute!important; top:-15px!important; margin:0!important; padding:3px 11px!important; padding-right:11px!important; background:#fff!important; border:1px solid #e7ecf8!important; border-radius:10px!important; box-shadow:0 1px 6px rgba(90,110,170,.12)!important; z-index:7!important; display:flex!important; align-items:center!important; gap:9px!important; width:auto!important; }
+/* LEVEL -> upper-right corner of the SCREEN (header area, fixed). SCORE -> RIGHT side of the
+   frame's top green border. Groove badge -> lower-right (unchanged). */
+body.casual-skin .answer-area #soloMastery.frame-tab-left{ position:fixed!important; top:16px!important; right:16px!important; left:auto!important; }
+body.casual-skin .answer-area #soloQuickStats.frame-tab-right{ right:16px!important; left:auto!important; top:-15px!important; }
+body.casual-skin .answer-area .frame-tab .sm-level{ flex-direction:row!important; align-items:baseline!important; gap:7px!important; min-width:0!important; }
+body.casual-skin .answer-area .frame-tab #smTitle{ display:none!important; }   /* tab shows LEVEL# + pips, like the mockup */
+body.casual-skin .answer-area .frame-tab #smChap{ font-size:.66rem!important; }
+/* SCORE/STREAK tab: horizontal, and the streak flame is a proper size + filled orange (was
+   tiny + uncoloured because it's outside .solo-ctl so never got fill:currentColor). */
+body.casual-skin .answer-area #soloQuickStats.frame-tab .qs-item{ flex-direction:row!important; align-items:center!important; gap:4px!important; }
+body.casual-skin .answer-area #soloQuickStats.frame-tab .ic{ width:18px!important; height:18px!important; fill:#ff8c42!important; stroke:none!important; }
+body.casual-skin .answer-area #soloQuickStats.frame-tab b{ font-size:.92rem!important; color:#5b6ee1!important; }
+body.casual-skin .answer-area #soloQuickStats.frame-tab small{ font-size:.55rem!important; color:#8a90a8!important; }
+body.casual-skin .toggle.active,
+body.casual-skin .toggle[aria-pressed="true"]{ background:#5b6ee1!important; color:#fff!important; border-color:#5b6ee1!important; }
+body.casual-skin .hint{
+  background:#fff3e8!important; color:#cf7b3c!important; border:2px solid #ffe1c4!important;
+  border-radius:999px!important; font-weight:800!important; padding:8px 14px!important;
+}
+/* crisp DARK note glyphs on light tiles — undo the theme's invert/green-glow filter */
+body.casual-skin .rhythm-tile img,
+body.casual-skin .answer-staff img,
+body.casual-skin .placed-note,
+body.casual-skin .beat-notation img{ filter:none!important; }
+/* Placed note CENTERED in its slot (like the bank tile), not left-anchored to a staff line */
+body.casual-skin.tiles-skin .beat-notation{ display:flex!important; align-items:center!important; justify-content:center!important; }
+body.casual-skin.tiles-skin .placed-note{
+  position:absolute!important; left:0!important; right:auto!important; top:0!important; bottom:0!important;
+  transform:none!important; margin:0!important;
+  height:100%!important; /* width stays the engine's inline beats*100% so multi-beat SPANS its cells */
+  object-fit:contain!important; object-position:center!important; z-index:5!important;
+}
+/* Multi-note figures place each note glyph at its beat OFFSET (left set inline by the engine),
+   so — unlike .placed-note — this must NOT force left:0. Overflows into the continuation cell. */
+body.casual-skin.tiles-skin .placed-tiled-glyph{
+  position:absolute!important; right:auto!important; top:0!important; bottom:0!important;
+  transform:none!important; margin:0!important; width:100%!important;
+  height:100%!important; object-fit:contain!important; object-position:center!important; z-index:5!important;
+}
+/* ── Multi-beat figure = ONE continuous GREEN CONTAINER (OWNER-APPROVED FINAL, 2026-07-05: "that's perfect") ──
+   The note itself stays NATURAL one-beat size (see rhythm-student.js renderPatternArt
+   tiles branch — width:100%, NOT stretched). These rules merge the head cell (.filled)
+   and its continuation cell(s) (.filled.continuation) into a single rounded green tile
+   that "lights up" across the figure's beats — no inner borders/gap/radius. So a half
+   note sits at normal size in its own beat, inside one green tile spanning both beats.
+   (Head is .filled:not(.continuation); do NOT use .head — the engine never sets it.) */
+body.casual-skin.tiles-skin .beat-drop-zone.filled{ overflow:visible!important; }
+body.casual-skin.tiles-skin .beat-drop-zone.continuation{
+  margin-left:-10px!important; border-left:none!important;
+  border-top-left-radius:0!important; border-bottom-left-radius:0!important;
+}
+/* head = a filled cell (NOT itself a continuation) directly before a continuation */
+body.casual-skin.tiles-skin .beat-drop-zone.filled:not(.continuation):has(+ .beat-drop-zone.continuation){
+  margin-right:0!important; border-right:none!important;
+  border-top-right-radius:0!important; border-bottom-right-radius:0!important;
+}
+body.casual-skin.tiles-skin .beat-drop-zone.continuation:has(+ .beat-drop-zone.continuation){ border-radius:0!important; }
+/* "Hear a beat" / "Count sounds" armed → make the answer beats look tappable */
+body.casual-skin.pick-armed .beat-drop-zone{ box-shadow:inset 0 0 0 2.5px #5b6ee1!important; cursor:pointer!important; }
+/* Owner: KILL the purple message line between the controls and the answer — worthless.
+   Scoring feedback is the floating +/- pops + result overlays; count-in is the flash. */
+body.casual-skin #soloHud #soloMsg, body.casual-skin #soloMsg{ display:none!important; }
+/* "Show answer" is a giveaway, not a hint — drop it from the casual hint menu */
+body.casual-skin #soloReveal{ display:none!important; }
+/* ---- Teach / warm-up modal → casual light theme (was the dark tap-back surface) ---- */
+body.casual-skin .tapback-ov{
+  --tb-accent:#22b083!important;
+  background:linear-gradient(160deg,#eef4ff,#f6eef7,#ffeef4)!important; color:#333a52!important;
+}
+body.casual-skin .teach-card, body.casual-skin .tb-card{ color:#333a52!important; }
+body.casual-skin .teach-chap{ color:#9098b4!important; opacity:1!important; }
+body.casual-skin .teach-title{ color:#333a52!important; }
+body.casual-skin .teach-body, body.casual-skin .teach-figs li{ color:#41465c!important; opacity:1!important; }
+body.casual-skin .teach-tip, body.casual-skin .teach-syll{
+  background:#ffffff!important; border:1px solid #e6ebf7!important; color:#41465c!important; box-shadow:0 6px 16px rgba(90,110,170,.08)!important;
+}
+body.casual-skin .teach-tip-label, body.casual-skin .teach-stage{ color:#22b083!important; }
+body.casual-skin .teach-skip{ color:#8a90a8!important; }
+body.casual-skin .teach-hear, body.casual-skin .teach-cr{ background:#eef2fb!important; color:#5b6ee1!important; }
+body.casual-skin .teach-go, body.casual-skin .tb-start{ background:linear-gradient(180deg,#51d6a6,#22b083)!important; color:#fff!important; }
+body.casual-skin .teach-foot{ border-top:1px solid #e6ebf7!important; }
+body.casual-skin .teach-pad{ border-color:#c6d3f0!important; background:#f5f8ff!important; }
+body.casual-skin .tb-close{ color:#8a90a8!important; }
+/* ---- tiles answer-area layout: kill staff-era artifacts so EVERY slot is identical ---- */
+/* no beat-1 offset (was padding-left:14px + notation shifted right -> off-center note) */
+body.casual-skin.tiles-skin .beat-drop-zone[data-beat="1"]{ padding-left:0!important; }
+body.casual-skin.tiles-skin .beat-drop-zone[data-beat="1"] .beat-notation{ left:0!important; right:0!important; width:100%!important; }
+/* beat number: small + inside the bottom-left corner, same on every beat (was straddling the edge) */
+body.casual-skin.tiles-skin .beat-drop-zone::before,
+body.casual-skin.tiles-skin .beat-drop-zone[data-beat="1"]::before{
+  left:7px!important; right:auto!important; transform:none!important; bottom:3px!important;
+  font-size:.6rem!important; font-weight:800!important; color:#aeb6cf!important;
+}
+/* time signature hugs the first beat (small bumper) instead of a 70px gap */
+body.casual-skin .answer-time-sig{ left:2px!important; font-size:1.9rem!important; }
+body.casual-skin .beat-divisions{ margin-left:40px!important; }
+/* Compact the top HUD (iPhone dead space): keep a small level title, drop the verbose
+   ramp/band/bonus meta so the answer area starts higher. */
+body.casual-skin #soloMastery{ padding:5px 12px!important; margin:0!important; }
+body.casual-skin #smRamp,
+body.casual-skin #smBand,
+/* the LEVEL-mastery progress bar — a SECOND progress bar next to GROOVE (visible in
+   Chrome, near-invisible in Safari). Confusing in casual; the Level Complete screen is
+   the level-up payoff instead. Keep only the LEVEL label + title (sm-level). */
+body.casual-skin .sm-meterwrap,
+body.casual-skin #soloBonus{ display:none!important; }
+body.casual-skin #smChap{ font-size:.62rem!important; opacity:1!important; color:#8a90a8!important; }
+/* Level-progress PIPS replace the second bar — filling circles next to the LEVEL label. */
+body.casual-skin .sm-pips{ display:flex!important; margin-left:10px!important; color:#b9c2dd; }
+/* SUBMIT is docked onto the answer frame's BOTTOM edge, centered — right in the sightline
+   when the answer's complete (the corner float was never noticed). Big + pulsing. */
+/* display:inline-flex is NON-important on purpose: the engine's inline style.display:none
+   (shown only when every tile is filled) must win over it. */
+body.casual-skin .answer-area #soloSubmit.frame-submit{ position:absolute!important; left:50%!important; bottom:-24px!important; transform:translateX(-50%)!important; right:auto!important; top:auto!important; z-index:20!important; display:inline-flex; flex-direction:row!important; align-items:center!important; gap:8px!important; width:auto!important; height:auto!important; min-width:0!important; min-height:0!important; padding:13px 30px!important; font-size:1.05rem!important; box-shadow:0 8px 22px rgba(212,58,82,.5)!important; animation:submitPulse 1.1s ease-in-out infinite; }
+body.casual-skin .answer-area #soloSubmit.frame-submit .ic{ width:18px!important; height:18px!important; margin:0!important; }
+@keyframes submitPulse{ 0%,100%{ box-shadow:0 8px 20px rgba(212,58,82,.45) } 50%{ box-shadow:0 10px 30px rgba(212,58,82,.85) } }
+/* Next + Tap-back dock on the frame's bottom edge as a centered pair (only shown when the
+   engine sets their display — i.e. after you've answered and it's time to move on). */
+body.casual-skin .answer-area #soloNext.frame-next,
+body.casual-skin .answer-area #soloTapBack.frame-tapback{ position:absolute!important; bottom:-24px!important; top:auto!important; z-index:20!important; display:inline-flex; flex-direction:row!important; align-items:center!important; gap:8px!important; width:auto!important; height:auto!important; min-width:0!important; min-height:0!important; padding:13px 26px!important; }
+body.casual-skin .answer-area #soloNext.frame-next{ left:50%!important; right:auto!important; transform:translateX(8px)!important; }
+body.casual-skin .answer-area #soloTapBack.frame-tapback{ right:50%!important; left:auto!important; transform:translateX(-8px)!important; }
+body.casual-skin .answer-area #soloNext.frame-next .ic, body.casual-skin .answer-area #soloTapBack.frame-tapback .ic{ width:18px!important; height:18px!important; margin:0!important; }
+body.casual-skin #smTitle{ font-size:.98rem!important; line-height:1.1!important; color:#333a52!important; font-weight:800!important; }
+/* HUD text + gamification were WHITE (dark-theme default) on the light casual HUD →
+   invisible. Force dark/clear text; score & streak get the casual indigo. */
+body.casual-skin #soloHud{ color:#333a52!important; }
+body.casual-skin #soloHud .solo-stat, body.casual-skin #soloHud .solo-stat *,
+body.casual-skin .solo-quickstats, body.casual-skin .solo-quickstats *{ color:#4a5170!important; }
+body.casual-skin #soloScore, body.casual-skin #soloStreak,
+body.casual-skin .solo-quickstats b{ color:#5b6ee1!important; font-weight:800!important; }
+body.casual-skin #soloMsg{ color:#5b6ee1!important; }
+/* The action row is a horizontal scroller (overflow-x:auto), which also clips the
+   raised Play/Submit buttons' bottom shadow. Give it room so nothing gets cut. */
+body.casual-skin .solo-actions{ padding-bottom:10px!important; padding-top:2px!important; }
+/* Casual HUD tidy: move points/streak up to the top line's right (next to LEVEL/title) so
+   the button row has room — the GROOVE meter stays visible there, just un-crammed. */
+body.casual-skin #soloMastery{ padding-right:118px!important; }
+body.casual-skin .solo-quickstats{ position:absolute!important; top:12px!important; right:16px!important; display:flex!important; gap:16px!important; }
+/* BEAT GUIDE highlight — make it visible over the white tiles (my bg was hiding it) */
+body.casual-skin.tiles-skin .beat-drop-zone.solo-beat-on{
+  background:rgba(91,110,225,0.20)!important;
+  border-color:#5b6ee1!important; border-style:solid!important;
+  box-shadow:inset 0 0 0 3px #5b6ee1!important;
+}
+/* HINTS / SETTINGS dropdown — light theme + always above the answer area */
+body.casual-skin.hints-open .solo-actions .solo-hints,
+body.casual-skin.settings-open #soloHud .solo-stats{
+  z-index:99999!important; background:#ffffff!important; color:#333a52!important;
+  border:1px solid #e6ebf7!important; box-shadow:0 16px 40px rgba(90,110,170,.28)!important;
+}
+body.casual-skin.hints-open .solo-actions .solo-hints .hints-label{ color:#9098b4!important; }
+/* "Your Answer (N measures)" label removed — the boxes make it self-evident */
+body.casual-skin .answer-staff-label{ display:none!important; }
+/* kill any faint leftover staff-line wrapper tint */
+body.casual-skin .staff-lines,
+body.casual-skin .staff-line{ background:transparent!important; display:none!important; }
+/* kill the theme's lined-paper background behind the answer tiles */
+body.casual-skin .answer-staff::after,
+body.casual-skin .answer-staff::before,
+body.casual-skin .staff-container::after,
+body.casual-skin .staff-container::before{ display:none!important; background:none!important; }
+/* KEEP IT SIMPLE (like the reference): hide advanced helper clutter */
+/* Show the full PRO hint set (Narrow options, Count sounds, Find mistakes, Hear a
+   beat, Show answer). Only the Settings toggle is hidden — config lives on the menu. */
+body.casual-skin #soloSettingsToggle{ display:none!important; }
+/* ---- answer = a LINE of fixed-size tiles, IDENTICAL to the bank tiles ----
+   Each slot is a fixed width == a bank tile (not stretched to fill the bar), and
+   the row scrolls horizontally. A dragged tile drops in and fills its slot. */
+/* --slot-w / --slot-h size BOTH the bank tiles and the answer slots, so a dragged tile
+   always matches its slot exactly. Default 104x98. For a long (16-bar) example the engine
+   OVERRIDES these on <body> with computed, smaller values so the whole thing fits the
+   viewport with no horizontal scroll — and because they're shared, the bank shrinks WITH
+   the answer, staying matched. */
+/* Tiles trimmed vertically: the notehead glyph is small, so 98px wasted a lot of white
+   space above/below. 72px keeps the note comfortable but reclaims height (bank + answer,
+   uniform). */
+:root{ --slot-w:104px; --slot-h:72px; }
+body.casual-skin .rhythm-tile{ width:var(--slot-w)!important; flex:0 0 var(--slot-w)!important; min-height:var(--slot-h)!important; }
+body.casual-skin .staff-container{ overflow-x:auto!important; overflow-y:hidden!important; height:calc(var(--slot-h) + 12px)!important; }
+body.casual-skin .beat-divisions{ right:auto!important; width:max-content!important; align-items:center!important; }
+/* EXACT bank-tile match: the empty answer slot is the SAME width AND height as a bank tile.
+   Fixed height (not min-height) + centered row stops the staff line from STRETCHING the
+   slots taller than the bank (they were rendering ~106px). */
+body.casual-skin.tiles-skin .beat-drop-zone{
+  flex:0 0 var(--slot-w)!important; width:var(--slot-w)!important; min-width:var(--slot-w)!important;
+  height:var(--slot-h)!important; min-height:var(--slot-h)!important; max-height:var(--slot-h)!important;
+}
+/* DENSE (16-bar): trim the inter-cell + inter-measure gaps so a whole example fits the
+   viewport with no scroll (the fit math in rhythm-student.js assumes these values). */
+body.casual-skin .answer-staff.dense-staff .beat-drop-zone{ margin-right:2px!important; }
+body.casual-skin .answer-staff.dense-staff .beat-drop-zone.measure-end:not(.final-cell){ margin-right:8px!important; }
+/* 4 rows of 4 bars — tighten the row-to-row gap so all rows fit the viewport height. */
+body.casual-skin .answer-staff.dense-staff .staff-container + .staff-container{ margin-top:14px!important; }
+/* No remove ✕ — students just drag a new rhythm onto a slot to replace it. */
+body.casual-skin .remove-btn{ display:none!important; }
+
+/* ============ HEADER = a plain control row, ALL buttons visible (Play + Speed + Metronome +
+   Beat guide + Hints). No drawer, no collapse. Transparent (the groove frame is the visual
+   container). Play is a normal pill. Answer area stays where it is. ============ */
+body.casual-skin #soloHud{ background:transparent!important; border:none!important; padding:6px 8px!important; }
+body.casual-skin #soloHud .solo-stats, body.casual-skin #soloHud #soloMsg{ display:none!important; }
+body.casual-skin #soloPlay{ position:relative!important; left:auto!important; top:auto!important; transform:none!important; cursor:pointer!important; touch-action:auto!important; }
+body.casual-skin #gameArea.active{ padding-top:0!important; }
+body.casual-skin .answer-area{ margin-top:16px!important; }
+</style>
+</head>
+<body class="tiles-skin casual-skin">
+    <div class="header">
+        <h1>BeatQuest — Rhythm Dictation</h1>
+    </div>
+
+    <!-- Login Form -->
+    <style>
+      #loginForm{ display:none!important; }
+      body.casual-skin .header{ display:none!important; }
+      #mainMenu{ max-width:640px; margin:0 auto; padding:6px 8px 44px; font-family:ui-rounded,"SF Pro Rounded","Baloo 2","Nunito","Segoe UI",system-ui,sans-serif; color:#333a52; }
+      #mainMenu.hidden, #intakeScreen.hidden{ display:none!important; }
+      /* Safety net: once the game area is active, the menu/intake can NEVER show. */
+      body:has(#gameArea.active) #mainMenu,
+      body:has(#gameArea.active) #intakeScreen{ display:none!important; }
+      .mm-hero{ text-align:center; margin:8px 0 16px; }
+      .mm-logo{ font-size:2.2rem; font-weight:900; background:linear-gradient(90deg,#ff5a6e,#5b6ee1); -webkit-background-clip:text; background-clip:text; color:transparent; }
+      .mm-sub{ color:#8a90a8; font-weight:600; font-size:.9rem; margin-top:2px; }
+      .mm-tabs{ display:flex; gap:8px; background:#e9eefb; padding:6px; border-radius:16px; margin-bottom:16px; }
+      .mm-tab{ flex:1; border:none; background:transparent; padding:12px; border-radius:12px; font-weight:800; font-size:.95rem; color:#69709a; cursor:pointer; }
+      .mm-tab.on{ background:#fff; color:#5b6ee1; box-shadow:0 3px 10px rgba(90,110,170,.15); }
+      .mm-pane{ background:#fff; border:1px solid #e8ecf8; border-radius:22px; padding:18px 16px; box-shadow:0 12px 30px rgba(90,110,170,.10); }
+      .mm-pane.hidden{ display:none; }
+      .mm-lead{ color:#69709a; font-size:.92rem; line-height:1.5; margin-bottom:6px; }
+      .mm-section-title{ font-size:.72rem; font-weight:800; color:#9098b4; text-transform:uppercase; letter-spacing:.05em; margin:16px 0 8px; display:flex; align-items:center; gap:8px; }
+      .mm-section-title span{ font-weight:600; text-transform:none; letter-spacing:0; opacity:.7; }
+      .mm-mini{ background:#eef2fb; border:none; border-radius:999px; padding:5px 12px; font-weight:800; font-size:.72rem; color:#5b6480; cursor:pointer; }
+      .mm-section-title .mm-mini:first-of-type{ margin-left:auto; }
+      .mm-chips{ display:flex; gap:8px; flex-wrap:wrap; }
+      .mm-chip{ background:#eef2fb; border:2px solid #e2e8f6; border-radius:999px; padding:9px 18px; font-weight:800; font-size:.9rem; color:#5b6480; cursor:pointer; }
+      .mm-chip.on{ background:#5b6ee1; color:#fff; border-color:#5b6ee1; }
+      .mm-tiles{ display:flex; flex-wrap:wrap; gap:10px; margin-top:4px; }
+      .mm-tile{ position:relative; width:96px; height:86px; background:#fff; border:2px solid #e8ecf8; border-bottom:5px solid #d7deef; border-radius:16px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:opacity .12s,transform .08s; }
+      .mm-tile:active{ transform:translateY(2px); }
+      .mm-tile img{ max-width:80%; max-height:60%; pointer-events:none; }
+      .mm-tile.off{ opacity:.34; filter:grayscale(.55); border-style:dashed; }
+      .mm-tile .hear{ position:absolute; bottom:4px; right:5px; width:22px; height:22px; border-radius:50%; background:#eef2fb; border:none; display:flex; align-items:center; justify-content:center; font-size:.72rem; color:#5b6ee1; cursor:pointer; }
+      .mm-tile .chk{ position:absolute; top:5px; left:5px; width:19px; height:19px; border-radius:50%; background:#57cc8a; color:#fff; display:flex; align-items:center; justify-content:center; font-size:.66rem; font-weight:900; }
+      .mm-tile.off .chk{ display:none; }
+      .mm-start{ margin-top:20px; width:100%; background:linear-gradient(180deg,#51d6a6,#22b083); color:#fff; border:none; border-radius:16px; padding:16px; font-weight:900; font-size:1.1rem; cursor:pointer; box-shadow:0 6px 0 #128a63; }
+      #paneFree .mm-start{ background:linear-gradient(180deg,#ff9a5b,#ff5f74); box-shadow:0 6px 0 #d43a52; }
+      .mm-intake-actions{ display:flex; gap:10px; margin-top:20px; align-items:stretch; }
+      #intakeNew{ flex:1; background:#eef2fb; border:2px solid #e2e8f6; color:#5b6480; border-radius:16px; font-weight:800; font-size:.9rem; padding:14px 8px; cursor:pointer; }
+      #intakeContinue{ flex:1.7; margin-top:0!important; }
+      #intakeMore{ margin:14px auto 0!important; display:block; }
+    </style>
+    <div id="intakeScreen" class="hidden">
+      <div class="mm-hero"><div class="mm-logo">Rhythm</div><div class="mm-sub">Let's find your starting point</div></div>
+      <div class="mm-pane">
+        <p class="mm-lead">Tap the rhythms you can already read. Not sure about one? Leave it — we'll double-check as you play.</p>
+        <div class="mm-section-title">Which of these can you read? <span>· ♪ to hear</span></div>
+        <div class="mm-tiles" id="intakeTiles"></div>
+        <button class="mm-mini" id="intakeMore">Show compound (6/8) rhythms ▾</button>
+        <div class="mm-intake-actions">
+          <button id="intakeNew">I'm brand new</button>
+          <button class="mm-start" id="intakeContinue">Continue →</button>
+        </div>
+      </div>
+    </div>
+    <div id="mainMenu">
+      <div class="mm-hero"><div class="mm-logo">Rhythm</div><div class="mm-sub">Learn to read &amp; write rhythm</div></div>
+      <div class="mm-tabs"><button id="tabGuided" class="mm-tab on">Guided Journey</button><button id="tabFree" class="mm-tab">Free Play</button></div>
+      <div id="paneGuided" class="mm-pane">
+        <p class="mm-lead">Learn one rhythm at a time — we choose the meter and level, you just listen and build.</p>
+        <div class="mm-section-title">This level's rhythms <span id="guidedLevelLabel"></span></div>
+        <div class="mm-tiles" id="guidedTiles"></div>
+        <button class="mm-start" id="startGuided">Start Journey →</button>
+      </div>
+      <div id="paneFree" class="mm-pane hidden">
+        <div class="mm-section-title">Meter</div>
+        <div class="mm-chips" id="meterChips"><button class="mm-chip on" data-v="simple">Simple</button><button class="mm-chip" data-v="compound">Compound</button></div>
+        <div class="mm-section-title">Difficulty</div>
+        <div class="mm-chips" id="diffChips"><button class="mm-chip on" data-v="easy">Easy</button><button class="mm-chip" data-v="int">Intermediate</button><button class="mm-chip" data-v="adv">Advanced</button></div>
+        <div class="mm-section-title">Rhythms in play <span>· tap to add / remove</span><button class="mm-mini" id="selAll">All</button><button class="mm-mini" id="selNone">None</button></div>
+        <div class="mm-tiles" id="freeTiles"></div>
+        <button class="mm-start" id="startFree">Start Free Play →</button>
+      </div>
+    </div>
+    <div class="login-form" id="loginForm">
+        <h2 style="text-align: center; margin-bottom: 20px;">Join Rhythm Session</h2>
+        <div class="form-group">
+            <label for="studentName">Your Name:</label>
+            <input type="text" id="studentName" placeholder="Enter your name" value="Test Student" required>
+        </div>
+        <div class="form-group">
+            <label for="roomCode">Room Code:</label>
+            <input type="text" id="roomCode" placeholder="Enter room code" value="TEST123" required>
+        </div>
+        <button class="btn-login" id="joinBtn">Join Session</button>
+        <div style="text-align:center;margin:14px 0 4px;opacity:.7;font-size:.85rem">— or —</div>
+        <button class="btn-login" id="soloBtn" style="background:linear-gradient(45deg,#16c2b0,#0e9e8e)">Practice on your own</button>
+    </div>
+
+    <!-- Game Area -->
+    <div class="game-area" id="gameArea">
+        <div class="status-bar">
+            <div>Connected to Room: <strong id="connectedRoom">-</strong></div>
+            <div>Status: <span id="connectionStatus">Connected</span></div>
+        </div>
+
+        <!-- Answer staff on top (your work); rhythm bank below as the palette -->
+        <div class="answer-area">
+            <!-- label is the themed pill inside the staff ("Your Answer (N measures)") -->
+            <div id="measureContainer">
+                <!-- Measures will be populated by JavaScript -->
+            </div>
+            <div id="feedback"></div>
+        </div>
+
+        <div class="rhythm-bank">
+            <h3>Rhythm Bank</h3>
+            <div class="rhythm-tiles" id="rhythmTiles">
+                <!-- Rhythm tiles will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Shown only on touch devices held in portrait while a game is active -->
+    <div id="rotateGate">
+        <div class="rotate-inner">
+            <svg viewBox="0 0 64 64"><rect x="9" y="21" width="46" height="26" rx="4"/><path d="M22 16a14 14 0 0 1 23 2"/><path d="M45 10v8h-8"/></svg>
+            <div class="rotate-title">Turn your device sideways</div>
+            <div class="rotate-sub">Rhythm dictation needs landscape. If it doesn't rotate, switch off your device's rotation lock.</div>
+        </div>
+    </div>
+
+    <!-- Orientation flag for the mobile layout / rotate gate -->
+    <script>
+        (function () {
+            function updateOrientation() {
+                document.body.classList.toggle('app-portrait', window.innerHeight > window.innerWidth);
+            }
+            window.addEventListener('resize', updateOrientation);
+            window.addEventListener('orientationchange', updateOrientation);
+            updateOrientation();
+        })();
+    </script>
+
+    <!-- Keep the mobile staff scroll region's top edge glued to the LIVE height of
+         the fixed slim bar (#soloHud), so the staff is wedged BETWEEN the bar and
+         the fixed bank and the top measure (time signature) is never hidden behind
+         the bar. The bar is injected by solo-mode.js after load, and its height can
+         shift by viewport (notch safe-area inset, font metrics), so we OBSERVE it
+         rather than hardcode a number. Sets --solo-bar-h, read by .game-area.active
+         (top) and the dropdown anchors in the mobile @media block. -->
+    <script>
+        (function () {
+            var root = document.documentElement;
+            function isMobileFocus() {
+                try { return window.matchMedia('(pointer: coarse) and (max-width: 1400px)').matches; } catch (e) { return false; }
+            }
+            function syncBarHeight() {
+                var hud = document.getElementById('soloHud');
+                // Only meaningful in the mobile focus layout; otherwise clear the var
+                // so the CSS fallback (52px) applies and desktop is unaffected.
+                if (!hud || !isMobileFocus()) { root.style.removeProperty('--solo-bar-h'); return; }
+                var h = Math.round(hud.getBoundingClientRect().height);
+                if (h > 0) root.style.setProperty('--solo-bar-h', h + 'px');
+            }
+
+            var hudRO = (typeof ResizeObserver !== 'undefined') ? new ResizeObserver(syncBarHeight) : null;
+            var observed = null;
+            function observeHud() {
+                var hud = document.getElementById('soloHud');
+                // Only (re)attach when the HUD element identity actually changes, so
+                // the high-frequency body mutations (tile drags, note placement) don't
+                // thrash the observer.
+                if (hud === observed) return;
+                observed = hud;
+                if (hud && hudRO) { try { hudRO.disconnect(); } catch (e) {} hudRO.observe(hud); syncBarHeight(); }
+            }
+
+            // Watch for the HUD being injected / rebuilt by solo-mode.js. Cheap guard
+            // above means this is a no-op once the HUD is in place.
+            var mo = new MutationObserver(observeHud);
+            try { mo.observe(document.body, { childList: true, subtree: true }); } catch (e) {}
+
+            window.addEventListener('resize', syncBarHeight);
+            window.addEventListener('orientationchange', function () { setTimeout(syncBarHeight, 250); });
+            // Initial passes (covers the case where the HUD already exists).
+            observeHud(); syncBarHeight();
+            window.addEventListener('load', function () { observeHud(); syncBarHeight(); });
+        })();
+    </script>
+    <script type="module" src="rhythm-student.js?v=20260705optI37"></script>
+    <script src="suite-theme.js?v=20260701-kidsmode"></script>
+    <!-- Guided-level ENGINE bridge: loads core/ (curriculum, ladder, mastery,
+         grading) over HTTP and exposes window.LevelCore. Must precede solo-mode.js,
+         which waits for it (window.LevelCore / the levelcore-ready event). -->
+    <script type="module" src="core-bridge.js?v=20260628-levelcore"></script>
+    <!-- TEACH content (window.TEACH_CONTENT): per-level intro copy the teach
+         screens read. DATA only; classic global, must precede solo-mode.js. -->
+    <script src="teach-content.js?v=20260629-teach"></script>
+    <script src="solo-mode.js?v=20260705optI37"></script>
+    <script>
+    /* ---- Casual main menu (Guided / Free Play). Visual + navigation; Start hands
+       off to the real engine via the (hidden) solo button. Free-play figure
+       filtering wires into the engine next. ---- */
+    (function(){
+      var $=function(id){return document.getElementById(id);};
+      // Casual has its own intake — suppress PRO BeatQuest's placement checklist modal.
+      try{ localStorage.setItem('beatquest-placed-dictation','1'); }catch(e){}
+      var GLY='rhythm-assets/bank/';
+      var FIG={
+        'quarter':{n:'Quarter',on:[0]}, 'two-eighths':{n:'Two eighths',on:[0,.5]},
+        'quarter-rest':{n:'Quarter rest',on:[]}, 'half':{n:'Half',on:[0],span:2},
+        'four-sixteenths':{n:'Four 16ths',on:[0,.25,.5,.75]},
+        'eighth-two-sixteenths':{n:'8th + two 16ths',on:[0,.5,.75]},
+        'two-sixteenths-eighth':{n:'Two 16ths + 8th',on:[0,.25,.5]},
+        'eighth-rest-eighth':{n:'8th rest + 8th',on:[.5]}, 'eighth-eighth-rest':{n:'8th + 8th rest',on:[0]},
+        'dotted-eighth-sixteenth':{n:'Dotted 8th–16th',on:[0,.75]},
+        'sixteenth-dotted-eighth':{n:'16th–dotted 8th',on:[0,.25]},
+        'sixteenth-eighth-sixteenth':{n:'16–8–16',on:[0,.25,.75]},
+        'triplet-eighths':{n:'Triplet',on:[0,1/3,2/3]},
+        'eighth-quarter-eighth':{n:'Syncopation',on:[0,.5,1.5],span:2},
+        'cd-dotted-quarter':{n:'Dotted quarter',on:[0]}, 'cd-three-eighths':{n:'Three eighths',on:[0,1/3,2/3]},
+        'cd-quarter-eighth':{n:'Quarter + 8th',on:[0,2/3]}, 'cd-eighth-quarter':{n:'8th + quarter',on:[0,1/3]},
+        'cd-dotted-quarter-rest':{n:'Dotted rest',on:[]}, 'cd-six-sixteenths':{n:'Six 16ths',on:[0,1/6,2/6,3/6,4/6,5/6]},
+        'cd-8-8-two16':{n:'8 8 two-16',on:[0,1/3,2/3,5/6]}, 'cd-two16-8-8':{n:'two-16 8 8',on:[0,1/6,1/3,2/3]},
+        'cd-8-two16-8':{n:'8 two-16 8',on:[0,1/3,.5,2/3]}, 'cd-quarter-two16':{n:'Quarter two-16',on:[0,2/3,5/6]},
+        'cd-two16-quarter':{n:'two-16 quarter',on:[0,1/6,1/3]}, 'cd-8-four16':{n:'8 four-16',on:[0,1/3,.5,2/3,5/6]},
+        'cd-four16-8':{n:'four-16 8',on:[0,1/6,1/3,.5,2/3]}, 'cd-duplet':{n:'Duplet',on:[0,.5]}
+      };
+      var TIERS={
+        simple:{ easy:['quarter','two-eighths','quarter-rest','half'],
+          int:['four-sixteenths','eighth-two-sixteenths','two-sixteenths-eighth','eighth-rest-eighth','eighth-eighth-rest'],
+          adv:['dotted-eighth-sixteenth','sixteenth-dotted-eighth','sixteenth-eighth-sixteenth','triplet-eighths','eighth-quarter-eighth'] },
+        compound:{ easy:['cd-dotted-quarter','cd-three-eighths','cd-quarter-eighth','cd-eighth-quarter','cd-dotted-quarter-rest'],
+          int:['cd-six-sixteenths','cd-8-8-two16','cd-two16-8-8','cd-8-two16-8'],
+          adv:['cd-quarter-two16','cd-two16-quarter','cd-8-four16','cd-four16-8','cd-duplet'] }
+      };
+      var AC=null;
+      function clk(t,acc){ AC=AC||new(window.AudioContext||window.webkitAudioContext)(); var o=AC.createOscillator(),g=AC.createGain(); o.type='square'; o.frequency.value=acc?1500:1050; o.connect(g); g.connect(AC.destination); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(acc?.3:.2,t+.004); g.gain.exponentialRampToValueAtTime(.0005,t+.08); o.start(t); o.stop(t+.09); }
+      function hear(id){ var f=FIG[id]; if(!f)return; AC=AC||new(window.AudioContext||window.webkitAudioContext)(); var spb=60/96, t=AC.currentTime+.05; (f.on||[]).forEach(function(o){ clk(t+o*spb, o<0.01); }); }
+      var PLAY_SVG='<svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true"><path d="M2 1 L9 5 L2 9 Z" fill="currentColor"/></svg>';
+      function tile(id,sel){ var f=FIG[id]||{n:id}; var d=document.createElement('div'); d.className='mm-tile'; d.dataset.id=id;
+        var img=new Image(); img.src=GLY+id+'.png'; img.alt=f.n; img.onerror=function(){ d.dataset.noglyph='1'; };
+        d.appendChild(img);
+        if(sel){ var c=document.createElement('span'); c.className='chk'; c.textContent='✓'; d.appendChild(c); }
+        var hb=document.createElement('button'); hb.className='hear'; hb.title='Hear'; hb.innerHTML=PLAY_SVG;
+        hb.onclick=function(e){ e.stopPropagation(); hear(id); }; d.appendChild(hb);
+        if(sel){ d.onclick=function(){ var off=d.classList.toggle('off'); if(off)SEL.delete(id); else SEL.add(id); }; }
+        else { d.onclick=function(){ hear(id); }; }
+        return d; }
+      // Guided shows ONLY the current ladder level's figures (from the real engine).
+      function currentLevel(){ try{ var LC=window.LevelCore; if(!LC||!LC.ladder)return null;
+        var lad=LC.ladder.ladderForMode('dictation'); var saved=null; try{saved=JSON.parse(localStorage.getItem('beatquest-guided-dictation')||'null');}catch(e){}
+        var idx=(saved&&typeof saved.idx==='number')?saved.idx:0; idx=Math.max(0,Math.min(lad.length-1,idx));
+        return {idx:idx, lv:lad[idx], figures:(lad[idx]&&lad[idx].figures)||[]}; }catch(e){ return null; } }
+      function renderGuided(){ var host=$('guidedTiles'); if(!host)return; host.innerHTML='';
+        var info=currentLevel();
+        var figs=(info&&info.figures.length)?info.figures:TIERS.simple.easy;
+        figs.forEach(function(id){ host.appendChild(tile(id,false)); });
+        var lbl=$('guidedLevelLabel');
+        if(lbl&&info&&info.lv){ lbl.textContent='· Level '+(info.idx+1)+(info.lv.name?' — '+info.lv.name:''); } }
+      var meter='simple', diff='easy', SEL=new Set();
+      function tierList(){ var t=TIERS[meter], l=t.easy.slice(); if(diff!=='easy')l=l.concat(t.int); if(diff==='adv')l=l.concat(t.adv); return l; }
+      function renderFree(){ var list=tierList(); SEL=new Set(list); var host=$('freeTiles'); host.innerHTML=''; list.forEach(function(id){ host.appendChild(tile(id,true)); }); }
+      $('tabGuided').onclick=function(){ $('tabGuided').classList.add('on'); $('tabFree').classList.remove('on'); $('paneGuided').classList.remove('hidden'); $('paneFree').classList.add('hidden'); };
+      $('tabFree').onclick=function(){ $('tabFree').classList.add('on'); $('tabGuided').classList.remove('on'); $('paneFree').classList.remove('hidden'); $('paneGuided').classList.add('hidden'); };
+      $('meterChips').onclick=function(e){ if(!e.target.dataset.v)return; meter=e.target.dataset.v; Array.prototype.forEach.call($('meterChips').children,function(c){ c.classList.toggle('on',c===e.target); }); renderFree(); };
+      $('diffChips').onclick=function(e){ if(!e.target.dataset.v)return; diff=e.target.dataset.v; Array.prototype.forEach.call($('diffChips').children,function(c){ c.classList.toggle('on',c===e.target); }); renderFree(); };
+      $('selAll').onclick=function(){ Array.prototype.forEach.call($('freeTiles').children,function(d){ d.classList.remove('off'); SEL.add(d.dataset.id); }); };
+      $('selNone').onclick=function(){ Array.prototype.forEach.call($('freeTiles').children,function(d){ d.classList.add('off'); SEL.delete(d.dataset.id); }); };
+      function enterGame(){ $('mainMenu').classList.add('hidden'); $('intakeScreen').classList.add('hidden'); var sb=$('soloBtn'); if(sb)sb.click(); }
+      // The engine's Game Over "Menu" button calls this to return to the casual main menu
+      // (the pro game just goes home). Tear down the play surface, re-show + refresh the menu.
+      window.__casualGoMenu=function(){ var ga=$('gameArea'); if(ga)ga.classList.remove('active');
+        var ov=document.getElementById('soloGameOver'); if(ov)ov.classList.remove('show');
+        $('mainMenu').classList.remove('hidden'); try{ renderGuided(); }catch(e){} };
+      $('startGuided').onclick=function(){ window.__freeSelection=null; enterGame(); };
+      $('startFree').onclick=function(){ window.__freeSelection={ meter:meter, figures:Array.from(SEL) }; enterGame(); };
+      // ---- INTAKE (first-run placement): tap the rhythms you can read -> seed a level ----
+      var KNOWN=new Set();
+      function intakeTile(id){ var f=FIG[id]||{n:id}; var d=document.createElement('div'); d.className='mm-tile off'; d.dataset.id=id;
+        var img=new Image(); img.src=GLY+id+'.png'; img.alt=f.n; img.onerror=function(){ d.dataset.noglyph='1'; }; d.appendChild(img);
+        var c=document.createElement('span'); c.className='chk'; c.textContent='✓'; d.appendChild(c);
+        var hb=document.createElement('button'); hb.className='hear'; hb.title='Hear'; hb.innerHTML=PLAY_SVG; hb.onclick=function(e){ e.stopPropagation(); hear(id); }; d.appendChild(hb);
+        d.onclick=function(){ var off=d.classList.toggle('off'); if(off)KNOWN.delete(id); else KNOWN.add(id); };
+        return d; }
+      function renderIntake(expanded){ var host=$('intakeTiles'); if(!host)return; host.innerHTML='';
+        // Sixteenths, triplets, dotted, syncopation are common — show ALL simple-meter
+        // rhythms by default; the expander only reveals compound (6/8) figures.
+        var list=TIERS.simple.easy.concat(TIERS.simple.int,TIERS.simple.adv);
+        if(expanded) list=list.concat(TIERS.compound.easy,TIERS.compound.int,TIERS.compound.adv);
+        list.forEach(function(id){ var t=intakeTile(id); if(KNOWN.has(id))t.classList.remove('off'); host.appendChild(t); }); }
+      // Highest ladder level whose figures the student fully knows, then bias ONE level easier.
+      function seededIdx(){ try{ var lad=window.LevelCore.ladder.ladderForMode('dictation'); var best=-1;
+        for(var i=0;i<lad.length;i++){ var figs=lad[i].figures||[]; if(figs.length && figs.every(function(f){return KNOWN.has(f);})) best=i; else break; }
+        return Math.max(0, best-1); }catch(e){ return 0; } }
+      function placeAndStart(idx){
+        try{ var g=JSON.parse(localStorage.getItem('beatquest-guided-dictation')||'{}')||{}; g.idx=idx; localStorage.setItem('beatquest-guided-dictation', JSON.stringify(g)); }catch(e){}
+        try{ localStorage.setItem('rq_placed','1'); }catch(e){}
+        window.__freeSelection=null; $('intakeScreen').classList.add('hidden'); enterGame(); }
+      $('intakeMore').onclick=function(){ renderIntake(true); this.style.display='none'; };
+      $('intakeNew').onclick=function(){ placeAndStart(0); };
+      $('intakeContinue').onclick=function(){ placeAndStart(seededIdx()); };
+      // First run (no placement yet): show the intake instead of the menu.
+      var rqPlaced=false; try{ rqPlaced=localStorage.getItem('rq_placed')==='1'; }catch(e){}
+      if(!rqPlaced){ $('mainMenu').classList.add('hidden'); $('intakeScreen').classList.remove('hidden'); renderIntake(false); }
+      renderFree();
+      if(window.LevelCore&&window.LevelCore.ladder){ renderGuided(); }
+      else { renderGuided(); window.addEventListener('levelcore-ready', renderGuided); }
+    })();
+    </script>
+
+</body>
+</html>

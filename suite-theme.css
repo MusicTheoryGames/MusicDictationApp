@@ -5,7 +5,7 @@
    shadow and image tint. They never touch layout/position/size of the staff,
    beats, notes, time signature or bar lines — the alignment engine is frozen.
    ========================================================================== */
-@import url('https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800&family=Share+Tech+Mono&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Caveat:wght@700&family=Press+Start+2P&family=VT323&family=Anton&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800&family=Share+Tech+Mono&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Caveat:wght@700&family=Press+Start+2P&family=VT323&family=Anton&family=Space+Mono:wght@400;700&family=Baloo+2:wght@500;600;700;800&display=swap');
 
 /* ============================ 01 · MPC (hardware) ========================== */
 body.theme-mpc{
@@ -140,6 +140,7 @@ body.theme-brutalist .btn-login,body.theme-brutalist .submit-btn,body.theme-brut
 .t-dot-manuscript{background:linear-gradient(135deg,#c0392b,#efe6cf)}
 .t-dot-arcade{background:linear-gradient(135deg,#ff2ea6,#16f0ff)}
 .t-dot-brutalist{background:linear-gradient(135deg,#e3231b,#111)}
+.t-dot-kids{background:linear-gradient(135deg,#ff8c42,#7c5cff)}
 
 /* ============================================================================
    THEME DECORATIONS (injected by suite-theme.js — cosmetic chrome only)
@@ -283,3 +284,311 @@ body.theme-brutalist #soloTapBack{background:#e3231b;color:#fff;border-radius:0;
 /* Overlay surface tint per theme (kept dark; only the accents and card chrome shift). */
 body.theme-arcade .tapback-ov{background:rgba(8,2,20,.94)}
 body.theme-manuscript .tapback-ov{background:rgba(20,16,8,.92)}
+
+/* ==================== 05 · KIDS — "Building Blocks" =======================
+   Bold, chunky toy-block identity for young learners: thick dark outlines, hard
+   offset shadows (the stacked-block look), bright primary colors, a light
+   graph-paper "baseplate" background, rounded Baloo 2 lettering. GENERIC building-
+   block styling only — no "LEGO" name, logo, minifigure or branded trade dress.
+   CRITICAL RULE (unchanged): the NOTATION stays REAL — noteheads/stems/flags/rests
+   are universal image glyphs (untouched here) and --bar-ink is DARK so bar lines
+   read like published music. Only the CHROME turns playful. Primary palette:
+   red #e6413a · blue #2f7ee0 · green #4caf50 · sunshine #ffd23f · ink #2b2b2b. */
+body.theme-kids{
+  font-family:'Baloo 2',system-ui,sans-serif;color:#2b2b2b;
+  /* light "baseplate" grid */
+  background:
+    linear-gradient(#eadfbe 1px, transparent 1px),
+    linear-gradient(90deg,#eadfbe 1px, transparent 1px),
+    #fdf4dd !important;
+  background-size:30px 30px, 30px 30px, auto !important;
+}
+body.theme-kids .header h1{font-family:'Baloo 2';font-weight:800;letter-spacing:.01em;color:#2b2b2b;text-shadow:3px 3px 0 #ffd23f}
+body.theme-kids .status-bar{background:#fff;border:3px solid #2b2b2b;border-radius:10px;color:#2b2b2b;box-shadow:4px 4px 0 #2b2b2b}
+body.theme-kids #connectedRoom,body.theme-kids #connectionStatus{font-family:'Baloo 2';font-weight:700;color:#2f7ee0}
+/* panels: white BLOCKS — thick dark border + hard offset shadow (stacked look) */
+body.theme-kids .rhythm-bank,body.theme-kids .answer-area{
+  background:#fff !important;border:4px solid #2b2b2b !important;border-radius:14px !important;
+  box-shadow:6px 6px 0 #2b2b2b !important;backdrop-filter:none !important}
+body.theme-kids .rhythm-bank h3,body.theme-kids .answer-area h3{font-family:'Baloo 2';font-weight:800;letter-spacing:.02em;color:#2f7ee0}
+/* bank tiles: block pads (the NOTE GLYPH inside is an untouched image) */
+body.theme-kids .rhythm-tile{background:#fff !important;border:3px solid #2b2b2b !important;border-radius:10px !important;
+  box-shadow:4px 4px 0 #2b2b2b !important;color:#2b2b2b !important}
+body.theme-kids .rhythm-tile:hover{border-color:#2f7ee0 !important;box-shadow:4px 4px 0 #2f7ee0 !important}
+/* HUD: a bright sunshine BLOCK bar (OPAQUE — safe on the mobile fixed bar). Higher
+   specificity than the pages' `#soloHud{background:...!important}` mobile rule
+   (class+id beats id), so this wins and the bar is a bold block, not dark. */
+body.theme-kids #soloHud{background:#ffd23f !important;border:4px solid #2b2b2b !important;border-radius:12px;
+  color:#2b2b2b;box-shadow:5px 5px 0 #2b2b2b}
+body.theme-kids #soloHud .solo-stat>span,body.theme-kids #soloHud .solo-toggle{color:#5a4a10;font-family:'Baloo 2';font-weight:800;letter-spacing:.02em;text-transform:none}
+body.theme-kids #soloHud .solo-stat b{color:#2b2b2b}
+body.theme-kids #soloHud select{font-family:'Baloo 2';font-weight:800;background:#fff;color:#2b2b2b;border:2px solid #2b2b2b;border-radius:8px}
+body.theme-kids #soloHud select option{color:#2b2b2b}
+/* block buttons: thick dark border, bold fill, hard offset shadow + press-down */
+body.theme-kids .solo-ctl button{font-family:'Baloo 2';font-weight:800;letter-spacing:.01em;text-transform:none;
+  color:#2b2b2b;background:#fff;border:3px solid #2b2b2b;border-radius:10px;box-shadow:4px 4px 0 #2b2b2b}
+body.theme-kids .solo-ctl button:hover{background:#fff7e0}
+body.theme-kids .solo-ctl button:active{transform:translate(2px,2px);box-shadow:2px 2px 0 #2b2b2b}
+body.theme-kids .solo-ctl button.go{color:#fff;background:#e6413a;border-color:#2b2b2b;box-shadow:4px 4px 0 #2b2b2b}
+body.theme-kids .solo-ctl button.toggle.on{color:#fff;background:#4caf50;border-color:#2b2b2b;box-shadow:4px 4px 0 #2b2b2b}
+body.theme-kids #soloHud button.play{color:#fff;background:#4caf50;border:3px solid #2b2b2b;box-shadow:4px 4px 0 #2b2b2b}
+body.theme-kids #soloHud button.play:hover{background:#57bd63}
+/* keep bar lines DARK so notation looks like real published music */
+body.theme-kids .answer-staff{--bar-ink:#2b2b2b}
+body.theme-kids #soloHud{--groove-ok:#4caf50}
+/* tap-back / nudge / count-off overlays take the BLUE block accent */
+body.theme-kids .tapback-ov,body.theme-kids .tb-inline-panel,body.theme-kids .tb-countoff-inline{--tb-accent:#2f7ee0}
+body.theme-kids #soloTapBack{background:#e6413a;color:#fff;font-family:'Baloo 2';font-weight:800;border:3px solid #2b2b2b;border-radius:10px;box-shadow:4px 4px 0 #2b2b2b}
+/* the inline tap-back panel becomes a bold white block in kids mode */
+body.theme-kids .tb-inline-panel{background:#fff !important;border:4px solid #2b2b2b !important;color:#2b2b2b;box-shadow:6px 6px 0 #2b2b2b}
+/* ---------- BEAT / RHYTHM tap targets = tactile TOY BRICKS ----------
+   The two big tap zones (#tbBeat / #tbRhythm) are the real working control, so
+   the brick artwork IS the button. Built entirely with CSS gradients + a layered
+   box-shadow stack + a tiny inline-SVG stud strip in ::before — NO DOM changes, so
+   the tap handlers (ids/classes) are untouched. Depth = molded top-face gloss +
+   chamfer bevel (inset highlights/shadows) + a hard offset shadow (the stacked-
+   block look) + a soft ambient shadow. Bright primary palette; bold Baloo 2 label. */
+body.theme-kids .tb-zone{
+  position:relative;border:none !important;border-radius:20px !important;color:#fff;
+  padding-top:26px;overflow:hidden;
+  /* base plastic body: top-face gloss over a vertical primary gradient (per-color below) */
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.34) 0%, rgba(255,255,255,.06) 30%, rgba(0,0,0,0) 52%, rgba(0,0,0,.16) 100%),
+    linear-gradient(180deg,#4a92ec 0%, #2f7ee0 55%, #2168c4 100%);
+  /* chamfer bevel (inset) + thick dark outline + stacked depth + soft ambient */
+  box-shadow:
+    inset 0 3px 0 rgba(255,255,255,.5),
+    inset 3px 0 0 rgba(255,255,255,.22),
+    inset -4px 0 0 rgba(0,0,0,.18),
+    inset 0 -7px 0 rgba(0,0,0,.24),
+    0 0 0 4px #2b2b2b,
+    6px 8px 0 #2b2b2b,
+    9px 13px 18px rgba(43,43,43,.26) !important;
+  transition:transform .07s ease, box-shadow .07s ease;
+}
+/* the row of molded studs across the top face (masked so no half-stud clips the corners) */
+body.theme-kids .tb-zone::before{
+  content:"";position:absolute;left:20px;right:20px;top:11px;height:34px;pointer-events:none;z-index:1;
+  background-repeat:repeat-x;background-position:center top;background-size:74px 34px;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 34px,#000 calc(100% - 34px),transparent 100%);
+          mask-image:linear-gradient(90deg,transparent 0,#000 34px,#000 calc(100% - 34px),transparent 100%);
+}
+/* BEAT = bright blue brick */
+body.theme-kids .tb-beat{
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.34) 0%, rgba(255,255,255,.06) 30%, rgba(0,0,0,0) 52%, rgba(0,0,0,.16) 100%),
+    linear-gradient(180deg,#4a92ec 0%, #2f7ee0 55%, #2168c4 100%) !important;
+}
+body.theme-kids .tb-beat::before{
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='74' height='34' viewBox='0 0 78 34'><g><ellipse cx='39' cy='30' rx='17' ry='6' fill='rgba(0,0,0,0.18)'/><rect x='22' y='6' width='34' height='20' rx='10' fill='%232f7ee0'/><rect x='22' y='4' width='34' height='18' rx='9' fill='%234a92ec'/><ellipse cx='39' cy='13' rx='15' ry='7' fill='%235fa0f0'/><ellipse cx='36' cy='10' rx='7' ry='3.4' fill='rgba(255,255,255,0.6)'/><path d='M24 13 a15 8 0 0 0 30 0' fill='none' stroke='rgba(0,0,0,0.16)' stroke-width='2'/></g></svg>");
+}
+/* RHYTHM = bright red brick */
+body.theme-kids .tb-rhythm{
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.34) 0%, rgba(255,255,255,.06) 30%, rgba(0,0,0,0) 52%, rgba(0,0,0,.16) 100%),
+    linear-gradient(180deg,#f0625b 0%, #e6413a 55%, #c72f29 100%) !important;
+}
+body.theme-kids .tb-rhythm::before{
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='74' height='34' viewBox='0 0 78 34'><g><ellipse cx='39' cy='30' rx='17' ry='6' fill='rgba(0,0,0,0.18)'/><rect x='22' y='6' width='34' height='20' rx='10' fill='%23e6413a'/><rect x='22' y='4' width='34' height='18' rx='9' fill='%23f0625b'/><ellipse cx='39' cy='13' rx='15' ry='7' fill='%23f47b74'/><ellipse cx='36' cy='10' rx='7' ry='3.4' fill='rgba(255,255,255,0.6)'/><path d='M24 13 a15 8 0 0 0 30 0' fill='none' stroke='rgba(0,0,0,0.16)' stroke-width='2'/></g></svg>");
+}
+/* bold white label + hint sit ABOVE the stud strip; punchy dark text-shadow for pop */
+body.theme-kids .tb-zone .tb-zlabel{position:relative;z-index:2;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.28)}
+body.theme-kids .tb-zone .tb-zhint{position:relative;z-index:2;color:#fff;opacity:.85;text-shadow:0 1px 0 rgba(0,0,0,.2)}
+/* press-down: the brick sinks toward its shadow like a real button */
+body.theme-kids .tb-zone:active{transform:translate(4px,5px);box-shadow:
+  inset 0 3px 0 rgba(255,255,255,.4),
+  inset 0 -5px 0 rgba(0,0,0,.24),
+  0 0 0 4px #2b2b2b,
+  2px 3px 0 #2b2b2b !important}
+/* tap flash: quick bright pop (keeps the sink feel; base .tb-flash bg is dark, override) */
+body.theme-kids .tb-zone.tb-flash{transform:translate(3px,4px);filter:brightness(1.12)}
+/* armed (this hand is next): a sunshine ring so the child sees where to tap */
+body.theme-kids .tb-zone.tb-armed{box-shadow:
+  inset 0 3px 0 rgba(255,255,255,.5),inset 0 -7px 0 rgba(0,0,0,.24),
+  0 0 0 4px #2b2b2b,0 0 0 8px #ffd23f,6px 8px 0 #2b2b2b !important}
+/* locked-in confirmation on the Beat brick: turn it green (matches --groove-ok) */
+body.theme-kids .tb-zone.tb-locked{background:
+  linear-gradient(180deg, rgba(255,255,255,.34) 0%, rgba(255,255,255,.06) 30%, rgba(0,0,0,0) 52%, rgba(0,0,0,.16) 100%),
+  linear-gradient(180deg,#66c66d 0%, #4caf50 55%, #379e3e 100%) !important;border-color:transparent !important}
+body.theme-kids .tb-zone.tb-locked .tb-zlabel{color:#fff}
+body.theme-kids .tb-zone.tb-locked::before{
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='74' height='34' viewBox='0 0 78 34'><g><ellipse cx='39' cy='30' rx='17' ry='6' fill='rgba(0,0,0,0.18)'/><rect x='22' y='6' width='34' height='20' rx='10' fill='%234caf50'/><rect x='22' y='4' width='34' height='18' rx='9' fill='%2366c66d'/><ellipse cx='39' cy='13' rx='15' ry='7' fill='%237ed185'/><ellipse cx='36' cy='10' rx='7' ry='3.4' fill='rgba(255,255,255,0.6)'/><path d='M24 13 a15 8 0 0 0 30 0' fill='none' stroke='rgba(0,0,0,0.16)' stroke-width='2'/></g></svg>");
+}
+/* wrong tap: flash a dark outline emphasis (keep it non-scary, brief) */
+body.theme-kids .tb-zone.tb-bad{box-shadow:
+  inset 0 3px 0 rgba(255,255,255,.4),inset 0 -7px 0 rgba(0,0,0,.28),
+  0 0 0 4px #2b2b2b,0 0 0 8px #ffb0ac,6px 8px 0 #2b2b2b !important}
+/* "GO" state ring uses the sunshine accent instead of the default inset accent */
+body.theme-kids .tb-zones.tb-go .tb-zone{box-shadow:
+  inset 0 3px 0 rgba(255,255,255,.5),inset 0 -7px 0 rgba(0,0,0,.24),
+  0 0 0 4px #2b2b2b,0 0 0 7px #ffd23f,6px 8px 0 #2b2b2b !important}
+body.theme-kids .tb-instruct{color:#2f7ee0;font-weight:800}
+/* the perform-panel setup row (Start metronome + tempo stepper) picks up a small
+   block bevel so it belongs to the same building-blocks world as the big bricks. */
+body.theme-kids .tb-start{background:#2f7ee0;color:#fff;border:none;border-radius:12px;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.4),inset 0 -3px 0 rgba(0,0,0,.2),0 0 0 3px #2b2b2b,4px 5px 0 #2b2b2b}
+body.theme-kids .tb-start:active{transform:translate(3px,4px);box-shadow:inset 0 2px 0 rgba(255,255,255,.35),0 0 0 3px #2b2b2b,1px 2px 0 #2b2b2b}
+body.theme-kids .tb-tempo{background:#fff;border:3px solid #2b2b2b;border-radius:12px;box-shadow:3px 3px 0 #2b2b2b}
+body.theme-kids .tb-tempo .tb-tlabel,body.theme-kids .tb-tempo .tb-tunit{color:#7a6a3a;font-weight:800}
+body.theme-kids .tb-tempo b{color:#2b2b2b}
+body.theme-kids .tb-tstep{background:#ffd23f;color:#2b2b2b;border:2px solid #2b2b2b;border-radius:8px;font-weight:800;box-shadow:0 2px 0 #2b2b2b}
+body.theme-kids .tb-tstep:active{transform:translateY(2px);box-shadow:none}
+/* KIDS = a simplified, guided-only MODE (not just a skin). Hide the teacher/
+   power-user config so a young learner sees only the rhythm + Play + perform
+   controls; the curriculum (or a teacher assignment) decides meter/level/bars.
+   solo-mode.js also forces Guided when this theme is active (belt + suspenders).
+   SCORE/STREAK/BONUS stats stay (gamification); only the CONFIG stats are hidden. */
+body.theme-kids .solo-modesel,                 /* PATH (Guided/Free) */
+body.theme-kids .solo-metersel,                /* METER */
+body.theme-kids .solo-levelsel,                /* LEVEL */
+body.theme-kids .solo-barsel,                  /* BARS */
+body.theme-kids .solo-keybind,                 /* BEAT/RHYTHM key rebind */
+body.theme-kids .solo-cfg,                     /* Fix-it mode */
+body.theme-kids .solo-hints,                   /* the five-button hint row */
+body.theme-kids #soloHintsToggle,              /* mobile Hints dropdown toggle */
+body.theme-kids #soloSettingsToggle{display:none !important}  /* mobile Settings toggle (its panel is now empty) */
+
+/* ============================================================================
+   06 · MELODYQUEST (melodic dictation) — per-theme chrome for the .melodic-*
+   renderer classes. Same rule as everywhere in this file: COLORS live here,
+   never in renderer JS (no-universal-colors); the NOTATION itself stays real
+   ink-on-card in every theme (readability outranks chrome — same principle as
+   the kids-mode "REAL notation" rule above). The staff option cards stay
+   white/parchment in all themes so VexFlow's black engraving always reads.
+   ========================================================================== */
+
+/* ---- MPC: buttons are hardware pads; correct = LCD green, wrong = pad red -- */
+body.theme-mpc .melodic-btn{font-family:'Saira Condensed';font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  background:linear-gradient(180deg,#2a2a2d,#161618);color:#cfcfd3;border:1px solid #0c0c0d;border-radius:8px;
+  box-shadow:inset 0 2px 1px rgba(255,255,255,.08),inset 0 -4px 8px rgba(0,0,0,.6),0 3px 0 #0a0a0b}
+body.theme-mpc .melodic-btn:hover:not(:disabled){border-color:#39ff8b;box-shadow:inset 0 0 14px rgba(57,255,139,.3),0 0 8px rgba(57,255,139,.3),0 3px 0 #0a0a0b}
+body.theme-mpc .melodic-btn--primary{color:#1a0d0d;
+  background:linear-gradient(180deg,#ff5a4d,#d23023);border:1px solid #7a1a12;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 3px 0 #7a1a12}
+/* transport (play/hear) = a green LCD-style pad, distinct from the neon #39ff8b correct-flash */
+body.theme-mpc .melodic-btn--play,body.theme-mpc .melodic-btn--go{color:#04160c;
+  background:linear-gradient(180deg,#39d67e,#1f9e57);border:1px solid #0d5c33;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 3px 0 #0b4a29}
+body.theme-mpc .melodic-recognition__option{background:#f4f1e8;border:2px solid #0c0c0d;border-radius:10px}
+body.theme-mpc .melodic-recognition__option:hover{border-color:#39ff8b;box-shadow:0 0 10px rgba(57,255,139,.35)}
+body.theme-mpc .melodic-labeling__slot,body.theme-mpc .melodic-missing-note__slot,body.theme-mpc .melodic-notation-entry__slot{
+  background:linear-gradient(180deg,#3a3a3e,#26262a);border:1px solid #0c0c0d;color:#e9e9ec;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+body.theme-mpc .melodic-labeling__slot.is-filled,body.theme-mpc .melodic-missing-note__slot.is-filled,
+body.theme-mpc .melodic-notation-entry__slot.is-filled{color:#39ff8b;text-shadow:0 0 3px rgba(57,255,139,.5)}
+body.theme-mpc .melodic-labeling__slot.is-active,body.theme-mpc .melodic-missing-note__slot.is-active{border-color:#39ff8b;
+  box-shadow:inset 0 0 12px rgba(57,255,139,.3)}
+body.theme-mpc .is-correct{color:#39ff8b}
+body.theme-mpc .is-wrong{color:#ff5a4d}
+body.theme-mpc .melodic-recognition__option.is-correct{border-color:#39ff8b;box-shadow:0 0 12px rgba(57,255,139,.5)}
+body.theme-mpc .melodic-recognition__option.is-wrong{border-color:#ff5a4d;box-shadow:0 0 12px rgba(255,90,77,.5)}
+body.theme-mpc .melodic-hud__bar{background:#161618;border:1px solid #0c0c0d}
+body.theme-mpc .melodic-hud__fill{background:#39ff8b;box-shadow:0 0 6px rgba(57,255,139,.6)}
+body.theme-mpc .melodic-hud__level{font-family:'Saira Condensed';letter-spacing:.14em;text-transform:uppercase}
+body.theme-mpc .melodic-drawer{background:#17171a;color:#e8e8ea}
+body.theme-manuscript .melodic-drawer{background:#f4ecd7;color:#2a2118}
+body.theme-arcade .melodic-drawer{background:#120a2e;color:#d6f7ff}
+body.theme-brutalist .melodic-drawer{background:#fff;color:#111;border-left:3px solid #111}
+body.theme-kids .melodic-drawer{background:#fff;color:#2b2b2b}
+
+/* ---- Manuscript: parchment buttons, ink borders, muted ink feedback ------- */
+body.theme-manuscript .melodic-btn{font-family:'Cormorant Garamond';font-weight:600;font-size:1.05rem;
+  background:#fbf6e7;color:#2a2118;border:1px solid #c3b393;border-radius:5px;box-shadow:0 1px 2px rgba(120,95,55,.2)}
+body.theme-manuscript .melodic-btn:hover:not(:disabled){background:#fff;box-shadow:0 3px 8px rgba(120,95,55,.25)}
+body.theme-manuscript .melodic-btn--primary{font-style:italic;color:#f3ead4;
+  background:radial-gradient(circle at 38% 32%,#c0392b,#7d211a 70%);border:2px solid #4e120d;
+  box-shadow:inset 0 2px 4px rgba(255,255,255,.25),0 3px 8px rgba(0,0,0,.25)}
+/* transport = a muted ink-green, same parchment/serif treatment as the red accent */
+body.theme-manuscript .melodic-btn--play,body.theme-manuscript .melodic-btn--go{font-style:italic;color:#f3ead4;
+  background:radial-gradient(circle at 38% 32%,#5a9a4a,#355f24 70%);border:2px solid #24401a;
+  box-shadow:inset 0 2px 4px rgba(255,255,255,.25),0 3px 8px rgba(0,0,0,.25)}
+body.theme-manuscript .melodic-recognition__option{background:#f5ecd6;border:1.5px solid #2a2118;border-radius:3px;
+  box-shadow:0 1px 0 #fff,inset 0 0 30px rgba(150,120,70,.12)}
+body.theme-manuscript .melodic-recognition__option:hover{background:#fbf4e2}
+body.theme-manuscript .melodic-labeling__slot,body.theme-manuscript .melodic-missing-note__slot,
+body.theme-manuscript .melodic-notation-entry__slot{background:#fbf6e7;border:1px solid #c3b393;border-radius:4px;color:#2a2118}
+body.theme-manuscript .melodic-labeling__slot.is-active,body.theme-manuscript .melodic-missing-note__slot.is-active{
+  border-color:#8a2b22;box-shadow:0 0 0 1px #8a2b22}
+body.theme-manuscript .is-correct{color:#4a7c3a}
+body.theme-manuscript .is-wrong{color:#8a2b22}
+body.theme-manuscript .melodic-recognition__option.is-correct{border-color:#4a7c3a;box-shadow:0 0 0 1.5px #4a7c3a}
+body.theme-manuscript .melodic-recognition__option.is-wrong{border-color:#8a2b22;box-shadow:0 0 0 1.5px #8a2b22}
+body.theme-manuscript .melodic-hud__bar{background:rgba(42,33,24,.15);border:1px solid #c3b393}
+body.theme-manuscript .melodic-hud__fill{background:#8a6d3b}
+body.theme-manuscript .melodic-hud__level{font-variant:small-caps;letter-spacing:.06em}
+
+/* ---- Arcade: neon buttons, glow feedback ---------------------------------- */
+body.theme-arcade .melodic-btn{font-family:'VT323',monospace;font-size:1.15rem;
+  background:radial-gradient(120% 120% at 50% 20%,#3a1170,#1a0840);color:#d6f7ff;border:2px solid #16f0ff;border-radius:10px;
+  box-shadow:0 0 10px rgba(22,240,255,.4),inset 0 0 12px rgba(22,240,255,.15)}
+body.theme-arcade .melodic-btn:hover:not(:disabled){box-shadow:0 0 16px rgba(22,240,255,.7),inset 0 0 16px rgba(22,240,255,.3)}
+body.theme-arcade .melodic-btn--primary{font-family:'Press Start 2P';font-size:.7rem;color:#06121f;
+  background:linear-gradient(180deg,#16f0ff,#06b6c9);border:none;box-shadow:0 0 18px rgba(22,240,255,.6),0 5px 0 #066}
+/* transport = neon green glow (arcade "GO"), the cyan style but green */
+body.theme-arcade .melodic-btn--play,body.theme-arcade .melodic-btn--go{font-family:'Press Start 2P';font-size:.7rem;color:#04120a;
+  background:linear-gradient(180deg,#3bff85,#12b45a);border:none;box-shadow:0 0 18px rgba(59,255,133,.6),0 5px 0 #064}
+body.theme-arcade .melodic-recognition__option{background:#eef2ff;border:2px solid #ff2ea6;border-radius:10px;
+  box-shadow:0 0 10px rgba(255,46,166,.4)}
+body.theme-arcade .melodic-recognition__option:nth-child(even){border-color:#16f0ff;box-shadow:0 0 10px rgba(22,240,255,.4)}
+body.theme-arcade .melodic-labeling__slot,body.theme-arcade .melodic-missing-note__slot,
+body.theme-arcade .melodic-notation-entry__slot{background:#10082b;border:2px solid #2a1860;color:#d6f7ff;border-radius:8px}
+body.theme-arcade .melodic-labeling__slot.is-filled,body.theme-arcade .melodic-missing-note__slot.is-filled,
+body.theme-arcade .melodic-notation-entry__slot.is-filled{color:#ffe44d;text-shadow:0 0 8px #ffae00}
+body.theme-arcade .melodic-labeling__slot.is-active,body.theme-arcade .melodic-missing-note__slot.is-active{
+  border-color:#16f0ff;box-shadow:0 0 12px rgba(22,240,255,.5)}
+body.theme-arcade .is-correct{color:#39ff6a;text-shadow:0 0 8px rgba(57,255,106,.7)}
+body.theme-arcade .is-wrong{color:#ff2ea6;text-shadow:0 0 8px rgba(255,46,166,.7)}
+body.theme-arcade .melodic-recognition__option.is-correct{border-color:#39ff6a;box-shadow:0 0 16px rgba(57,255,106,.6)}
+body.theme-arcade .melodic-recognition__option.is-wrong{border-color:#ff2ea6;box-shadow:0 0 16px rgba(255,46,166,.6)}
+body.theme-arcade .melodic-hud__bar{background:#10082b;border:1px solid #2a1860}
+body.theme-arcade .melodic-hud__fill{background:#16f0ff;box-shadow:0 0 8px rgba(22,240,255,.7)}
+body.theme-arcade .melodic-hud__level{font-family:'Press Start 2P';font-size:.65rem}
+
+/* ---- Brutalist: hard borders, no radius, red accent ----------------------- */
+body.theme-brutalist .melodic-btn{font-family:'Space Mono',monospace;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  background:#fff;color:#111;border:2px solid #111;border-radius:0;box-shadow:none}
+body.theme-brutalist .melodic-btn:hover:not(:disabled){border-color:#e3231b;box-shadow:4px 4px 0 #e3231b}
+body.theme-brutalist .melodic-btn--primary{font-family:'Anton';letter-spacing:.02em;
+  color:#fff;background:#e3231b;border:2px solid #111;border-radius:0}
+/* transport = flat hard-edged green, same brutalist block as the red accent */
+body.theme-brutalist .melodic-btn--play,body.theme-brutalist .melodic-btn--go{font-family:'Anton';letter-spacing:.02em;
+  color:#fff;background:#0a9d3f;border:2px solid #111;border-radius:0}
+body.theme-brutalist .melodic-recognition__option{background:#fff;border:2px solid #111;border-radius:0}
+body.theme-brutalist .melodic-recognition__option:hover{box-shadow:5px 5px 0 #e3231b;border-color:#e3231b}
+body.theme-brutalist .melodic-labeling__slot,body.theme-brutalist .melodic-missing-note__slot,
+body.theme-brutalist .melodic-notation-entry__slot{background:#fff;border:2px solid #111;border-radius:0;color:#111}
+body.theme-brutalist .melodic-labeling__slot.is-active,body.theme-brutalist .melodic-missing-note__slot.is-active{
+  border-color:#e3231b;box-shadow:3px 3px 0 #e3231b}
+body.theme-brutalist .is-correct{color:#0a7a2f}
+body.theme-brutalist .is-wrong{color:#e3231b}
+body.theme-brutalist .melodic-recognition__option.is-correct{border-color:#0a7a2f;box-shadow:5px 5px 0 #0a7a2f}
+body.theme-brutalist .melodic-recognition__option.is-wrong{border-color:#e3231b;box-shadow:5px 5px 0 #e3231b}
+body.theme-brutalist .melodic-hud__bar{background:#fff;border:2px solid #111;border-radius:0}
+body.theme-brutalist .melodic-hud__fill{background:#111}
+body.theme-brutalist .melodic-hud__level{font-family:'Anton';text-transform:uppercase;letter-spacing:.02em}
+
+/* ---- Kids: chunky blocks — thick outlines + hard offset shadows ----------- */
+body.theme-kids .melodic-btn{font-family:'Baloo 2';font-weight:700;font-size:1.05rem;
+  background:#fff;color:#2b2b2b;border:3px solid #2b2b2b;border-radius:12px;box-shadow:3px 3px 0 #2b2b2b}
+body.theme-kids .melodic-btn:hover:not(:disabled){transform:translate(-1px,-1px);box-shadow:4px 4px 0 #2b2b2b}
+body.theme-kids .melodic-btn--primary{color:#fff;background:#2f7ee0;border:3px solid #2b2b2b;
+  box-shadow:3px 3px 0 #2b2b2b}
+/* transport = chunky bright green, same outlined-block treatment as the blue accent */
+body.theme-kids .melodic-btn--play,body.theme-kids .melodic-btn--go{color:#fff;background:#3fb84f;border:3px solid #2b2b2b;
+  box-shadow:3px 3px 0 #2b2b2b}
+body.theme-kids .melodic-recognition__option{background:#fff;border:3px solid #2b2b2b;border-radius:14px;box-shadow:4px 4px 0 #2b2b2b}
+body.theme-kids .melodic-recognition__option:hover{transform:translate(-1px,-1px);box-shadow:5px 5px 0 #2f7ee0;border-color:#2f7ee0}
+body.theme-kids .melodic-labeling__slot,body.theme-kids .melodic-missing-note__slot,
+body.theme-kids .melodic-notation-entry__slot{background:#fff;border:3px solid #2b2b2b;border-radius:10px;color:#2b2b2b;
+  box-shadow:2px 2px 0 #2b2b2b}
+body.theme-kids .melodic-labeling__slot.is-filled,body.theme-kids .melodic-missing-note__slot.is-filled,
+body.theme-kids .melodic-notation-entry__slot.is-filled{background:#ffd23f}
+body.theme-kids .melodic-labeling__slot.is-active,body.theme-kids .melodic-missing-note__slot.is-active{border-color:#2f7ee0;
+  box-shadow:2px 2px 0 #2f7ee0}
+body.theme-kids .is-correct{color:#4caf50}
+body.theme-kids .is-wrong{color:#e6413a}
+body.theme-kids .melodic-recognition__option.is-correct{border-color:#4caf50;box-shadow:4px 4px 0 #4caf50}
+body.theme-kids .melodic-recognition__option.is-wrong{border-color:#e6413a;box-shadow:4px 4px 0 #e6413a}
+body.theme-kids .melodic-hud__bar{background:#fff;border:3px solid #2b2b2b;border-radius:8px}
+body.theme-kids .melodic-hud__fill{background:#4caf50}
+body.theme-kids .melodic-hud__level{font-family:'Baloo 2';font-weight:800}

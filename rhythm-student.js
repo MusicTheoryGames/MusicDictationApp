@@ -561,13 +561,48 @@ class RhythmStudent {
         // .answer-staff panel holds MULTIPLE .staff-container rows stacked
         // vertically (a page of music), NOT separate panels.
         const totalMeasures = this.measureCount;
-        // Mobile (touch): stack vertically like desktop but only 2 bars per row,
-        // so more measures are visible (vertical scroll) and entry is a readable
-        // page, not a horizontal chase. Desktop: 4 bars per line.
+        // Desktop: a fixed 4 bars per line. Touch (iPad/phone): pack enough bars per row
+        // to FILL the viewport width, so a long example (e.g. the 16-bar bonus) uses the
+        // whole LANDSCAPE screen instead of stacking as a narrow, centered 2-bar column.
+        // Cells keep their fixed px size (tiles must match the bank); we just fit more bars
+        // per row when the screen is wide. Phone / iPad-portrait fall back to 2. The row
+        // scrolls horizontally if it still overflows (playback autoscrolls to follow).
         const mobile = isMobileStaff();
-        const BARS_PER_LINE = mobile ? 2 : 4;
+        const tilesSkin = document.body.classList.contains('tiles-skin');
+        const viewW = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0) || 1024;
+        // DENSE (long example, e.g. the 16-bar bonus): FIT-TO-VIEWPORT. Lay every bar out in
+        // as few rows as possible and SHRINK the tiles so the whole example fits on screen
+        // with NO horizontal scroll. Both the answer cells AND the bank palette shrink
+        // together (they share the body-level --slot-w / --slot-h vars) so a dragged tile
+        // still matches its slot exactly. Non-dense clears the vars -> default 104x98.
+        const dense = tilesSkin && totalMeasures > 8;
+        let CELL, BARS_PER_LINE;
+        if (dense) {
+            // 4 bars per line (comfortable, readable — like desktop), stacked into as many
+            // ROWS as needed (16 bars -> 4 rows). Owner wants VERTICAL stacking, NOT horizontal
+            // cramming into tiny tiles. Tiles are as large as fit 4 bars across the width,
+            // capped at natural size; answer + bank share --slot-w/h so they stay matched.
+            // FIXED overhead calibrated from measured DOM; dense CSS trims cell/measure gaps.
+            const FIXED = 226, CELLM = 2, MGAP = 6;
+            const bpl = Math.min(4, totalMeasures);
+            const cpr = bpl * bpm;
+            const overhead = FIXED + CELLM * cpr + MGAP * (bpl - 1);
+            const cell = Math.max(52, Math.min(104, Math.floor((viewW - overhead) / cpr)));
+            document.body.style.setProperty('--slot-w', cell + 'px');
+            document.body.style.setProperty('--slot-h', Math.round(cell * 72 / 104) + 'px');   // shorter tiles (trimmed whitespace)
+            CELL = cell; BARS_PER_LINE = bpl;
+        } else {
+            document.body.style.removeProperty('--slot-w');
+            document.body.style.removeProperty('--slot-h');
+            CELL = mobile ? (tilesSkin ? 112 : 130) : 160;
+            if (mobile) {
+                const fillBars = Math.ceil((viewW - 150) / (bpm * CELL));
+                BARS_PER_LINE = Math.min(Math.max(2, fillBars), Math.max(1, totalMeasures), 8);
+            } else {
+                BARS_PER_LINE = 4;
+            }
+        }
         const lineCount = Math.ceil(totalMeasures / BARS_PER_LINE);
-        const CELL = mobile ? 130 : 160;
         const cellsPerLineFull = Math.min(totalMeasures, BARS_PER_LINE) * bpm;
         const staffPx = cellsPerLineFull * CELL + 140;
 
@@ -616,8 +651,10 @@ class RhythmStudent {
         }
 
         const staffDiv = document.createElement('div');
-        staffDiv.className = 'answer-staff';
-        staffDiv.style.width = `min(100%, ${staffPx}px)`;   // fill width; rows stack vertically
+        staffDiv.className = 'answer-staff' + (document.body.classList.contains('tiles-skin') ? ' tiles-skin' : '') + (dense ? ' dense-staff' : '');
+        // Dense (fit-to-viewport) spans the full width so the tiles — already sized to fit —
+        // aren't scrolled inside a narrower staffPx-capped panel. Normal keeps min(100%,px).
+        staffDiv.style.width = dense ? '100%' : `min(100%, ${staffPx}px)`;
         staffDiv.style.maxWidth = 'none';
         staffDiv.innerHTML = `
             <div class="answer-staff-label">Your Answer (${this.measureCount} measures)</div>
@@ -703,7 +740,7 @@ class RhythmStudent {
         });
 
         const staffDiv = document.createElement('div');
-        staffDiv.className = 'answer-staff';
+        staffDiv.className = 'answer-staff' + (document.body.classList.contains('tiles-skin') ? ' tiles-skin' : '');
         // Fill the available width (capped on ultra-wide screens); every line
         // stretches to this same width.
         staffDiv.style.width = 'min(100%, 1600px)';
@@ -800,12 +837,27 @@ class RhythmStudent {
     // Build a theme-agnostic drag image: a white card with the glyph in its
     // native (dark) ink, so it reads on light AND dark backgrounds.
     buildDragImage(tile) {
-        const card = document.createElement('div');
-        card.className = 'drag-preview';
-        card.style.cssText = 'position:fixed;top:-2000px;left:-2000px;width:104px;height:70px;' +
-            'background:#fff;border:2px solid #111;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.45);' +
-            'display:flex;align-items:center;justify-content:center;padding:8px;box-sizing:border-box;' +
-            'pointer-events:none;z-index:10000';
+        // Drag ghost = an EXACT clone of the tile (same image, same size, same
+        // styling/theme), so what you drag looks identical to the tile and to what
+        // locks into the slot — no re-rendered/skewed card.
+        const card = tile.cloneNode(true);
+        card.querySelectorAll('.remove-btn, .drag-beat').forEach((n) => n.remove());
+        // Freeze the tile's on-screen size so the rasterized native drag image and
+        // the touch preview both match the tile exactly.
+        const r = tile.getBoundingClientRect();
+        card.style.position = 'fixed';
+        card.style.top = '-2000px';
+        card.style.left = '-2000px';
+        card.style.margin = '0';
+        card.style.width = (r.width || 104) + 'px';
+        card.style.height = (r.height || 94) + 'px';
+        card.style.pointerEvents = 'none';
+        card.style.zIndex = '10000';
+        card.style.opacity = '0.96';
+        // CRITICAL: the tile class carries `transition: all .4s`; without this the
+        // cloned preview EASES toward each touch position (flies in from off-screen,
+        // then lags/jumps behind the finger). The ghost must track instantly.
+        card.style.transition = 'none';
         // Beat badge floats ABOVE the preview so it's never under the finger.
         const num = document.createElement('div');
         num.className = 'drag-beat';
@@ -814,12 +866,6 @@ class RhythmStudent {
             'border-radius:6px;padding:2px 7px;box-shadow:0 1px 4px rgba(0,0,0,.3);white-space:nowrap;opacity:0;transition:opacity .1s';
         card.appendChild(num);
         this.dragBeatLabel = num;
-        const img = tile.querySelector('img');
-        if (img) {
-            const c = img.cloneNode(true);
-            c.style.cssText = 'width:100%;height:100%;object-fit:contain;filter:none;mix-blend-mode:normal';
-            card.appendChild(c);
-        }
         document.body.appendChild(card);
         return card;
     }
@@ -896,7 +942,7 @@ class RhythmStudent {
         const endBeat = beat + beatsNeeded - 1;
 
         // Check if pattern fits
-        if (endBeat > 4) return;
+        if (endBeat > this.beatsPerMeasure) return;
 
         // Highlight all beats this pattern would occupy
         for (let b = beat; b <= endBeat; b++) {
@@ -932,6 +978,49 @@ class RhythmStudent {
     // image), so a READ-ONLY staff (e.g. the tap-back overlay) renders identically
     // to the answer board. Does NOT touch userAnswer or add a remove button.
     renderPatternArt(notationArea, patternId, beatsNeeded) {
+        // ── CASUAL TILES-SKIN placement (OWNER-APPROVED FINAL — "that's perfect", 2026-07-05) ──
+        // WHY the app has two asset sets: the PRO staff uses wide, staff-spanning SVGs
+        // (rhythm-assets/<figDir>/<id>.svg) whose noteheads land exactly on their beat
+        // onsets across the cell. The BANK uses a compact PNG (rhythm-assets/bank/<id>.png).
+        // In the tiles skin there is no staff, so the placed figure must look IDENTICAL to
+        // the bank tile + drag ghost → we place the SAME bank PNG here.
+        //
+        // CRITICAL for multi-beat figures (half, dotted-quarter+eighth, syncopation…):
+        // do NOT stretch the glyph to beats*100% — that BLOWS UP a half note (too big +
+        // mis-placed). Keep it at NATURAL one-beat size (width 100%) sitting in its own
+        // beat cell; the MERGED green cells (see beatquest-casual.html .filled/.continuation
+        // merge rules) form the larger container that lights up across the figure's beats.
+        // Net: a normal-size half note in beat 1, inside one green tile spanning both beats.
+        if (document.body.classList.contains('tiles-skin')) {
+            const dec = NOTE_DECOMPOSITION[patternId];
+            // MULTI-NOTE figure spanning >1 beat (dotted-quarter+eighth, eighth-quarter-eighth…):
+            // the single bank PNG squishes BOTH notes into beat 1, so the later note lands in the
+            // wrong place. Instead place each note's glyph at its beat OFFSET (exactly like the PRO
+            // staff's decomposition branch) so e.g. the eighth lands on the "and of 2". The head
+            // cell has overflow:visible so a glyph at left>100% spans into the continuation cell.
+            if (dec && dec.length > 1 && (beatsNeeded || 1) > 1) {
+                dec.forEach(part => {
+                    const g = noteGlyphs[part.glyph]; if (!g) return;
+                    const gimg = document.createElement('img');
+                    gimg.src = `./rhythm-assets/${g.file}`;
+                    gimg.className = 'placed-tiled-glyph';
+                    gimg.style.width = '100%';
+                    gimg.style.left = (part.offset * 100 - GLYPH_NOTEHEAD_OFFSET) + '%';
+                    gimg.alt = `${patternId}:${part.glyph}`;
+                    notationArea.appendChild(gimg);
+                });
+                return;
+            }
+            // Single-note (half) or one-beat figures: the natural-size bank PNG (never beats*100%,
+            // which blows up a half note); the merged green cells form the spanning container.
+            const timg = document.createElement('img');
+            timg.src = `./rhythm-assets/bank/${patternId}.png`;
+            timg.className = 'placed-note';
+            timg.style.width = '100%';
+            timg.alt = patternId;
+            notationArea.appendChild(timg);
+            return;
+        }
         const decomposition = NOTE_DECOMPOSITION[patternId];
         const asset = this.rhythmAssets[patternId];
         const figDir = meterFigDir(patternId);
@@ -976,9 +1065,8 @@ class RhythmStudent {
         const startBeat = beat;
         const endBeat = startBeat + beatsNeeded - 1;
 
-        // Check if we have enough space (don't go beyond beat 4 or into next measure)
-        if (endBeat > 4) {
-            alert(`Not enough space! This pattern needs ${beatsNeeded} beats.`);
+        // Check if we have enough space (don't go beyond this measure's beat count)
+        if (endBeat > this.beatsPerMeasure) {
             return;
         }
 

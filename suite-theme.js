@@ -2,8 +2,8 @@
    Applies a theme class to <body>, persists the choice, and builds the picker.
    Purely cosmetic — never touches game logic. */
 (function () {
-  var THEMES = ['mpc', 'manuscript', 'arcade', 'brutalist'];
-  var LABELS = { mpc: 'MPC', manuscript: 'Ink', arcade: 'Arcade', brutalist: 'Print' };
+  var THEMES = ['mpc', 'manuscript', 'arcade', 'brutalist', 'kids'];
+  var LABELS = { mpc: 'MPC', manuscript: 'Ink', arcade: 'Arcade', brutalist: 'Print', kids: 'Kids' };
   var KEY = 'beatquest-theme';
   var DEFAULT = 'mpc';
 

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Melodic Engine Lab</title>
+<!-- Same VexFlow + Tone the melodic game uses -->
+<script src="https://unpkg.com/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+<script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; background:#f4f6fb; color:#1f2430; margin:0; padding:18px; }
+  h1 { font-size:1.15rem; margin:0 0 4px; }
+  .sub { color:#6b7280; font-size:.85rem; margin-bottom:16px; }
+  .bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+  select { font-family:inherit; font-size:.9rem; border-radius:8px; border:1px solid #c7ccd6; padding:8px 12px; background:#fff; cursor:pointer; }
+  .card { background:#fff; border:1px solid #e2e6ee; border-radius:14px; padding:16px; margin-bottom:16px; }
+  .meta { font-family:ui-monospace,monospace; font-size:.72rem; color:#8b93a4; margin-top:6px; white-space:pre-wrap; }
+  .lab-diagnostics { display:grid; gap:14px; }
+  .lab-diagnostics__head { display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .lab-diagnostics__title { font-weight:900; font-size:1rem; }
+  .lab-diagnostics__score { font-family:ui-monospace,monospace; font-weight:900; font-size:1rem; color:#1f6f43; }
+  .lab-diagnostics__grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; }
+  .lab-diagnostics__item { border:1px solid #e2e6ee; border-radius:10px; padding:10px 12px; background:#fafbfe; min-width:0; }
+  .lab-diagnostics__label { display:block; color:#6b7280; font-size:.72rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; margin-bottom:4px; }
+  .lab-diagnostics__value { font-family:ui-monospace,monospace; font-size:.83rem; overflow-wrap:anywhere; }
+  .lab-diagnostics__flags { display:flex; gap:6px; flex-wrap:wrap; min-height:24px; }
+  .lab-diagnostics__flag { border-radius:999px; padding:4px 8px; font-size:.75rem; font-weight:800; background:#fff4df; color:#8a5a00; border:1px solid #f1d59b; }
+  .lab-diagnostics__flag.is-clear { background:#eafaef; color:#1f6f43; border-color:#b9e3c5; }
+  .lab-diagnostics__bars { display:grid; gap:7px; }
+  .lab-diagnostics__bar { display:grid; grid-template-columns:minmax(120px,1fr) minmax(120px,2fr) 44px; gap:8px; align-items:center; font-size:.78rem; }
+  .lab-diagnostics__meter { height:8px; border-radius:999px; background:#e6eaf2; overflow:hidden; }
+  .lab-diagnostics__fill { display:block; height:100%; background:#2f7ee0; border-radius:inherit; }
+  .lab-diagnostics__json { margin:0; max-height:220px; overflow:auto; border:1px solid #e2e6ee; border-radius:10px; padding:10px; background:#0f172a; color:#dbeafe; font-family:ui-monospace,monospace; font-size:.72rem; white-space:pre-wrap; }
+
+  /* --- theme-owned styling for the RENDERER's semantic classes (the renderer itself
+         never hardcodes color — see melodic-renderers.js) --- */
+  .melodic-btn { font-family:inherit; font-size:.9rem; border-radius:8px; border:1px solid #2168c4; padding:8px 14px; background:#2f7ee0; color:#fff; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+  .melodic-btn svg { width:16px; height:16px; }
+  .melodic-recognition__play-row { margin-bottom:14px; }
+  .melodic-recognition__grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+  .melodic-recognition__option { border:3px solid #d5dae4; border-radius:12px; padding:6px; cursor:pointer; background:#fff; transition:border-color .1s; }
+  .melodic-recognition__option.is-selectable:hover { border-color:#9db4d8; }
+  .melodic-recognition__option.is-correct { border-color:#2a9d5c; background:#eafaef; }
+  .melodic-recognition__option.is-wrong { border-color:#e6413a; background:#fdeceb; }
+  .melodic-recognition__option svg { max-width:100%; height:auto; }
+  .melodic-recognition__status { font-weight:800; min-height:1.4em; margin-top:10px; }
+  .melodic-recognition__status.is-correct { color:#2a9d5c; }
+  .melodic-recognition__status.is-wrong { color:#e6413a; }
+
+  .melodic-labeling__play-row { margin-bottom:14px; }
+  .melodic-labeling__strip { display:flex; gap:6px; margin-bottom:16px; }
+  .melodic-labeling__slot { min-width:44px; height:52px; border:2px solid #c7ccd6; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.05rem; cursor:pointer; background:#fff; }
+  .melodic-labeling__slot.is-active { border-color:#2f7ee0; box-shadow:0 0 0 2px rgba(47,126,224,.25); }
+  .melodic-labeling__slot.is-filled { background:#eef3fc; }
+  .melodic-labeling__slot.is-correct { border-color:#2a9d5c; background:#eafaef; }
+  .melodic-labeling__slot.is-wrong { border-color:#e6413a; background:#fdeceb; }
+  .melodic-labeling__palette { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .melodic-labeling__palette .melodic-btn { background:#fff; color:#1f2430; border-color:#c7ccd6; }
+  .melodic-labeling__palette .melodic-btn:disabled { opacity:.5; cursor:default; }
+  .melodic-labeling__check-row { margin-bottom:10px; }
+  .melodic-labeling__check-row .melodic-btn:disabled { opacity:.4; cursor:default; }
+  .melodic-labeling__status { font-weight:800; min-height:1.4em; }
+  .melodic-labeling__status.is-correct { color:#2a9d5c; }
+  .melodic-labeling__status.is-wrong { color:#e6413a; }
+  .melodic-lab__not-built { color:#8b93a4; font-style:italic; padding:20px 0; }
+
+  .melodic-tonic-contour__heading { font-weight:700; margin-bottom:14px; }
+  .melodic-tonic-contour__card { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+  .melodic-tonic-contour__choices { display:flex; gap:8px; }
+  .melodic-tonic-contour__choices .melodic-btn { background:#fff; color:#1f2430; border-color:#c7ccd6; }
+  .melodic-tonic-contour__progress { color:#8b93a4; font-size:.85rem; }
+  .melodic-tonic-contour__status { font-weight:800; min-height:1.4em; }
+  .melodic-tonic-contour__status.is-correct { color:#2a9d5c; }
+  .melodic-tonic-contour__status.is-wrong { color:#e6413a; }
+
+  .melodic-missing-note__play-row { margin-bottom:12px; }
+  .melodic-missing-note__staff { margin-bottom:14px; }
+  .melodic-missing-note__palette { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .melodic-missing-note__palette .melodic-btn { background:#fff; color:#1f2430; border-color:#c7ccd6; }
+  .melodic-missing-note__palette .melodic-btn.is-selected { background:#e3edfc; border-color:#2f7ee0; }
+  .melodic-missing-note__palette .melodic-btn:disabled { opacity:.5; }
+  .melodic-missing-note__check-row .melodic-btn:disabled { opacity:.4; }
+  .melodic-missing-note__status { font-weight:800; min-height:1.4em; }
+  .melodic-missing-note__status.is-correct { color:#2a9d5c; }
+  .melodic-missing-note__status.is-wrong { color:#e6413a; }
+
+  .melodic-error-detect__play-row { margin-bottom:10px; }
+  .melodic-error-detect__hint { color:#6b7280; font-size:.85rem; margin-bottom:10px; }
+  .melodic-error-detect__staff { margin-bottom:14px; }
+  .melodic-error-detect__status { font-weight:800; min-height:1.4em; }
+  .melodic-error-detect__status.is-correct { color:#2a9d5c; }
+  .melodic-error-detect__status.is-wrong { color:#e6413a; }
+  .melodic-howto, .melodic-tonic-contour__howto { color:#5b6472; margin:4px 0 12px; line-height:1.45; }
+  .melodic-labeling__staff, .melodic-notation-entry__rhythm { background:#fff; border-radius:10px; padding:10px 12px; overflow-x:auto; margin:10px 0; }
+  .melodic-labeling__staff svg .is-active path, .melodic-notation-entry__rhythm svg .is-active path { fill:#3b82f6; stroke:#3b82f6; }
+
+  .melodic-notation-entry__heading { font-weight:700; margin-bottom:10px; }
+  .melodic-notation-entry__play-row { margin-bottom:12px; }
+  .melodic-notation-entry__strip { display:flex; gap:6px; margin-bottom:8px; }
+  .melodic-notation-entry__slot { min-width:60px; height:48px; border:2px solid #c7ccd6; border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.9rem; cursor:pointer; background:#fff; text-align:center; padding:2px; }
+  .melodic-notation-entry__slot.is-filled { background:#eef3fc; }
+  .melodic-notation-entry__progress { color:#6b7280; font-size:.85rem; margin-bottom:10px; }
+  .melodic-notation-entry__palette { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  .melodic-notation-entry__palette .melodic-btn { background:#fff; color:#1f2430; border-color:#c7ccd6; }
+  .melodic-notation-entry__palette .melodic-btn:disabled { opacity:.4; cursor:default; }
+  .melodic-notation-entry__actions { display:flex; gap:8px; margin-bottom:10px; }
+  .melodic-notation-entry__actions .melodic-btn:disabled { opacity:.4; cursor:default; }
+  .melodic-notation-entry__status { font-weight:800; min-height:1.4em; }
+  .melodic-notation-entry__status.is-correct { color:#2a9d5c; }
+  .melodic-notation-entry__status.is-wrong { color:#e6413a; }
+</style>
+</head>
+<body>
+  <h1>Melodic Engine Lab — recognition renderer proof</h1>
+  <div class="sub">
+    The SHELL (this page's script) picks a level + key + generates a round, then hands off to
+    <code>createRecognitionRenderer</code> (melodic-renderers.js) through the
+    <code>services</code> contract (melodic-shell-services.js) — the renderer itself never
+    touches VexFlow/Tone/core/melodic.js directly. Not the final game — an architecture proof.
+  </div>
+
+  <div class="bar">
+    <label>Level <select id="levelSel"></select></label>
+    <label>Key <select id="keySel"></select></label>
+    <label>Labels <select id="sysSel">
+      <option value="numbers">Numbers</option>
+      <option value="moveable-do">Moveable do</option>
+      <option value="fixed-do">Fixed do</option>
+    </select></label>
+  </div>
+
+  <div class="card" id="rendererHost"></div>
+  <div class="card lab-diagnostics" id="diagnosticsCard">
+    <div class="lab-diagnostics__head">
+      <span class="lab-diagnostics__title">Round diagnostics</span>
+      <span class="lab-diagnostics__score" id="qualityScore"></span>
+    </div>
+    <div class="lab-diagnostics__grid" id="recipeSummary"></div>
+    <div class="lab-diagnostics__flags" id="qualityFlags"></div>
+    <div class="lab-diagnostics__bars" id="qualityBreakdown"></div>
+    <pre class="lab-diagnostics__json" id="recipeJson"></pre>
+  </div>
+  <div class="meta" id="meta"></div>
+
+<script type="module">
+import { labelNote, labelPalette } from './core/melodic.js';
+import { keyChoices, buildRound } from './melodic-round.js';
+import { melodicLadder, melodicLevel } from './core/melodic-curriculum.js';
+import { createServices } from './melodic-shell-services.js';
+import { createRecognitionRenderer, createLabelingRenderer, createTonicContourRenderer, createMissingNoteRenderer, createErrorDetectRenderer, createNotationEntryRenderer } from './melodic-renderers.js';
+
+// exerciseMode -> renderer factory, per MELODIC_RENDERER_SPEC.md §3 (one renderer per
+// value; only the ones actually built so far are listed — everything else shows a
+// clear "not built yet" placeholder instead of silently crashing).
+const RENDERERS = {
+  recognition: createRecognitionRenderer,
+  labeling: createLabelingRenderer,
+  'tonic-contour': createTonicContourRenderer,
+  'missing-note': createMissingNoteRenderer,
+  'error-detect': createErrorDetectRenderer,
+  'notation-entry': createNotationEntryRenderer,
+};
+
+let currentRenderer = null;
+
+function notesFor(melody) {
+  if (melody && Array.isArray(melody.notes)) return melody.notes;
+  if (melody && Array.isArray(melody.voices) && melody.voices[0]) return melody.voices[0].notes || [];
+  return [];
+}
+
+function fmtList(items) {
+  return (items || []).length ? items.join(', ') : 'none';
+}
+
+function addDiagItem(host, label, value) {
+  const item = document.createElement('div');
+  item.className = 'lab-diagnostics__item';
+  const lab = document.createElement('span');
+  lab.className = 'lab-diagnostics__label';
+  lab.textContent = label;
+  const val = document.createElement('span');
+  val.className = 'lab-diagnostics__value';
+  val.textContent = String(value == null ? '—' : value);
+  item.append(lab, val);
+  host.appendChild(item);
+}
+
+function renderRoundDiagnostics(round) {
+  const recipe = round.recipe || (round.metadata && round.metadata.recipe) || {};
+  const active = recipe.active || {};
+  const pitch = recipe.pitchSkill || {};
+  const rhythm = recipe.rhythmSource || {};
+  const quality = round.quality || (round.metadata && round.metadata.quality) || {};
+  const generator = (round.metadata && round.metadata.generator) || {};
+  const notes = notesFor(round.melody);
+
+  document.getElementById('qualityScore').textContent =
+    Number.isFinite(quality.score) ? 'quality ' + quality.score + '/100' : 'quality —';
+
+  const summary = document.getElementById('recipeSummary');
+  summary.innerHTML = '';
+  addDiagItem(summary, 'Recipe', recipe.recipeId || recipe.levelId || '—');
+  addDiagItem(summary, 'Active', [active.key, active.mode, active.meter].filter(Boolean).join(' ') || '—');
+  addDiagItem(summary, 'Bars', active.bars || (round.melody && round.melody.meta && round.melody.meta.bars) || '—');
+  addDiagItem(summary, 'Rhythm', [rhythm.system, active.hallRhythmRef || rhythm.softGateHall].filter(Boolean).join(' ') || '—');
+  addDiagItem(summary, 'Degrees', fmtList(active.degrees || pitch.degrees));
+  addDiagItem(summary, 'Leaps', fmtList(active.leaps || pitch.leaps));
+  addDiagItem(summary, 'Renderer', round.rendererKind || active.exerciseMode || '—');
+  addDiagItem(summary, 'Notes', notes.length);
+  addDiagItem(summary, 'Difficulty', Number.isFinite(generator.difficulty) ? generator.difficulty : '—');
+  addDiagItem(summary, 'Candidate', Number.isFinite(generator.selectedDifficultyRank)
+    ? (generator.selectedDifficultyRank + 1) + '/' + generator.candidateCount + ' near target ' + (generator.targetDifficultyRank + 1)
+    : 'single');
+
+  const flags = document.getElementById('qualityFlags');
+  flags.innerHTML = '';
+  const flagList = quality.flags || [];
+  if (!flagList.length) {
+    const clear = document.createElement('span');
+    clear.className = 'lab-diagnostics__flag is-clear';
+    clear.textContent = 'clear';
+    flags.appendChild(clear);
+  } else {
+    flagList.forEach((flag) => {
+      const el = document.createElement('span');
+      el.className = 'lab-diagnostics__flag';
+      el.textContent = flag;
+      flags.appendChild(el);
+    });
+  }
+
+  const bars = document.getElementById('qualityBreakdown');
+  bars.innerHTML = '';
+  Object.entries(quality.breakdown || {}).forEach(([name, value]) => {
+    const row = document.createElement('div');
+    row.className = 'lab-diagnostics__bar';
+    const label = document.createElement('span');
+    label.textContent = name.replace(/[A-Z]/g, (m) => ' ' + m.toLowerCase());
+    const meter = document.createElement('span');
+    meter.className = 'lab-diagnostics__meter';
+    const fill = document.createElement('span');
+    fill.className = 'lab-diagnostics__fill';
+    fill.style.width = Math.max(0, Math.min(100, Number(value) || 0)) + '%';
+    meter.appendChild(fill);
+    const num = document.createElement('span');
+    num.textContent = Number(value).toFixed(1);
+    row.append(label, meter, num);
+    bars.appendChild(row);
+  });
+
+  document.getElementById('recipeJson').textContent = JSON.stringify({
+    recipe,
+    quality,
+    generator,
+  }, null, 2);
+}
+
+// --- populate level picker (only rungs the generator can currently drive: no chromatic/tritone) ---
+const levelSel = document.getElementById('levelSel');
+melodicLadder().forEach((L) => {
+  if (!L.pitch.degrees || !L.pitch.degrees.length) return; // M0/M2 have no pitch spine to render
+  const o = document.createElement('option');
+  o.value = L.id; o.textContent = L.id.toUpperCase() + ' · ' + L.title + ' (' + L.exerciseMode + ')';
+  levelSel.appendChild(o);
+});
+levelSel.value = 'm5'; // pentascale — a nice default
+
+const keySel = document.getElementById('keySel');
+function populateKeyPicker() {
+  const L = melodicLevel(levelSel.value);
+  keySel.innerHTML = '';
+  // THIS is where the level's keys[] set (added this session — MELODIC_CURRICULUM.md's
+  // own per-level "Key/mode" research, previously never encoded) becomes real key VARIETY
+  // in an actual round: the shell offers every key the level allows, not just one.
+  keyChoices(L).forEach((c) => {
+    const o = document.createElement('option');
+    o.value = c.value;
+    o.textContent = c.label;
+    keySel.appendChild(o);
+  });
+}
+populateKeyPicker();
+
+function newRound() {
+  const L = melodicLevel(levelSel.value);
+  const seed = Math.floor(Math.random() * 1e6);
+
+  // ALL round-building rules live in melodic-round.js (shared with the real game
+  // page — the lab can't drift from what the game actually plays).
+  const round = buildRound(L, keySel.value, seed);
+  const { melody, rendererKind } = round;
+  const ds = round.distractors;
+  const kp = { key: round.key, mode: round.mode };
+  const isDiatonic = !String(keySel.value).startsWith('sym:');
+
+  const labelCtx = { key: kp.key, mode: isDiatonic ? kp.mode : 'major', system: document.getElementById('sysSel').value, minorSolfege: 'la' };
+  const services = createServices({ labelNoteFn: labelNote, labelPaletteFn: labelPalette, labelCtx, tempoBPM: 92 });
+
+  if (currentRenderer) currentRenderer.destroy();
+  renderRoundDiagnostics(round);
+  const host = document.getElementById('rendererHost');
+  const factory = RENDERERS[rendererKind];
+  if (!factory) {
+    host.innerHTML = '';
+    const msg = document.createElement('div');
+    msg.className = 'melodic-lab__not-built';
+    msg.textContent = 'exerciseMode "' + L.exerciseMode + '" has no renderer yet — not built in this pass.';
+    host.appendChild(msg);
+    currentRenderer = { destroy() { host.innerHTML = ''; } };
+  } else {
+    currentRenderer = factory(host, {
+      level: L, melody, distractors: ds, labelCtx, services,
+      onResult(result) {
+        document.getElementById('meta').textContent =
+          L.id + ' · ' + kp.key + ' ' + kp.mode + ' · meter=' + L.meter + ' · rhythm=' + L.hallRhythmRef +
+          ' · ' + melody.notes.length + ' notes\nonResult: ' + JSON.stringify(result);
+      },
+    });
+  }
+
+  document.getElementById('meta').textContent =
+    L.id + ' · ' + kp.key + ' ' + kp.mode + ' · meter=' + L.meter + ' · rhythm=' + L.hallRhythmRef +
+    ' · ' + melody.notes.length + ' notes · degrees=' + melody.notes.map((n) => n.degree).join(' ');
+}
+
+levelSel.onchange = () => { populateKeyPicker(); newRound(); };
+keySel.onchange = newRound;
+document.getElementById('sysSel').onchange = newRound;
+
+newRound();
+</script>
+</body>
+</html>
