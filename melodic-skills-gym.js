@@ -2,7 +2,7 @@
  * @file melodic-skills-gym.js
  * @module melodic-skills-gym
  *
- * SKILLS GYM (SKILLS_GYM_PLAN.md) — endless, auto-tuning, hands-off reinforcement for the
+ * SKILLS GYM (VISION.md §6) — endless, auto-tuning, hands-off reinforcement for the
  * M0/M1 foundation. Leads with "Smart Practice" (auto-picks your weakest skill, interleaves,
  * auto-tunes difficulty); also offers grouped M0/M1 practice. Reuses the LADDER renderers —
  * createTonicContourRenderer dispatches to the right drill by level.layers + stage.

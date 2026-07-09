@@ -2,14 +2,14 @@
  * @file core/melodic-curriculum.js
  * @module core/melodic-curriculum
  *
- * The MELODIC CURRICULUM LADDER (M0–M20), encoded as DATA.
+ * The MELODIC CURRICULUM LADDER (M0–M26), encoded as DATA.
  *
  * This is a PURE, framework-agnostic ES module: no I/O, no DOM, no engine
  * dependency. It is the melodic analog of {@link module:core/curriculum} (the
  * 31-chapter RHYTHM spine): a data-only ladder of level objects that the melodic
- * generator ({@link module:core/melodic}), labeler, distractors, and (later)
- * renderers key on. Traversal / mastery wiring is deferred to a later main-thread
- * phase — this file only holds the encoded ladder + its lookup accessors.
+ * generator ({@link module:core/melodic}), labeler, distractors, and renderers key
+ * on. Traversal and mastery ARE wired: melodic-game.html builds PLAYABLE from this
+ * ladder and drives core/mastery.js. This file holds the ladder + lookup accessors.
  *
  * Grounding
  * ---------
@@ -659,9 +659,10 @@ export const MELODIC_LEVELS = [
     masteryGoal: 'Identify and dictate the voices of a two-part melody',
     prereqs: ['m19'],
     softGateHall: 'ch1',
-    // Two-voice engine BUILT (generateTwoPartMelody, first species — see
-    // TWO_VOICE_ENGINE_PLAN.md): rung 1 voice-attention + rung 2 one-voice
-    // dictation ship now; rung 3 (full two-voice notation) remains future.
+    // Two-voice engine BUILT (generateTwoPartMelody — note-against-note, NOT
+    // strict first species; see VISION.md §9 and the engine's own header).
+    // All three rungs ship: voice-attention, one-voice dictation, and full
+    // two-voice notation (RENDERERS['two-part-notate'], melodic-game.html).
     buildStatus: 'ready'
   },
   /* =========================================================================
@@ -791,7 +792,7 @@ export const MELODIC_LEVELS = [
 ];
 
 /* ===========================================================================
- * DOC CONFORMANCE (CONFORMANCE_AUDIT.md §C1, 2026-07-02) — three per-level
+ * DOC CONFORMANCE (history/CONFORMANCE_AUDIT.md §C1, 2026-07-02) — three per-level
  * facts MELODIC_CURRICULUM.md prescribes that the single-value fields above
  * under-encoded:
  *   exerciseModes  — the §2/§3 exercise-mode PROGRESSION (ordered easiest →

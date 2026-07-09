@@ -11,7 +11,7 @@
  * STAGE 3: ENHANCED CLASSICAL STYLE VALIDATION
  * Validates authentic classical style patterns from Mozart/Haydn/Beethoven
  * BULLETPROOF - ZERO TOLERANCE FOR NON-CLASSICAL PATTERNS
- * BASED ON: Original measure1, measure2 structure and RHYTHM_RULES_SUMMARY.md
+ * BASED ON: Original measure1, measure2 structure and archive/RHYTHM_RULES_SUMMARY.md
  */
 
 const fs = require('fs');

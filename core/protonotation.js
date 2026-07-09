@@ -5,7 +5,7 @@
  * PROTONOTATION GRADER — scores a "protonotation" (pre-staff sketch) dictation
  * stage: the shorthand a student writes to capture only what was HEARD (beat
  * positions + melodic CONTOUR + scale-degree NUMBERS) before committing to staff
- * notation. Grounded in MELODIC_DICTATION_RESEARCH.md §2.2 (Karpinski/Brown
+ * notation. Grounded in research/MELODIC_DICTATION_RESEARCH.md §2.2 (Karpinski/Brown
  * protonotation: beat slashes + contour arrows + degree numbers) and §3 (the
  * micro-skill ladder's "protonotation entry" rung).
  *

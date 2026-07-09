@@ -1,45 +1,67 @@
-# Music Dictation Helper App
+# Music Dictation Suite
 
-A web-based music dictation training application that helps students practice identifying musical notation by ear.
+Browser apps that teach **music dictation** — hearing music and writing it down — and the reading
+and singing skills dictation depends on.
 
-## Features
+Not an ear-training quiz. Quizzes exist. This teaches the *procedure*: find the tonic, hear the
+contour, hold it in memory, solve rhythm before pitch, sketch before you notate.
 
-- 11 progressive questions alternating between treble and bass clef
-- 6 similar notation options per question to develop careful listening skills
-- Professional music notation using VexFlow
-- Piano audio playback with Web Audio API
-- Question navigation and randomized option shuffling
-- C major tonality throughout for consistency
+## Read this first
 
-## Usage
+**[`VISION.md`](VISION.md) is the single source of truth** — the product, the pedagogy and its
+evidence, the non-negotiables, and an evidence-tagged account of what the code actually does today.
+If any other document disagrees with it, it wins.
 
-1. Start a local server:
-   ```bash
-   python3 -m http.server 8000
-   ```
+**[`RHYTHMQUEST_PLAN.md`](RHYTHMQUEST_PLAN.md)** is the sequenced work, with the current step marked
+at the top.
 
-2. Open http://localhost:8000 in your browser
+Agents: [`CLAUDE.md`](CLAUDE.md) and [`AGENTS.md`](AGENTS.md) both point at `VISION.md`, so Claude
+Code and Codex judge against one document.
 
-3. Click "Play Melody" to hear the musical phrase
+## Run it
 
-4. Select the correct notation from the 6 options
+```bash
+node dev-server.js        # local no-cache dev server
+cd core && npm test       # unit tests over the pure functional core
+```
 
-5. Use Previous/Next buttons to navigate between questions
+Then open the printed URL. **Verify timing, audio and rendering in a real browser** — never
+headlessly.
 
-## Technical Details
+## The apps
 
-- **VexFlow**: Professional music notation rendering
-- **Web Audio API**: Piano sound synthesis
-- **Tone.js**: Enhanced audio capabilities
-- **Vanilla JavaScript**: No framework dependencies
+| App | Entry point | Skill |
+|---|---|---|
+| **RhythmQuest** (still named BeatQuest in the UI) | `rhythm-student.html?mode=solo` | hear rhythm → write rhythm |
+| **MelodyQuest** | `melodic-game.html` | hear melody → write melody |
+| **Tapping** | `tapping.html?mode=tapping` | see rhythm → perform rhythm |
+| **SingQuest** | `singquest.html` | see notation → sing it (probe + one level so far) |
+| **HarmonyQuest** | — | hear progression → write bass, then Roman numerals (unbuilt) |
 
-## Question Structure
+`index.html` is the hub. `rhythm-teacher.html` and `projection.html` are the classroom surface —
+real, and **not yet reachable from the hub, because the student half of the room protocol does not
+exist.** See `VISION.md` §7 and §9.
 
-- Questions 1, 3, 5, 7, 9, 11: Treble clef
-- Questions 2, 4, 6, 8, 10: Bass clef
-- All questions use C major scale patterns
-- Progressive difficulty with different rhythm patterns
+## Layout
 
-## Development
+```
+core/          pure functional core — no DOM, audio, network, or clock. Time is injected.
+               Every module MUST ship a .test.js beside it. One (curriculum.js) does not yet.
+scripts/       critic.sh — the mandatory adversarial review pass. Read its header.
+research/      the literature this product is built on, plus reference tables. Timeless.
+history/       accurate records of past work (changelog, audits). Not descriptions of the present.
+archive/       stale, false, or about deleted code. DO NOT READ. See archive/README.md.
+```
 
-The app includes developer navigation controls for easier testing between question sets.
+## Two rules that are not negotiable
+
+**The app never lies to the user, or to the next developer.** No "Connected" over a simulated
+socket. No comment claiming a capability the code lacks. No document calling something "working"
+that nobody watched work.
+
+**Verify against `core/` and the running app, never against prose.** The 44 markdown files present
+in this repo on 2026-07-09 were classified by two independent reviewers. **Nineteen were stale, false, or
+about deleted code** and are in `archive/`; the rest moved to `research/` and `history/` for
+organisation, or stayed here. Two false claims had propagated from a document into code comments,
+into a unit test, and into a new plan. `archive/README.md` traces both chains. Assume any prose you
+find is older than the code.

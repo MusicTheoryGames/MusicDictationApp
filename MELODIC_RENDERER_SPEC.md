@@ -1,6 +1,9 @@
 # Melodic Renderer — build contract (v1)
 
-How each exercise-mode renderer plugs into the melodic game shell (`melodic-mode.js`).
+> **Corrected 2026-07-09.** Build-status lines in this document had rotted; the architecture had not.
+> `VISION.md` is the source of truth for what exists today.
+
+How each exercise-mode renderer plugs into the melodic game shell (`melodic-game.html`).
 Companion to `MELODIC_ENGINE_SPEC.md` (the engine) and `MELODIC_CURRICULUM.md` (which
 `exerciseMode` each level uses). The shell owns the round lifecycle, audio, notation
 rendering, themes, and mastery; a **renderer** owns ONE exercise mode's interaction and
@@ -96,7 +99,7 @@ stay tiny and testable, (d) the two-voice engine (M20) is added once, in the she
 
 ---
 
-## 3. The eight renderers (one per exerciseMode)
+## 3. The renderers (one per exerciseMode) — TWELVE as of 2026-07-09
 
 | exerciseMode     | what the student does | uses distractors | onResult.accuracy |
 |------------------|-----------------------|------------------|-------------------|
@@ -107,16 +110,18 @@ stay tiny and testable, (d) the two-voice engine (M20) is added once, in the she
 | `missing-note`   | supply the hidden pitch(es) via the degree palette (M7+) | no | per-blank % |
 | `error-detect`   | click the wrong note in a shown staff, then CORRECT it via the degree palette (M10+) | one altered melody | 100 found+fixed / 50 found only / 0 |
 | `notation-entry` | **two-phase**: (1) dictate rhythm, (2) place degrees on the staff (M9+) | no | per-note pitch+rhythm % |
-| `two-part`       | identify/notate two simultaneous voices (M20) | maybe | per-voice — NEEDS the two-voice engine |
+| `two-part`       | identify/notate two simultaneous voices — rung 1, voice attention (M20) | maybe | per-voice |
+| `two-part-notate`| dictate BOTH voices — rung 3 (M20) | no | mean of per-voice |
+| `memory-span`    | echo the phrase back from memory (M1.5) | no | per-note % |
+| `protonotation`  | sketch beat positions + contour + degrees before any staff (M8.5) | no | count / contour / degree, scored separately |
+| `live-home-minor`| find home in minor, live (M5.5) | no | 100/0 per prompt |
 
-Build order for Wave 2+: `recognition` (≈reuse the harness) and `labeling` (the novel
-middle rung) first; then `tonic-contour`; then `missing-note`+`error-detect`; then
-`notation-entry` (biggest); `two-part` last (shared two-voice engine).
-
-**Build status (2026-07-02): ALL EIGHT renderers are BUILT and browser-verified.**
-`two-part` ships ALL THREE rungs (voice-attention → one-voice dictation → FULL
-two-voice dictation, per-voice accuracy averaged) on the first-species two-voice
-engine (TWO_VOICE_ENGINE_PLAN.md). `rhythm-first`
+**Build status (2026-07-09): the registry in `melodic-game.html` holds TWELVE renderers** —
+recognition, labeling, tonic-contour, missing-note, error-detect, notation-entry, rhythm-first,
+two-part, two-part-notate, memory-span, protonotation, live-home-minor. All are wired.
+`two-part` ships ALL THREE rungs (voice-attention → one-voice dictation → full two-voice
+dictation, per-voice accuracy averaged) on the two-voice engine, which is note-against-note and
+**not strict first species** — see VISION.md §9. `rhythm-first`
 and `notation-entry`'s phase 1 delegate to the real rhythm game via
 `services.mountRhythmEntry` (above); `notation-entry` falls back to a duration-palette
 entry UI when the game can't express the rhythm (compound/irregular meters). Symmetric

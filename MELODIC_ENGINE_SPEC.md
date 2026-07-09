@@ -1,5 +1,8 @@
 # Melodic Engine — build contract (v1)
 
+> **Corrected 2026-07-09.** Build-status lines in this document had rotted; the architecture had not.
+> `VISION.md` is the source of truth for what exists today.
+
 The interface every melodic module builds against, so the generator, curriculum data,
 labeling, distractors, and (later) renderers interlock without integration drift.
 Companion to `MELODIC_CURRICULUM.md` (the pedagogy) and `core/curriculum.js` (the rhythm
@@ -181,7 +184,8 @@ opts = { n: 5, difficulty: 'subtle'|'obvious', seed }
 
 ## 5. Curriculum data — `core/melodic-curriculum.js`
 
-Mirror `core/curriculum.js`. Export the M0–M20 ladder as data; each level:
+Mirror `core/curriculum.js`. Export the ladder as data — it now runs **M0–M26**, not M0–M20,
+and `melodic-game.html` builds `PLAYABLE` from it. Each level:
 
 ```js
 {
@@ -192,9 +196,12 @@ Mirror `core/curriculum.js`. Export the M0–M20 ladder as data; each level:
   pitch:         { degrees:[1,2,3], leaps:['step'], range:{...}, startOn:'tonic' },
   key:           'C', mode: 'major',
   hallRhythmRef: 'ch2',                         // MUST be an id that exists in core/curriculum.js (lockstep)
-  exerciseMode:  'labeling',                    // 'tonic-contour'|'rhythm-first'|'labeling'|'recognition'|'missing-note'|'error-detect'|'notation-entry'|'two-part'|'memory-span'|'protonotation'
+  exerciseMode:  'labeling',                    // one of the TWELVE in melodic-game.html's RENDERERS:
+                                                // tonic-contour|rhythm-first|labeling|recognition|missing-note|
+                                                // error-detect|notation-entry|two-part|two-part-notate|
+                                                // memory-span|protonotation|live-home-minor
   // 'memory-span' (M1.5 Hold the tune) + 'protonotation' (M8.5 Sketch it): the
-  // ladder-expansion rungs (MELODIC_LADDER_EXPANSION_PLAN.md), fractional mIndex.
+  // ladder-expansion rungs (VISION.md §9), fractional mIndex.
   masteryGoal:   'Correct degree/syllable per note over a given rhythm',
   prereqs:       ['m2'],
   softGateHall:  'ch2',                         // WARN (not block) if rhythm-game progress < this Hall level

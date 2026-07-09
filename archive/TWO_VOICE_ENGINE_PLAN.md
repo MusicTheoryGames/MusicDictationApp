@@ -1,4 +1,20 @@
-# Two-Voice Engine — scoping plan (NOT yet built)
+> **SUPERSEDED, 2026-07-09. This document is historical. Everything below that says
+> "not yet built" is FALSE and has been since 2026-07-02.**
+>
+> The melodic two-voice engine SHIPPED: `generateTwoPartMelody` (`core/melodic.js:1432`), all
+> three M20 rungs, `renderTwoStaves`, and per-voice muted playback. This document's claim that
+> two simultaneous lines are "the one genuinely unbuilt capability" caused a later planning
+> session to declare it the blocker for HarmonyQuest. It was not.
+>
+> It also calls the engine **first species**. It is not — it drops the parallel-perfect ban under
+> a starved search and never checks weak-beat dissonance. See `VISION.md` §9, and the
+> characterization test `core/melodic.test.js` → "a narrow spec starves the search into stage 3".
+>
+> Nothing in this file should be read as true. The one requirement it captured that is still real —
+> the unbuilt **tapping rhythm duet** (one line per hand) — has been lifted into `VISION.md` §9, so
+> you do not need to open this. `VISION.md` is the source of truth.
+
+# Two-Voice Engine — scoping plan (NOT yet built) [HISTORICAL]
 
 The one genuinely unbuilt capability in both games: **two simultaneous lines**.
 It gates exactly two shipped-curriculum ceilings, deliberately flagged

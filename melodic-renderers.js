@@ -2627,7 +2627,7 @@ export function createRhythmIdentityRenderer(host, ctx) {
 }
 
 /* ============================================================================
- * two-part (M20, TWO_VOICE_ENGINE_PLAN.md §5) — rung 1 "voice attention":
+ * two-part (M20 — see VISION.md §9) — rung 1 "voice attention":
  * both voices play; the student answers selective-listening questions about a
  * NAMED voice ("which voice ended higher?" / "which voice moved by leap?").
  * Rung 2 (one-voice dictation) reuses the labeling renderer fed voices[i] and
@@ -2747,7 +2747,7 @@ export function createTwoPartRenderer(host, ctx) {
 }
 
 /* ============================================================================
- * two-part rung 3 (M20, TWO_VOICE_ENGINE_PLAN.md §5.3) — FULL two-voice
+ * two-part rung 3 (M20 — see VISION.md §9) — FULL two-voice
  * dictation: notate BOTH voices, one at a time, with per-voice isolation
  * playback throughout. Composes the proven labeling renderer per voice (reuse,
  * not rebuild): voice 1 = top line, then voice 2 = bottom line; per-voice

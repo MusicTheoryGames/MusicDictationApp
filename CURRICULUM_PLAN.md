@@ -1,7 +1,10 @@
 # CURRICULUM_PLAN.md — Hall "Studying Rhythm" → playable levels
 
+> **Corrected 2026-07-09.** Build-status lines in this document had rotted; the architecture had not.
+> `VISION.md` is the source of truth for what exists today.
+
 Design/data spec mapping Hall & Urban *Studying Rhythm* (4th ed.) chapters to our
-rhythm-dictation levels. Source ToC in `HALL_CURRICULUM.md`. This document is the
+rhythm-dictation levels. Source ToC in `research/HALL_CURRICULUM.md`. This document is the
 wiring spec for the main agent; it does **not** edit `solo-mode.js`,
 `rhythm-student.js`, or any HTML.
 
@@ -107,7 +110,10 @@ cumulative vocabulary per meter is built in section B.
 
 ---
 
-## B) Proposed unified LEVEL LADDER
+## B) The unified LEVEL LADDER — historical sketch
+
+> This S/C/H mini-ladder is **not** what shipped. `core/curriculum.js` implements 31 `chN` nodes,
+> one per Hall chapter, with a prereq DAG. Section A's chapter map is the part that survived.
 
 Two ways into the same level set:
 

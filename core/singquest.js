@@ -3,7 +3,7 @@
  * @module core/singquest
  *
  * Pure per-level grading for SingQuest — the mic-verified sight-singing app
- * (SIGHT_SINGING_BUILD_PLAN.md §4.1). A thin, tested wrapper over the cents math
+ * (VISION.md §7 §4.1). A thin, tested wrapper over the cents math
  * in core/pitch.js that adds LEVEL-DEPENDENT tolerance:
  *   - early production/ear levels (S1–S8) are generous and OCTAVE-FORGIVING —
  *     a right-pitch-class/wrong-octave match is credited as a pass, and a "near"
@@ -147,7 +147,7 @@ export function coarsePhrase(state, dir) {
 }
 
 /* ==========================================================================
- * Hint-ladder rung sequence (pure) — SIGHT_SINGING_BUILD_PLAN.md §2.2.
+ * Hint-ladder rung sequence (pure) — VISION.md §7 §2.2.
  * The renderer (singquest-renderers.js) drives audio/DOM; the ESCALATION order
  * and the direction copy are pure and unit-tested here so the coaching contract
  * can't silently regress. Rungs are 1-based to match the plan's enumeration.
@@ -185,7 +185,7 @@ export function directionCopy(cents) {
 }
 
 /* ==========================================================================
- * Find-your-voice range inference (pure) — SIGHT_SINGING_BUILD_PLAN.md §3, §5.
+ * Find-your-voice range inference (pure) — VISION.md §7 §3, §5.
  * From a detected sung fundamental (Hz) and the mid reference we asked them to
  * match, infer the singer's octave and a comfortable {lowMidi, highMidi,
  * tonicOctave}. Octave-forgiving: we snap to the OCTAVE of the sung pitch class

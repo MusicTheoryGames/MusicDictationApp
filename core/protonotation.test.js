@@ -1,6 +1,6 @@
 /**
  * @file core/protonotation.test.js
- * Sweeps for the PROTONOTATION grader (MELODIC_DICTATION_RESEARCH.md §2.2, §3):
+ * Sweeps for the PROTONOTATION grader (research/MELODIC_DICTATION_RESEARCH.md §2.2, §3):
  * the three sub-scores are INDEPENDENT (stage isolation), count is a hard gate on
  * `correct`, and mismatched lengths never throw. Pure + deterministic (no rng needed
  * — the grader is a total function of sketch + melody).

@@ -21,10 +21,10 @@
  *               Hall chapter, and each is flagged `roadmap: true` so the screen
  *               can mark it "coming soon."
  *
- * GROUNDING: every entry is tied to its Hall chapter principle (HALL_CATALOG.md)
+ * GROUNDING: every entry is tied to its Hall chapter principle (research/HALL_CATALOG.md)
  * and to that level's REAL figure vocabulary (curriculum.js `newSkills` /
  * `figures` + CURRICULUM_PLAN.md §B). No concept a level does not cover is
- * introduced. Tapping tips draw on TAPPING_RESEARCH.md's per-level performance
+ * introduced. Tapping tips draw on research/TAPPING_RESEARCH.md's per-level performance
  * notes (esp. the three inflection points: ch9 syncopation, ch13 the 2:3
  * gateway, ch30 polymeter). The Hall chapter is cited in a comment on each entry.
  *

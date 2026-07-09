@@ -7,7 +7,7 @@
  *
  * The Gym trains the ladder's own leap vocabulary as interval QUALITY + tonal
  * FUNCTION together: every item is a degree pair in key context, labeled both
- * ways ('1̂ → 3̂' AND 'major 3rd'). Grounded in INTERVAL_TRAINING_RESEARCH.md:
+ * ways ('1̂ → 3̂' AND 'major 3rd'). Grounded in research/INTERVAL_TRAINING_RESEARCH.md:
  * acontextual pair drills don't transfer (Karpinski); context + production +
  * melodic embedding do.
  */

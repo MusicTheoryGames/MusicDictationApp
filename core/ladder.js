@@ -92,7 +92,7 @@ export function isAcyclic(levels = LEVELS) {
  * Uses Kahn's algorithm with a DETERMINISTIC tie-break: among the levels whose
  * prerequisites are all already placed, the one with the lowest Hall chapter
  * number goes next. This makes the linearization both (a) a valid topological
- * order of the prerequisite DAG and (b) faithful to HALL_CURRICULUM.md's
+ * order of the prerequisite DAG and (b) faithful to research/HALL_CURRICULUM.md's
  * chapter progression.
  *
  * @param {Level[]} [levels=LEVELS] Levels to sort.

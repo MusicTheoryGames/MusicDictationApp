@@ -27,7 +27,8 @@ function and copy it — do not invent a new treatment.
    gold #f5b301 celebrate) are RESERVED for grading/celebration. Never a resting control color.
 5. **Fewer words.** Counters/progress are DOTS, not text:
    - stage/round progress = pip dots (green done · amber current · hollow upcoming).
-   - remaining hearings = depleting pips inside the Play button (NOT "(3 left)").
+   - remaining hearings = depleting pips in a row BELOW the Play button (NOT "(3 left)", and
+     NOT inside the button — it never changes shape). Matches `.melodic-play-wrap__col`.
    - On-screen how-to = one short cue; the full explanation lives in the level MODAL.
 6. **No emoji, ever** — inline SVG via `services.icon(...)` only (enforced by
    core/no-emoji.test.js). Allowed: U+0302 caret (3̂), curly quotes, middle-dot.

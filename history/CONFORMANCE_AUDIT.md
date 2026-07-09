@@ -62,7 +62,9 @@ until a modulation/collection-aware notation grader is built (backlog).
 ### A6. Doc lines stale in the OTHER direction (doc behind the build):
 - §2 M25 row says "simple↔compound equivalence markings: future" — these SHIPPED
   (P7, ♪=♪ markings at every class change).
-- §2 M20 row says "full two-voice notation: future rung" — rung 3 SHIPPED.
+- §2 M20 row said "full two-voice notation: future rung" — rung 3 SHIPPED, and the row was
+  corrected on 2026-07-09. The row also called the engine "first-species counterpoint"; it is
+  note-against-note, not first species (VISION.md §9).
 
 ### A7. Depth (fixed earlier today, recorded for completeness): meters[] was
 never rotated (m2 declared 2/4·3/4·4/4, played one), all rounds were 2 bars,

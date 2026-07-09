@@ -957,10 +957,16 @@ test('generateMelody: meterSequence is deterministic and works for changing-comp
 });
 
 /* ===========================================================================
- * M20: two-part (TWO_VOICE_ENGINE_PLAN.md) — first species. Sweeps assert the
- * counterpoint invariants the plan §6 names: no crossing (unison only at the
- * final cadence), no parallel 5ths/8ves, strong-beat consonance, both voices
- * individually valid, aligned rhythm, determinism.
+ * M20: two-part — NOTE-AGAINST-NOTE, not strict first species.
+ *
+ * The sweep below asserts no-crossing, no-parallel-perfects, strong-beat
+ * consonance, valid voices, aligned rhythm, and determinism — but ONLY for a
+ * WIDE spec (7 degrees, 3rds allowed, ~octave-and-a-half range). That spec never
+ * starves the search, so it never reaches the stage-3 fallback that drops the
+ * parallel-perfect rule (core/melodic.js "STAGED SEARCH").
+ *
+ * Do not read this sweep as proof the invariant holds in general. It does not.
+ * `narrow spec reaches the stage-3 fallback` below pins the real behaviour.
  * ========================================================================= */
 
 test('generateTwoPartMelody: counterpoint invariants hold across a seed sweep', () => {
@@ -973,7 +979,7 @@ test('generateTwoPartMelody: counterpoint invariants hold across a seed sweep', 
   for (let seed = 1; seed <= 15; seed++) {
     const tp = generateTwoPartMelody({ ...spec0, seed });
     const [top, bot] = tp.voices;
-    assert.equal(top.notes.length, bot.notes.length, 'first species: aligned note counts');
+    assert.equal(top.notes.length, bot.notes.length, 'note-against-note: aligned note counts');
     // both voices individually valid melodies
     assertValidMelody(top, { degrees: spec0.degrees });
     assertValidMelody(bot, { degrees: spec0.degrees });
@@ -1010,6 +1016,56 @@ test('generateTwoPartMelody: counterpoint invariants hold across a seed sweep', 
     assert.equal(((bot.notes[bot.notes.length - 1].midi % 12) + 12) % 12, tonicPc,
       `seed ${seed}: bottom voice must cadence on the tonic`);
   }
+});
+
+/* CHARACTERIZATION TEST — pins a known limitation, it does not endorse it.
+ *
+ * The sweep above passes only because its spec is wide enough that the search
+ * never starves. Give the bottom voice a NARROW spec — few degrees, step-only —
+ * and generateTwoPartMelody falls through to its stage-3 fallback, where the
+ * parallel-perfect ban is dropped and parallel perfects are emitted.
+ *
+ * We deliberately ignore a parallel on the FINAL note: the cadence placer has its
+ * own documented fallback that accepts a parallel perfect when every in-range
+ * tonic would be one. That is a different code path. Only a NON-FINAL violation
+ * proves the staged search relaxed the rule.
+ *
+ * Reachability in production today: only m20 calls this generator
+ * (melodic-round.js), with degrees 1-7 and range 48-79 — wide enough that stage 3
+ * is unlikely to trigger. The limitation is LATENT, not active. It matters the
+ * moment anything asks for a narrow spec — e.g. CounterQuest (VISION.md §5).
+ *
+ * If a future species engine fixes this, DELETE this test — do not "fix" it by
+ * widening the spec until the failure hides again. */
+test('generateTwoPartMelody: a narrow spec starves the search into stage 3, which emits non-final parallel perfects', () => {
+  const narrow = {
+    key: 'C', mode: 'major', degrees: [1, 2, 3], leaps: ['step'],
+    range: { lowMidi: 60, highMidi: 79 }, meter: '2/4', hallRhythmRef: 'ch1',
+    lengthBars: 2, startOn: 'tonic',
+  };
+  const isPerfect = (pc) => pc === 0 || pc === 7;
+  let seedsWithNonFinalParallels = 0;
+
+  for (let seed = 1; seed <= 40; seed++) {
+    const [top, bot] = generateTwoPartMelody({ ...narrow, seed }).voices;
+    const last = top.notes.length - 1;
+    // i < last: exclude the cadence placer's own parallel-perfect fallback.
+    for (let i = 1; i < last; i++) {
+      const pc = ((top.notes[i].midi - bot.notes[i].midi) % 12 + 12) % 12;
+      const prevPc = ((top.notes[i - 1].midi - bot.notes[i - 1].midi) % 12 + 12) % 12;
+      const topDir = Math.sign(top.notes[i].midi - top.notes[i - 1].midi);
+      const botDir = Math.sign(bot.notes[i].midi - bot.notes[i - 1].midi);
+      if (isPerfect(pc) && pc === prevPc && topDir !== 0 && topDir === botDir) {
+        seedsWithNonFinalParallels++;
+        break;
+      }
+    }
+  }
+
+  assert.ok(seedsWithNonFinalParallels > 0,
+    'expected a narrow spec to starve the staged search into stage 3 and emit a NON-FINAL parallel ' +
+    'perfect. If this now fails, either the engine improved (delete this test and update VISION.md §9) ' +
+    'or the only parallels were cadential, in which case VISION.md §9 overstates the stage-3 defect.');
 });
 
 test('generateTwoPartMelody: deterministic; top voice identical to solo generateMelody', () => {

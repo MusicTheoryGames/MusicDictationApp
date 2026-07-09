@@ -16,7 +16,7 @@
  * in `solo-mode.js` (`scoreTapBack`) and stays there. This module is the
  * dictation analog: same PER-BEAT ALL-OR-NOTHING philosophy, but on structure.
  *
- * THE MODEL (from LEVEL_SYSTEM_RESEARCH.md §2 "Mastery assessment")
+ * THE MODEL (from research/LEVEL_SYSTEM_RESEARCH.md §2 "Mastery assessment")
  * ----------------------------------------------------------------
  *   - Per-beat all-or-nothing (rhythm analog of AP's per-segment scoring):
  *     a beat scores 1 only if its notated content matches EXACTLY — same

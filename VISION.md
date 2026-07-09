@@ -1,0 +1,424 @@
+# VISION — the single source of truth
+
+**If any other document in this repository disagrees with this one, this one wins.**
+Several of them do disagree, and several are simply false. See §10.
+
+Last verified against the working tree on 2026-07-09 (baseline commit `e9f1dcd` plus the
+step-0/1a changes landing alongside this file). Facts here describe the tree, not that commit.
+
+---
+
+## 1. What this is
+
+A suite of browser apps that teach **music dictation** — the skill of hearing music and
+writing it down — and the reading and singing skills that dictation depends on.
+
+It is not an ear-training quiz. Quizzes exist. This teaches the *procedure*.
+
+## 2. The thesis, and the evidence for it
+
+Every serious competitor drills. None of them teaches.
+
+The peer-reviewed survey of this exact market — Chenette, Davis & Kleppinger, *"A Critical
+Review of Current Aural Skill Materials and Pedagogical Practices,"* **Journal of Music Theory
+Pedagogy Vol. 36 (2022)** — examines the five robust incumbents (Auralia, Artusi/MacGAMUT,
+Picardy, EarMaster, Practica Musica) and finds:
+
+> *"Every piece of software reviewed here that asks users to click or drag the pitches they hear
+> onto a staff … requires them to do so **in sequence** — from the first note of the dictation to
+> the last… Working from beginning to end, one note at a time, is both inefficient and
+> disconnected from typical musical experience. It is also, maddeningly, a habit that generations
+> of aural-skills teachers have worked to excise."*
+
+No shipping product between 2022 and 2026 permits non-sequential or sketch-first entry. No
+shipping product implements the research-backed procedure. That is the entire opportunity.
+
+**The four claims we are betting on, each with a source:**
+
+1. **Dictation has a procedure, and it can be taught.** Karpinski's four-stage model — hearing,
+   short-term memory, understanding, notation (*A Model for Music Perception and its Implications
+   in Melodic Dictation*, JMTP 4, 1990; *Aural Skills Acquisition*, OUP 2000).
+2. **Memory comes before notation.** McHose, *Teachers Dictation Manual* (Eastman, 1948): *"The
+   student should not be allowed to write the notation until he can sing back the exercise on a
+   neutral syllable."*
+3. **Function beats intervals.** Buonviri & Paney's interviews with AP Theory teachers (*JRME*,
+   2015) and Paney & Buonviri's survey of 398 college instructors (*Update*, 2017): instructors
+   favour scale-degree **function** over interval width, meter-based rhythm systems, "targeting
+   melodic bookends," and big-picture-before-detail. McHose agrees: melodic dictation *"is not a
+   horizontal drill in abstract intervals."*
+4. **Harmony is heard from the bass.** Chenette, *"What Are the Truly Aural Skills?"* (*Music
+   Theory Online* 27.2, 2021, N=74): bass lines were the strategy of **88% of listeners**, more
+   than ten points ahead of anything else. Roman-numeral labels "are not those most directly
+   available to perception."
+
+**And one caution that keeps us from copying McHose blindly.** Buonviri & Paney's companion
+studies (*Silence, Sound, and Singing on Dictation Accuracy*; *Preparatory Singing Pattern*) find
+that **inaccurate pre-singing and forced solfège patterns can *hurt* accuracy.** The memory gate
+is therefore a **motor echo** — tap it back — never a mic-scored vocal performance.
+
+## 3. Who it is for
+
+All four of these, deliberately, and the tension is real:
+
+| Audience | What they need |
+|---|---|
+| College aural-skills students | Semester ladders, rigour, instructor-assigned work, transfer across keys |
+| AP Music Theory / high school | An exam to pass, assignable work, progress reports |
+| Aaron's own piano & theory students | Short sessions, no semester structure, a teacher in the room |
+| Self-directed adult learners | No teacher, no classroom — retention depends entirely on the app being *fun* |
+
+**The tension, stated honestly:** a tool rigorous enough for a college theory sequence is usually
+too dry for a ten-year-old, and a tool fun enough for a ten-year-old is usually too thin for a
+conservatory. We resolve this in exactly one way, and nowhere else:
+
+> **The curriculum is identical for everyone. Only the skin, the pacing, and the arcade layer
+> differ.** A level never gets easier because a younger student is playing it. The placement test
+> decides where you start; nothing decides how hard the material is.
+
+## 4. Business model
+
+**Paid consumer subscription.** This is decided, not open.
+
+- **The arcade layer is therefore load-bearing, not garnish.** Retention is the business. If it
+  isn't fun, there is no subscription. See §6.
+- **School site licensing is not being built**, even though the classroom is a core feature and
+  every incumbent sells that way. Whether to *add* it later is the open question (§11) — but no
+  one designs a school-billing flow into the engine before that decision is made.
+
+Nothing in `core/` may ever know about payment, entitlement, or tiers.
+
+## 5. The suite
+
+Two verbs, and they are different skills.
+
+**Write what you hear — dictation:**
+
+| App | Skill |
+|---|---|
+| **RhythmQuest** (was BeatQuest) | hear rhythm → write rhythm |
+| **MelodyQuest** | hear melody → write melody |
+| **HarmonyQuest** | hear progression → write bass line, then Roman numerals |
+
+**Perform what you see — reading:**
+
+| App | Skill |
+|---|---|
+| **Tapping** | see rhythm → perform rhythm |
+| **SingQuest** | see notation → sing it (teaching *how* to sight-sing) |
+
+Rhythmic / melodic / harmonic is McHose's spine — Parts I, II, and III of the manual. It is why
+"BeatQuest" is being renamed: a beat is one *rung* of rhythm, not the counterpart of melody.
+
+**Proposed, not in scope: a third verb — write it yourself.**
+
+| App | Skill | Status |
+|---|---|---|
+| **CounterQuest** | given a cantus firmus → write a correct counterpoint | proposed |
+
+Counterpoint is neither dictation nor reading; the student *composes* and the app judges. McHose's
+manual has a Part IV — two- and three-voice harmonic counterpoint — so it belongs to the same
+lineage. Two honest warnings before anyone starts it:
+
+1. **The existing two-voice generator cannot be its engine.** `generateTwoPartMelody` permits
+   weak-beat vertical dissonance and abandons the parallel-perfect ban in its fallback stage (§9).
+   That is acceptable for producing a duet to *dictate*. It is disqualifying for a tool that
+   *teaches* counterpoint, which must never generate an example that breaks its own rules.
+   CounterQuest needs a species engine and a rule-checker: two new pure `core/` modules.
+2. **The rule-checker is the product, not the generator.** The value is in telling a student
+   *which* rule they broke and why — the same stage-isolated diagnosis principle as rule 7. Building
+   a generator first would be building the easy half.
+
+Out of scope until the dictation trio is coherent (§8).
+
+**The suite has no name yet.** Working proposals, in order of preference:
+`EarQuest` (friendly across the whole age range, names the organ not the jargon) ·
+`AuralQuest` (names the academic field; collegiate, drier) ·
+`Audiate` (Gordon's term for hearing music in the mind; strongest concept, highest jargon cost).
+**OPEN DECISION.** Until it is made, the repo is "the music dictation suite."
+
+## 6. Non-negotiables
+
+These are the rules an implementer may not quietly relax. If one of them makes a feature hard,
+the feature changes, not the rule.
+
+### Pedagogy
+
+1. **Teaching is not a mode. It is the early rungs of the ladder.** MelodyQuest's M0–M8 withhold
+   notation **production** — the student never writes a note until M9. Notation is *shown* earlier
+   (M4 is recognition; M7 hides one note on a printed staff), because reading and producing are
+   different skills and reading comes first. That progression *is* the teaching. There is no
+   "learn" toggle and no "skip the basics" button. Every quest has this shape.
+   *(A teach **screen** — the intro card before a level — is skippable, and should be; that is a
+   modal, not a rung. What may never be skipped is a LEVEL, or the memory gate.)*
+2. **Notation is withheld until memory is demonstrated.** The gate is a **motor echo** — tap it
+   back, echo it — never scored singing. Sing-back is offered, tracked as process metadata, and
+   never graded. (§2, claim 2 and the caution.)
+3. **Reading precedes dictation.** McHose: *"Only after the student has thoroughly mastered a
+   particular rhythmic problem through rhythmic reading should dictation be presented."* Tapping
+   chapter N is advisory-gated before RhythmQuest chapter N.
+4. **Order by function, not by interval width.** Melodic material advances by implied harmony —
+   tonic, then tonic and dominant, then subdominant and supertonic, then V7, then modulation.
+5. **Harmony is dictated from the bass.** Roman numerals arrive late, as a labelling layer over a
+   bass the student can already hear. Never as the answer format for a beginner.
+6. **The student never has to write left to right.** Sketch first, bookends first, structural
+   tones first. This is the one thing no competitor does. It is the product.
+7. **Errors are diagnosed by stage, not by note.** Tell the student *which sub-skill failed* —
+   meter, contour, degree precision, tonic anchoring, note count — not merely which note was
+   wrong. (`core/feedback.js`, after Klonoski.)
+8. **You test in, you do not opt out.** A student who already knows the material takes the
+   placement test. There is no toggle that skips the memory gate, because a gate you can skip is
+   not a gate.
+
+### Design
+
+9. **Game feel lives in the verb, not the chrome.** XP, ranks, gems, stars and confetti are not
+   game feel. What your hands do is. Each exercise *mode* is its own game; levels reparameterize
+   it. One game per mode — not per level, or we will ship a hundred half-games.
+10. **The arcade belongs to the drills. The ladder gets quieter as it gets harder.** Dictation is
+    a working-memory task; timing pressure and motion consume exactly the resources the exercise
+    trains. Notation levels have no timer and no particles. The silence is the point.
+11. **No emoji. No clipart.** Every icon is a custom in-house SVG.
+    *Enforcement is currently partial and must be widened:* `core/no-emoji.test.js:21` scans only
+    eight MelodyQuest/SingQuest files. It has never looked at `solo-mode.js`, `rhythm-student.js`,
+    or `rhythm-teacher.js` — and `rhythm-teacher.js:335` ships a `✓` glyph today. Extend the test
+    to the whole UI surface and fix what it finds.
+12. **The app never lies to the user — or to the next developer.** No "Connected" over a simulated
+    socket. No comment claiming a capability the code lacks. No document calling something
+    "working" that nobody has watched work. If a feature is unavailable, it says so.
+
+### Engineering
+
+13. **`core/` is pure.** No DOM, no audio, no network, no clock, no I/O. Time is injected. Every
+    module **must** ship with a `.test.js` beside it. One module violates this today —
+    `core/curriculum.js` — and that is a defect, not a precedent. This is the functional core; the
+    HTML pages are the imperative shell.
+14. **One exercise object feeds many renderers.** The generator produces a melody or rhythm; a
+    renderer decides how much of it is visible and how the student answers.
+    (`melodic-game.html:699` is the reference implementation.)
+15. **Generation is seeded and deterministic.** Same seed, same exercise. Candidates are generated
+    and *scored*, then selected by difficulty percentile — never argmax, which converges on the
+    blandest legal answer.
+16. **A level's constraints are data, not code.** Degrees, leaps, meters, rhythm vocabulary,
+    allowed harmony, pass gate — all declared in a curriculum module.
+17. **Tested does not mean wired.** Check the call sites before believing a module is in use.
+
+## 7. The classroom
+
+**Teacher use is a core feature, not an add-on.** Two modes, both required:
+
+- **Live room.** Teacher creates a room, students join, teacher drives the round, the projector
+  shows the answer revealed beat by beat. Identity is a room code and a display name — no
+  accounts, which is also the right posture for minors.
+- **Assigned practice.** Teacher assigns levels, students work on their own time, teacher sees a
+  roster of mastery per student per skill. This *requires accounts*, which the suite has never
+  had, and it carries a student-data privacy obligation.
+
+Even the anonymous live room stores display names and answers. Security rules, room TTL and
+cleanup, room-code abuse handling, and a written retention policy ship **with the live room**, not
+later with accounts.
+
+## 8. The finish line for the next release
+
+> **Classroom-ready: Aaron can run a real lesson, with real students, on real hardware, next term.**
+
+**In scope: the live room only. Assigned practice, rosters, and accounts are explicitly NOT in
+this release** — they do not block it, and no account system is built for it.
+
+The release is done when items 1–6 are **[observed]** — by a person, in a browser, on the hardware
+in item 4 — *and* item 7's clauses each pass an automated test or exist as a written policy. Both
+kinds of evidence are required; neither substitutes for the other.
+
+1. A teacher lands on `index.html` and can reach the teacher tool.
+2. **Teacher → student → projector works end to end**, with an automated integration harness over
+   the room schema, *and* one observed run on real hardware. Neither alone counts.
+3. **Meter matrix.** A round is correctly created, played, answered, and revealed in each of:
+   `2/4`, `3/4`, `4/4`, `2/2`, `3/2`, `6/8`, `9/8`, `12/8`. Irregular (`5/8`, `7/8`), `6/4`, `6/16`
+   and changing meter are **out of scope** for this release. Testable non-preclusion criterion: the
+   room schema carries `{ beatsPerMeasure: number[], beatUnit: string }` and no code path computes
+   beats as `measureCount * 4`; a schema test asserts a `5/8` room round-trips through
+   create/play/reveal without loss, even though no UI exposes it.
+4. **Hardware/browser targets:** Safari on iPad (the students' device), plus current Chrome and
+   Safari on macOS. Nothing else is promised.
+5. The student's landing screen is the game. Not a fake login with `Test Student` and `TEST123`
+   prefilled (`rhythm-student.html:1115,1119`).
+6. Nothing in the UI claims a connection, a score, or a capability that isn't real (rule 12).
+7. **Live-room safety.** "Anonymous" does not mean "no identity" — Firebase rules cannot
+   distinguish two students without one. Every clause below needs a passing test or a written note:
+   - **Identity:** every participant signs in with **Firebase Anonymous Auth** and gets a `uid`. A
+     student's answer lives at `rhythm-rooms/$code/answers/$uid`. The teacher's `uid` is stored on
+     the room at creation. *Rules test:* a student `uid` cannot write another `uid`'s answer, cannot
+     write `currentRhythm` or `revealedBeats`, and cannot read the room without having joined it.
+   - **Room codes:** 6 characters from Crockford base32 (no `I`, `L`, `O`, `U`), giving ~2³⁰
+     possibilities. Joins are rate-limited to 5 failed attempts per `uid` per minute. A room rejects
+     joins beyond a teacher-set cap. *Test:* code generator never emits an excluded character; the
+     6th failed join is rejected.
+   - **Expiry:** a room with no teacher heartbeat for **2 hours** becomes unreadable; its data is
+     deleted within **24 hours**. *Test:* a scheduled-cleanup function, exercised against the
+     emulator with a clock injected.
+   - **Retention:** a note in this repo states what is stored (display name, answers, timings), for
+     how long, and how a teacher deletes a room immediately.
+
+Everything else in the restructure plan — the R0–R11 teaching ladder, the harmonic axis,
+HarmonyQuest, the arcade layer — is downstream of that and waits.
+
+## 9. What is actually true about the code today
+
+This section exists because the other docs cannot be trusted. **Every sentence here was checked
+against source on 2026-07-09 at `e9f1dcd`, and then adversarially re-checked by a second model
+that found four errors in the first draft.** Hold it to that standard or delete it.
+
+Three tags, and they do not promote into one another:
+
+- **[source]** — readable in, *or exhaustively absent from*, the code at this commit. A repo-wide
+  grep is a source fact about this repo. Proves a thing exists (or doesn't); never that it *runs*.
+- **[observed]** — a person watched it happen in a browser, on stated hardware.
+- **[inferred]** — everything else: deployment, what history happened, what an author intended,
+  what people have or haven't done. Weakest. Never upgrade an [inferred] by reading harder.
+
+*(A reviewer argued absence claims must all be [inferred]. Rejected: an exhaustive grep at a known
+commit is evidence, and downgrading twenty true statements to "maybe" makes the document useless.
+The line is drawn at claims about the world outside the repo.)*
+
+**Pages.** `index.html`, `rhythm-student.html` + `solo-mode.js` (RhythmQuest), `tapping.html`,
+`melodic-game.html` (MelodyQuest), `singquest.html` exist and reference their script stacks
+**[source]**. `tapping.html`
+is a *separate* 1,280-line page that loads the identical engine stack (`rhythm-student.js`,
+`core-bridge.js`, `teach-content.js`, `solo-mode.js`) and switches behaviour on `?mode=tapping`
+**[source]**. `dev-server.js:35` serves `home.html` at `/`, and the in-game Exit button navigates
+to `home.html` (`solo-mode.js:2456`, `:2481`), while `index.html` never links it **[source]** —
+that inconsistency is a bug, not a design **[inferred]**. Run everything with `node dev-server.js`.
+
+**What is actually deployed is not knowable from this repo [inferred].** There is no root
+`netlify.toml`; the only build config is the gitignored CLI cache `.netlify/netlify.toml:9`, whose
+`publish` is an absolute path to `/Users/aaronpike/Desktop/Music Dictation APP` **[source]** — a
+directory the repo was moved out of on 2026-07-09 **[inferred]**. The site's real build settings
+live on Netlify. **Re-run `netlify link`, then record the true publish directory and production
+branch here.** Until then, no document may claim which page is "the deployed front door."
+
+**Present in the repo and wired into the game, contrary to what some docs say.** `generateTwoPartMelody`
+(`core/melodic.js`) generates two-voice, note-against-note writing, and m20 is admitted by
+`PLAYABLE` with `RENDERERS['two-part']` defined **[source]**. `archive/TWO_VOICE_ENGINE_PLAN.md` says it is
+unbuilt and is **wrong**.
+
+**It is not strict first species — do not describe it as such.** Inside `generateTwoPartMelody`,
+the `counterpoint` filter bans voice crossing, bans similar-motion perfects (a parallel-fifth/octave
+test, not a hidden-octave test), and requires consonance **only on strong beats**. Weak-beat vertical
+dissonance is never checked — an absent rule, not a relaxed one. Its `stages` array escalates
+`[declared leaps, counterpoint] → [widened leaps, counterpoint] → [widened leaps, noParallel]`, so
+stage 2 relaxes the level's **declared leap set** and stage 3 additionally drops the
+**parallel-perfect ban**; the cadence placer drops it too when every in-range tonic would be
+parallel. Exactly one *counterpoint* rule is relaxed; a *curriculum* constraint (leaps) is relaxed
+first. All **[source]**, pinned by the characterization test
+`core/melodic.test.js` → "a narrow spec starves the search into stage 3".
+
+*(Cite symbols, not line numbers, for internals of this function — editing it has invalidated these
+citations three times.)*
+
+Reachability: `melodic-round.js:238` is the only production caller, for m20, with degrees 1-7 and a
+key-shifted range around 48-79 **[source]**. No shipping level has been shown to starve the search.
+That is *not* a proof of unreachability — do not claim one **[inferred]**.
+
+**Written, tested, and never called.** `core/grading.js`'s `gradeDictation` — pure, tested, exposed
+on `window.LevelCore` (`core-bridge.js:34`), invoked by nothing but its own test **[source]**.
+
+**Computed, used, and then hidden.** `makeHarmonicPlan` (`core/melodic.js:616`) builds a per-bar
+chord plan, and it *is* used — it feeds `chordDegs` into `chooseNextHarmonic` in both the solo and
+two-voice walks. But it is a local `const` (`:989`) and is **never attached to the returned melody
+object**, so no renderer, grader, or teacher surface can see the harmony the melody was built from
+**[source]**. There is no Roman-numeral data model anywhere.
+
+**Registered gaps.** The **tapping rhythm duet** — two rhythm lines, one per hand, graded per onset
+per hand — is genuinely unbuilt. `core/curriculum.js` already models it (`forms.*.voices: 2`). This
+is the only surviving requirement from the archived two-voice plan.
+
+`melodic-round.js:309` force-downgrades every modulating or
+symmetric-collection level (M19, M24, M26) to multiple-choice, because no cross-key notation
+grader exists. Its own comment calls this "an honest registered gap, not a substitution
+(audit §A5)" **[source]**.
+
+**The classroom loop is not closed.**
+
+- `rhythm-teacher.js:266` writes to `rhythm-rooms/${code}`; `projection.js:80` subscribes to the
+  same path. The two agree on the path **[source]**. No record exists of anyone running the loop against a live Firebase project **[inferred]**, and it
+  is certainly not [observed] by this document. Do not claim it works.
+- **This repo contains no student client for `rhythm-rooms/*` [source].** `rhythm-student.js`'s
+  `joinSession()` now says classroom mode is unavailable and returns; `handleTeacherMessage()` remains
+  as the uncalled seam a real transport will attach to **[source]**. Until 2026-07-09 it instead wrote
+  "Connected to rhythm session!" to the user, set `#connectionStatus` to Connected, and fed the page
+  fabricated teacher messages on a `setTimeout` — a rule-12 violation, now removed **[inferred:
+  history]**.
+- **Two of the teacher's four broadcasts destroy the room [source].** `new-rhythm` (`rhythm-teacher.js:649`)
+  and `reveal-all` (`:668`) call Firebase `set()` on the room *root* with a partial object, which *replaces* the node
+  — wiping `students`, `created`, and `type`, the very roster its own `onValue` listener reads. They
+  must be `update()`. (`play-rhythm` and `reveal-beat` write child paths and are safe.) `reveal-all`
+  also hardcodes `revealedBeats: [1,2,3,4]`, a third 4/4 assumption after `:348` and `projection.js:55`. A teacher pressing "New Rhythm" twice would
+  lose the class roster, which is further reason to doubt this loop has ever been run **[inferred]**.
+- `student.html:260,268,300,351` and `app.js` implement a *different* schema: `rooms/${code}`,
+  `/students/`, `/votes/`, `currentQuestion` **[source]** — the multiple-choice voting feature of an
+  app no longer reachable from `index.html` **[inferred]**. **The protocol is not reusable; the Firebase client mechanics are.**
+  `student.html:254-355` contains room lookup, student registration, snapshot subscription, and
+  answer writes **[source]** — read it as a code reference. No record of anyone running it
+  **[inferred]**. Do not port its schema.
+- `rhythm-teacher.js:348` and `projection.js:55` hard-code four beats per measure **[source]**, so
+  the teacher tool cannot express the other meters the game already offers (`solo-mode.js:241-250`
+  lists 2/4, 3/4, 4/4, 2/2, 3/2, 6/8, 9/8, 12/8, 6/4, 6/16, plus changing meter) **[source]**.
+
+**Also true [source].** `solo-mode.js` has no renderer dispatch — mode is a binary `S.mode` branch;
+`GUIDE.playable()` (`:394`) silently skips any level with zero figures. `RHYTHM_FIGURES`
+(`core/rhythm-figures.js:16`) is pure but is *not* a one-beat bank; it contains whole, half,
+dotted-half and half-rest figures too. `core/no-emoji.test.js:21` covers only eight files, all
+MelodyQuest/SingQuest. `core/curriculum.js` is the only `core/` module with no test.
+`archive/MUSIC_SUITE_XP_SPEC.md` describes a different product (Staff Commander); nothing in it is built
+here.
+
+## 10. Which documents to trust
+
+- **This file** for facts; **`RHYTHMQUEST_PLAN.md`** for what to do next and in what order.
+  Then `history/CONFORMANCE_AUDIT.md` and `history/MELODYQUEST_CHANGELOG.md`.
+- **Repaired 2026-07-09, now reliable:** `history/EXECUTION_PLAN.md`, `MELODIC_CURRICULUM.md`,
+  `MELODIC_RENDERER_SPEC.md`, `history/CONFORMANCE_AUDIT.md`. All four had called the two-voice engine
+  "first species" and/or described shipped M20 rungs as future. Corrected. If you find another
+  copy of that claim, it is a bug — the engine is note-against-note (§9).
+- **Specs, repaired 2026-07-09 — their build-status lines had rotted, their architecture had not:**
+  `MELODIC_ENGINE_SPEC.md`, `MELODIC_RENDERER_SPEC.md`, `INTERVAL_GYM_SPEC.md`, `CURRICULUM_PLAN.md`,
+  `BUTTON_DESIGN.md`, `TEACH_SCREENS_PLAN.md`. Reference: `research/VEXFLOW_LESSONS.md`, `research/HALL_CATALOG.md`,
+  `research/HALL_CURRICULUM.md`.
+- **Research, still valid:** the `*_RESEARCH.md` set, `research/LEVEL_SYSTEM_RESEARCH.md`,
+  `history/LEVELS_4_10_ROBUSTNESS.md`.
+- **Actively false — do not act on** (all now in `archive/`, and `README.md` was rewritten
+  2026-07-09):
+  `archive/TWO_VOICE_ENGINE_PLAN.md` (says shipped work is unbuilt), `archive/MELODIC_GENERATOR_LADDER.md` (its
+  M-numbers contradict the shipped ladder), `archive/INFRASTRUCTURE_SUMMARY.md`, `archive/SOLUTION_SUMMARY.md`,
+  `archive/RHYTHM_RULES_SUMMARY.md`, `archive/SUBAGENT_INSTRUCTIONS.md`, `archive/MASTER_SUBAGENT_DEPLOYMENT_GUIDE.md`.
+- **Stale but harmless:** `archive/SKILLS_GYM_PLAN.md`, `archive/SIGHT_SINGING_BUILD_PLAN.md`,
+  `archive/MELODIC_LADDER_EXPANSION_PLAN.md`, `archive/STRATEGY_AND_ROADMAP.md`, `archive/ARCHITECTURE_RESEARCH.md`,
+  `archive/SUITE_DESIGN_SPEC.md`, `archive/BEATQUEST_CASUAL_TAPPING_PLAN.md`.
+
+**Verify against `core/` and the running app. Never against prose.**
+
+## 11. Non-goals and open questions
+
+**Explicit non-goals.**
+- A notation editor. Answer entry is purpose-built per exercise mode; we are not building Finale.
+- A performance-assessment tool. SingQuest teaches sight-singing; it does not grade a recital.
+- A corpus of real repertoire. Melodies are generated under curriculum constraints. Mining
+  public-domain scores is a good idea for a later quarter; the generator is not the weak part.
+- Absolute pitch, interval-name drilling as an end in itself, or anything that rewards piano
+  background over hearing. (Chenette, MTO 27.2.)
+
+**Open decisions, recorded so nobody resolves them by accident.**
+- The suite name (§5).
+- Whether to *add* school site licensing alongside the consumer subscription (§4). The subscription
+  itself is decided.
+- Backend for accounts, when assigned practice is eventually built: extend the existing Firebase,
+  or adopt Supabase as used in sibling projects. Decide *after* the live room ships, because it
+  will tell us whether Firebase is healthy. Not a v1 question (§8).
+- Whether SingQuest is a standalone product at all, or whether its mic layer (`core/pitch.js`) is
+  simply the optional sing-back step inside the dictation trio.
+- Whether `home.html` becomes the real front door, or is deleted and `solo-mode.js:2456,2481`
+  repointed at `index.html`.
+
+---
+
+*Change this document when the product changes. Do not let the code drift from it silently —
+that is how the other forty documents got here.*

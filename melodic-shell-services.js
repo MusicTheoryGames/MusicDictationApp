@@ -428,7 +428,7 @@ function renderRhythmLine(host, melody, opts = {}) {
 /**
  * Render a TWO-PART piece as two aligned staves (top voice above, bottom below),
  * bar-aligned, each voice through the same proven measure-split + beam logic the
- * single staff uses. M20 (TWO_VOICE_ENGINE_PLAN.md §4).
+ * single staff uses. M20 (see VISION.md §9).
  * @param {HTMLElement} host
  * @param {{voices:[Object,Object]}} twoPart
  */
@@ -443,7 +443,7 @@ function renderTwoStaves(host, twoPart) {
   renderStaff(wrapBot, bottom);
 }
 
-/** Two-part playback with per-voice mute (TWO_VOICE_ENGINE_PLAN.md: the pedagogy
+/** Two-part playback with per-voice mute (VISION.md §9: the pedagogy
  *  needs "hear the top voice alone"). mute = [muteTop, muteBottom]. */
 async function playTwoPart(twoPart, opts = {}) {
   const c = await unlockAudio(); if (!c) return;
@@ -590,7 +590,7 @@ async function play(melody, opts = {}) {
   const c = await unlockAudio(); if (!c) return;
   const bpm = opts.bpm || 92, spb = 60 / bpm;
   let t = c.currentTime + 0.12;
-  // COUNT-OFF (LEVEL_SYSTEM_RESEARCH.md §2: "always give meter + count-off up
+  // COUNT-OFF (research/LEVEL_SYSTEM_RESEARCH.md §2: "always give meter + count-off up
   // front"): one bar of metronome ticks in the melody's meter before the melody —
   // beat 1 accented, same tick voice family as BeatQuest's metronome.
   if (opts.countOff !== false) {
@@ -647,7 +647,7 @@ function playNoteAt(midi, whenSec, durSec) {
   emitNote(midi, Math.max(whenSec, c.currentTime + 0.005), Math.max(0.12, durSec), 0.35);
 }
 
-/* A/B SELF-COMPARE (LEVEL_SYSTEM_RESEARCH.md §2: hearing YOUR entered answer vs
+/* A/B SELF-COMPARE (research/LEVEL_SYSTEM_RESEARCH.md §2: hearing YOUR entered answer vs
    the original before submitting is "a strong built-in error-detection mode").
    Renders a degree-sequence answer to audio under the round's key/mode. */
 const SCALE_SEMIS_LOCAL = {

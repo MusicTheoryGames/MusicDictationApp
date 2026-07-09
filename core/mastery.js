@@ -12,8 +12,8 @@
  *   - All returned state is a fresh object (callers may freeze / persist it freely);
  *     inputs are never mutated.
  *
- * It implements the model from `ARCHITECTURE_RESEARCH.md` §B and
- * `LEVEL_SYSTEM_RESEARCH.md`:
+ * It implements the model from `VISION.md §9` §B and
+ * `research/LEVEL_SYSTEM_RESEARCH.md`:
  *   - per-item score `s` clamped 0..100; correct +20, wrong -30;
  *   - levels Attempted / Familiar / Proficient / Mastered;
  *   - a Mastered gate (recent-accuracy + score floor + multi-session spacing);

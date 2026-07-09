@@ -3,7 +3,7 @@
  * @module singquest-renderers
  *
  * SingQuest Phase 0 renderers — the REBUILT "first lesson" (owner rejected the
- * previous bare microtuner; see SIGHT_SINGING_BUILD_PLAN.md §2 teaching spine,
+ * previous bare microtuner; see VISION.md §7 §2 teaching spine,
  * §3 gamification, and the three mockups singquest-{mockup,coarse,adult}.html).
  *
  * NON-NEGOTIABLES enforced here:

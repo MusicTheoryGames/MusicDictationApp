@@ -8,7 +8,7 @@
  *
  * Grounding
  * ---------
- * MELODIC_DICTATION_RESEARCH.md (§2.7, §3, §4.2): expert dictation relies on
+ * research/MELODIC_DICTATION_RESEARCH.md (§2.7, §3, §4.2): expert dictation relies on
  * CHUNKING onto a known vocabulary of tonal patterns, NOT on raw memory span —
  * generic span training does not transfer (Melby-Lervåg 2016), but
  * domain-specific tonal chunk drills do (Karpinski; Chenette). The bank is

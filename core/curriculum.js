@@ -12,7 +12,7 @@
  * Grounding
  * ---------
  * The ladder is grounded in Hall & Urban, *Studying Rhythm* (4th ed.) as
- * mapped in `HALL_CURRICULUM.md` (the chapter→idea progression) and
+ * mapped in `research/HALL_CURRICULUM.md` (the chapter→idea progression) and
  * `CURRICULUM_PLAN.md` (the chapter→level wiring spec, §A mapping table and
  * §B unified ladder). We never reproduce the book's exercises — we reuse only
  * its difficulty *progression*: each chapter adds exactly one new idea on top
@@ -142,18 +142,18 @@
 
 /**
  * The TAPPING performance-difficulty metadata for a level, grounded in
- * `TAPPING_RESEARCH.md` (the per-level performance curve, distinct from the
+ * `research/TAPPING_RESEARCH.md` (the per-level performance curve, distinct from the
  * dictation reading difficulty). Drives the tapping ladder's scaffolding/pacing
  * — NOT a separate ladder structure.
  *
  * @typedef {Object} TappingDifficulty
  * @property {number}  rank     Performance-difficulty rank 1–7 (the ★ count in
- *                              TAPPING_RESEARCH.md's 16-level table, mapped onto
+ *                              research/TAPPING_RESEARCH.md's 16-level table, mapped onto
  *                              the 31 chapters).
  * @property {string}  scaffold Short scaffolding/curve note (what to coach), esp.
  *                              at the inflection points.
  * @property {boolean} [inflection] True at the three inflection points called
- *                              out in TAPPING_RESEARCH.md: syncopation (Ch9, the
+ *                              out in research/TAPPING_RESEARCH.md: syncopation (Ch9, the
  *                              first hand independence), the 2:3 polyrhythm
  *                              gateway (Ch13), and the polymeter ceiling (Ch30).
  */
@@ -178,7 +178,7 @@
  * @typedef {Object} Level
  * @property {string}   id          Stable level id, e.g. `'ch1'`, `'ch5'`.
  * @property {number}   hallChapter Hall "Studying Rhythm" chapter number.
- * @property {string}   title       Display title (from HALL_CURRICULUM.md).
+ * @property {string}   title       Display title (from research/HALL_CURRICULUM.md).
  * @property {Meter}    meter        Meter descriptor (see {@link Meter}).
  * @property {BeatUnit} beatUnit    The note value that gets one beat.
  * @property {string[]} newSkills   Skill ids FIRST introduced at this level.
@@ -207,7 +207,7 @@
  *                                  composite) and `tapping.voices:2`; every other
  *                                  chapter sets both to `1`.
  * @property {TappingDifficulty} tappingDifficulty Per-level performance-
- *                                  difficulty metadata from TAPPING_RESEARCH.md
+ *                                  difficulty metadata from research/TAPPING_RESEARCH.md
  *                                  (see {@link TappingDifficulty}).
  * @property {boolean}  [approxFigures] True when `newSkills`/`figures` are
  *                                  approximate placeholders because the spec is
@@ -249,7 +249,7 @@ export const SKILLS = [
   // Ch7: dotted eighths in simple meter.
   { id: 'dotted-eighth-sixteenth',        name: 'Dotted eighth + sixteenth',    kind: 'simple-quarter', introLevel: 7 },
   { id: 'sixteenth-dotted-eighth',        name: 'Sixteenth + dotted eighth',    kind: 'simple-quarter', introLevel: 7 },
-  // HALL_CATALOG.md §refinements: "Add double-dotted figures (Ch 7) — absent from the
+  // research/HALL_CATALOG.md §refinements: "Add double-dotted figures (Ch 7) — absent from the
   // plan's bank." Ch7 is marked "READY (− double-dots)" there. The double-dotted figures
   // are NOT yet in solo-mode.js's `medium` bank (needs-assets art), so we register them as
   // a NON-figure CONCEPT (isFigure:false → excluded from `figures` and from the
@@ -469,7 +469,7 @@ const LEVEL_DEFS = [
     id: 'ch7', hallChapter: 7, title: 'Dotted Eighths in Simple Meter',
     meter: { kind: 'simple', timeSignatures: ['2/4', '3/4', '4/4'], beatsPerMeasure: [2, 3, 4] },
     beatUnit: 'quarter', assetPrefix: 'medium',
-    // HALL_CATALOG.md adds double-dots to Ch7 (`concept:double-dot`). It is a NON-figure
+    // research/HALL_CATALOG.md adds double-dots to Ch7 (`concept:double-dot`). It is a NON-figure
     // concept (no bank art yet), so ch7 stays buildStatus 'ready': its two generatable
     // figures (dotted-eighth-sixteenth, sixteenth-dotted-eighth) already exist in the bank.
     // The double-dot refinement is tracked as a concept rather than silently dropped.
@@ -856,9 +856,9 @@ const LEVEL_DEFAULTS = {
 };
 
 /* ---------------------------------------------------------------------------
- * TAPPING performance-difficulty per chapter (grounded in TAPPING_RESEARCH.md).
+ * TAPPING performance-difficulty per chapter (grounded in research/TAPPING_RESEARCH.md).
  *
- * TAPPING_RESEARCH.md grades a 16-level PERFORMANCE ladder (★1–7) and tags each
+ * research/TAPPING_RESEARCH.md grades a 16-level PERFORMANCE ladder (★1–7) and tags each
  * Hall chapter cluster. We carry that per-chapter onto our 31 matched levels as
  * a difficulty `rank` (1–7) + a short `scaffold` note. The three INFLECTION
  * points the research calls out — syncopation (Ch9, hands first disagree), the

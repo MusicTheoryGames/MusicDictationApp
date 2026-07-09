@@ -1,6 +1,6 @@
 # Melodic Dictation Curriculum — the level-by-level ladder
 
-Companion to `HALL_CURRICULUM.md` / `HALL_CATALOG.md` (the rhythm ladder) and
+Companion to `research/HALL_CURRICULUM.md` / `research/HALL_CATALOG.md` (the rhythm ladder) and
 `core/curriculum.js` (the coded 31-chapter rhythm spine). This document designs the
 **MELODIC** side: a ladder that takes a student who has *no idea how to do melodic
 dictation* to genuine multi-phrase competence, built in **layers**, notation LAST.
@@ -197,7 +197,7 @@ rhythm, it borrows the rhythm ladder. **Mode** is the primary app exercise mode(
 | **M17** | **Multi‑phrase dictation (period)** | R·D·N | full octave, antecedent/consequent period | Hall Ch 6–12 mixed | many maj/min keys ≤3 ♯/♭ | Full notation entry | Notate an 8‑bar period, both keys/modes | needs-build |
 | **M18** | **First chromatic note** — the tritone & alterations | R·D·N | +tritone (RCM L8), passing chromaticism | Hall Ch 9/12 | maj/min ≤3 ♯/♭ | Error‑detection + notation | Hear + notate a chromatic non‑diatonic tone | needs-build |
 | **M19** | **Modulation to the dominant/relative** | R·D·N | pivot to V (`generateModulatingMelody`: antecedent half‑cadences in the home key, consequent cadences in the dominant) | Hall Ch 6–15 | modulating | Recognition → notation | Detect where key changes; notate both keys | generator ready |
-| **M20** | **Two‑part / two‑voice melodic dictation** | R·D·N | two simultaneous melodic lines (`generateTwoPartMelody`, first‑species counterpoint: no crossing, no parallel perfects, strong‑beat consonance) | Hall Ch 1+ duets (2‑voice) | maj/min | Voice‑attention → one‑voice dictation → full two‑voice notation (all three rungs SHIPPED) | Identify + dictate the voices of a duet | generator ready (rungs 1–2) |
+| **M20** | **Two‑part / two‑voice melodic dictation** | R·D·N | two simultaneous melodic lines (`generateTwoPartMelody`, note‑against‑note — NOT strict first species: no crossing always, but the parallel‑perfect ban is dropped under a starved search and weak‑beat dissonance is unchecked; see VISION.md §9) | Hall Ch 1+ duets (2‑voice) | maj/min | Voice‑attention → one‑voice dictation → full two‑voice notation (all three rungs SHIPPED) | Identify + dictate the voices of a duet | shipped (all three rungs) |
 | **M21** | **Modal mixture** — borrowed color | R·D·N | ♭6̂ borrowed from the parallel minor into a major melody (classic 6̂→5̂ mixture gesture) | Hall Ch 9/12 | maj ≤3 ♯/♭ | Error‑detection + notation | Hear + notate a borrowed (mixture) tone | generator ready |
 | **M22** | **Secondary dominant color** | R·D·N | raised 4̂ (V/V) resolving up to 5̂ | Hall Ch 9/12 | maj/min ≤3 ♯/♭ | Error‑detection + notation | Hear + notate a secondary-dominant color tone | generator ready |
 | **M23** | **Church modes** | R·D·N | dorian, phrygian, lydian, mixolydian, locrian (full 7‑degree collections) | Hall Ch 6–12 mixed | D dorian / E phrygian / F lydian / G mixolydian / B locrian | Recognition → labeling → notation | Hear + notate melodies in a named mode | generator ready |
@@ -205,7 +205,7 @@ rhythm, it borrows the rhythm ladder. **Mode** is the primary app exercise mode(
 | **M25** | **Irregular & changing meter** | R·D·N | full diatonic pitch material: 5/8 (2+3) and 7/8 (2+2+3) group‑aligned; mid‑piece changing‑simple meter via `meterSequence` (sig restated at every change, Hall Ch19; simple↔compound with ♪=♪/♩=♩. equivalence markings — SHIPPED) | Hall Ch 13+/19 | maj/min ≤3 ♯/♭ | Notation entry | Notate a phrase in an irregular or changing meter | generator ready |
 | **M26** | **Composition capstone** | R·D·N | modulation (M19) + mixture (M21) + secondary dominant (M22) combined in one piece (`generateModulatingMelody` with color flags), color confined to the antecedent BY CONSTRUCTION so the post‑modulation consequent stays cleanly diatonic to the new key | Hall Ch 6–15 mixed | maj/min, modulating | Full notation entry | Notate an 8‑bar piece that both modulates and carries color tones | generator ready |
 
-**Known runtime gap (CONFORMANCE_AUDIT.md §A5, registered honestly):** M19's
+**Known runtime gap (history/CONFORMANCE_AUDIT.md §A5, registered honestly):** M19's
 "→ notation" and M24's notation on the whole-tone/octatonic collections mount
 RECOGNITION instead — degree labels/entry are single-diatonic-key concepts, and
 a modulation/collection-aware notation grader is not built yet. M24's
@@ -435,8 +435,10 @@ count, two-part placement — depend on those answers.)*
   band (`kids-mode-design-principles.md`): playful frame, authentic notation only once the
   staff appears at M9, guided-only. The kids cutoff (simple meters + intro compound) lands
   around M15.
-- **Two-part is the shared engine gap.** M20 needs the same two-voice engine the rhythm
-  duet needs (`tapping-handswap-duet-design.md`); building one benefits both games.
+- **Two-part is BUILT for melody, still open for rhythm.** M20's two-voice engine shipped
+  (`generateTwoPartMelody`, all three rungs). The rhythm *duet* — one line per hand — remains
+  unbuilt. An earlier version of this line called two-part "the shared engine gap" long after the
+  melodic half shipped; that claim propagated into four other documents. See `VISION.md` §9.
 
 ---
 
@@ -466,7 +468,7 @@ count, two-part placement — depend on those answers.)*
 
 ## Sources
 
-- **Rhythm ladder:** `HALL_CURRICULUM.md`, `HALL_CATALOG.md`, `core/curriculum.js`
+- **Rhythm ladder:** `research/HALL_CURRICULUM.md`, `research/HALL_CATALOG.md`, `core/curriculum.js`
   (Hall & Urban, *Studying Rhythm*, 4th ed. — progression only; app generates its own rhythms).
 - **Pitch / aural progression:** RCM **Piano Syllabus, 2022 Edition** (current) and **2015
   Edition** — directly-extracted aural-skills ("Ear Tests") scope-and-sequence: interval

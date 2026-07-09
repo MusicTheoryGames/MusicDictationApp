@@ -5,7 +5,7 @@
  *
  * These tests verify the curriculum DATA (curriculum.js) and the pure
  * traversal LOGIC (ladder.js) against:
- *   - HALL_CURRICULUM.md  (the Hall chapter → meter/idea progression)
+ *   - research/HALL_CURRICULUM.md  (the Hall chapter → meter/idea progression)
  *   - CURRICULUM_PLAN.md   (the chapter → level wiring spec)
  *   - solo-mode.js         (the canonical figure-bank IDs)
  */
@@ -194,7 +194,7 @@ test('topoSort: throws on a cycle', () => {
 });
 
 /* ===========================================================================
- * SECTION 3 — level shapes match HALL_CURRICULUM.md / CURRICULUM_PLAN.md
+ * SECTION 3 — level shapes match research/HALL_CURRICULUM.md / CURRICULUM_PLAN.md
  * =========================================================================*/
 
 test('levels: encode the COMPLETE Hall book — all 31 chapters', () => {
@@ -221,7 +221,7 @@ test('levels: ids are unique and of the form chN matching hallChapter', () => {
 });
 
 /**
- * Expected meter + beat unit per chapter, transcribed from HALL_CURRICULUM.md
+ * Expected meter + beat unit per chapter, transcribed from research/HALL_CURRICULUM.md
  * and CURRICULUM_PLAN.md §A. {ts:[...], beats:[...], kind, beatUnit, prefix}
  */
 const EXPECTED_METER = {
@@ -369,7 +369,7 @@ test('scraper: soloModeFigureIds is scoped to declared figure-id forms (not any 
 });
 
 test('skills: HALL_CATALOG Ch7 double-dot refinement is present, flagged, and bank-safe', () => {
-  // HALL_CATALOG.md explicitly adds double-dotted figures to Ch7. They have no bank art
+  // research/HALL_CATALOG.md explicitly adds double-dotted figures to Ch7. They have no bank art
   // yet, so they live as a NON-figure concept: present in ch7.newSkills, excluded from
   // ch7.figures, and skipped by the solo-mode cross-check (so it cannot break it).
   const dd = SKILL_BY_ID.get('concept:double-dot');

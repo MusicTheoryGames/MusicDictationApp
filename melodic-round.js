@@ -233,7 +233,7 @@ export function buildRound(L, keyChoiceValue, seed, opts = {}) {
   let selectionMeta = null;
   // M20 two-part: rung 1 (voice-attention over the duet) and rung 2 (dictate ONE
   // voice of the duet with the other audible) alternate by seed —
-  // TWO_VOICE_ENGINE_PLAN.md §5's rung-in order, both feeding the same generator.
+  // the M20 rung order (VISION.md §9), both feeding the same generator.
   if (L.exerciseMode === 'two-part') {
     const tp = generateTwoPartMelody({ ...baseSpec, leaps: ['step', '3rd'] });
     const rung = seed % 3; // 0 voice-attention · 1 one-voice dictation · 2 FULL two-voice

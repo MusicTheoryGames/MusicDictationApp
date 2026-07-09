@@ -1,6 +1,6 @@
 /**
  * @file core/melodic-conformance.test.js
- * CONFORMANCE_AUDIT.md §C7 — the sweep that verifies the curriculum DATA and
+ * history/CONFORMANCE_AUDIT.md §C7 — the sweep that verifies the curriculum DATA and
  * the GENERATOR can actually serve everything MELODIC_CURRICULUM.md prescribes:
  * every level × every meters[] × every hallRhythmRefs[] × its lengthBars
  * produces a valid, bar-filling melody. This is the test that would have caught

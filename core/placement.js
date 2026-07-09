@@ -26,8 +26,8 @@
  *      the ~80–85% success band, Wilson's "85% rule"), plus a no-math 1-up /
  *      2-down staircase fallback.
  *
- * See ARCHITECTURE_RESEARCH.md §B ("Placement/adaptive = Elo-for-students") and
- * LEVEL_SYSTEM_RESEARCH.md §2 ("Placement / adaptive testing").
+ * See VISION.md §9 §B ("Placement/adaptive = Elo-for-students") and
+ * research/LEVEL_SYSTEM_RESEARCH.md §2 ("Placement / adaptive testing").
  *
  * Scale conventions:
  *   - `theta` (θ): learner ability, logits. Higher = more able.

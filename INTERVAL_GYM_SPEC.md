@@ -1,8 +1,12 @@
 # INTERVAL GYM — implementation & integration specification (v1)
 
-Companion to `INTERVAL_TRAINING_RESEARCH.md` (the evidence and market case) and
+> **Corrected 2026-07-09.** Build-status lines in this document had rotted; the architecture had not.
+> `VISION.md` is the source of truth for what exists today.
+
+Companion to `research/INTERVAL_TRAINING_RESEARCH.md` (the evidence and market case) and
 `MELODIC_RENDERER_SPEC.md` / `MELODIC_ENGINE_SPEC.md` (the contracts this reuses).
-Status: **specification for owner review — no code ships until approved.** Every
+Status: **SHIPPED.** `core/gym.js` and `melodic-gym.js` are imported and mounted by
+`melodic-game.html`. This document is the contract they implement, not a proposal. Every
 API named below either exists today (marked ✓, with its real location) or is
 declared as NEW with its full contract.
 

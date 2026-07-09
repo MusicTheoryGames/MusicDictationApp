@@ -1399,18 +1399,33 @@ export function distractors(correct, opts = {}) {
 }
 
 /* ============================================================================
- * §6c  TWO-PART — generateTwoPartMelody(spec)  (M20; TWO_VOICE_ENGINE_PLAN.md)
+ * §6c  TWO-PART — generateTwoPartMelody(spec)  (M20; VISION.md §9)
  *
- * FIRST SPECIES (note-against-note, the plan's default entry rung): the TOP
- * voice is a normal generateMelody result, untouched; the BOTTOM voice walks
- * the SAME rhythm one register down, constrained by counterpoint filters fed
- * through chooseNextHarmonic's filter hook:
+ * NOTE-AGAINST-NOTE two-voice writing. This is NOT strict first species and must
+ * not be described as such (see VISION.md §9).
+ *
+ * The TOP voice is a normal generateMelody result, untouched; the BOTTOM voice
+ * walks the SAME rhythm one register down, constrained by the `counterpoint`
+ * filter below, fed through chooseNextHarmonic's filter hook:
  *   - no voice crossing (bottom strictly below the top; unison allowed only at
- *     the final cadence),
+ *     the final cadence) — enforced at every stage,
  *   - no parallel 5ths/octaves (both voices moving the same direction into a
- *     perfect interval equal to the previous one),
- *   - strong beats prefer consonance (3rds/6ths favored; 5th/octave allowed;
- *     2nds/7ths/tritones rejected on strong beats).
+ *     perfect interval equal to the previous one) — enforced at stages 1 and 2,
+ *     but DROPPED by the stage-3 fallback when the search is starved, and by the
+ *     cadence placer when every in-range tonic would be parallel,
+ *   - consonance on STRONG BEATS ONLY. Weak-beat vertical dissonance is never
+ *     checked by any stage — it is not a relaxed rule, it was never a rule.
+ *
+ * So exactly ONE rule is relaxed under starvation: the parallel-perfect ban.
+ * A narrow spec (few degrees, step-only) reaches stage 3 within a few seeds and
+ * emits non-final parallel perfects — pinned by the characterization test
+ * "a narrow spec starves the search into stage 3" in core/melodic.test.js.
+ *
+ * Reachability today: only m20 calls this, via melodic-round.js, with degrees 1-7
+ * and a key-shifted range around 48-79. No shipping level has been SHOWN to starve
+ * the search — but that is not a proof that none can. Do not claim unreachability.
+ * Good enough to DICTATE a duet; NOT good enough to TEACH counterpoint, which is
+ * why CounterQuest needs its own species engine.
  * Data model per the plan: { voices: [Melody, Melody] } — each voice is a full
  * ordinary Melody, so every single-voice consumer works on either voice as-is.
  * ========================================================================== */
@@ -1480,11 +1495,12 @@ export function generateTwoPartMelody(spec) {
         if (pos.isStrong && ![0, 3, 4, 7, 8, 9].includes(pc)) return false;
         return true;
       };
-      // FINAL NOTE: hard-place the cadence tonic (the plan: both voices cadence
-      // together). Among in-range tonic positions at/below the top's final note,
-      // pick the nearest to the current position that avoids a parallel perfect;
-      // if every octave choice would be parallel (rare), take the nearest anyway
-      // and let it stand as a cadential hidden octave (documented in the plan).
+      // FINAL NOTE: hard-place the cadence tonic (both voices cadence together).
+      // Among in-range tonic positions at/below the top's final note, pick the
+      // nearest to the current position that avoids a parallel perfect; if every
+      // octave choice would be parallel (rare), take the nearest anyway. The
+      // result is a genuine PARALLEL PERFECT into the cadence — not a "hidden"
+      // or direct octave, which is a different thing. Older docs mislabel it.
       if (isFinal && degrees.includes(1)) {
         const cands2 = [];
         for (let oct = -4; oct <= 4; oct++) {
@@ -1509,13 +1525,18 @@ export function generateTwoPartMelody(spec) {
         }
       }
       const preferDegree = isFinal && degrees.includes(1) ? 1 : null;
-      // STAGED SEARCH: the counterpoint rules are hard requirements, so when the
-      // normal leap-reach offers no legal candidate we WIDEN THE REACH before we
-      // would ever relax a rule (the plan's tests assert the rules absolutely):
-      //   1. level's own leaps, full rules; 2. widened leaps (through the octave),
-      //   full rules; 3. widened leaps, parallel rule dropped (rare corner; still
-      //   consonant + uncrossed). chooseNextHarmonic soft-fallbacks internally, so
-      //   each stage's RESULT is re-verified against the stage's own filter.
+      // STAGED SEARCH: widen the reach before relaxing a rule, but DO relax one if
+      // widening still finds nothing. Stages, in order:
+      //   1. level's own leaps, full counterpoint filter;
+      //   2. widened leaps (through the octave), full counterpoint filter;
+      //   3. widened leaps, PARALLEL-PERFECT BAN DROPPED (still uncrossed, still
+      //      consonant on strong beats).
+      // So stage 3 can emit parallel fifths/octaves. This output is therefore NOT
+      // strict first species, and must not be used to teach counterpoint — see
+      // VISION.md §5 (CounterQuest) and §9. Note the filter only requires vertical
+      // consonance on STRONG beats; weak-beat dissonance is unconstrained at every
+      // stage. chooseNextHarmonic soft-fallbacks internally, so each stage's RESULT
+      // is re-verified against that stage's own filter.
       const widened = { ...stepParams, leaps: ['step', '3rd', 'P4', 'P5', '6th', 'P8'] };
       const noParallel = (c) => {
         if (isFinal ? c.midi > topMidi : c.midi >= topMidi) return false;

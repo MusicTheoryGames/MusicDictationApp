@@ -714,8 +714,9 @@ const RENDERERS = {
 
 /* The guided ladder: every level the engine + renderers can actually PLAY today.
    m2 (rhythm-first) plays as the EMBEDDED real rhythm game via solo-mode.js's
-   external-target seam. Excluded honestly: m20 (two-part — needs the two-voice
-   engine, the shared duet gap). */
+   external-target seam. m20 (two-part) IS included — the two-voice engine and
+   all three rungs ship. (An earlier comment here claimed m20 was excluded; it
+   was false, and it misled two later planning documents. See VISION.md §9.) */
 const PLAYABLE = melodicLadder().filter((L) =>
   L.pitch.degrees && L.pitch.degrees.length &&
   (RENDERERS[L.exerciseMode] || L.modulation || (L.symmetricCollections || []).length));
@@ -726,7 +727,7 @@ const PLAYABLE = melodicLadder().filter((L) =>
    GUIDE gate (its capstone/hand-swap parts are rhythm-performance-specific). ---- */
 const STORE_KEY = 'melodic-guided-v1';
 
-/* PLACEMENT (LEVEL_SYSTEM_RESEARCH.md §1, the StaffCommander-validated flow):
+/* PLACEMENT (research/LEVEL_SYSTEM_RESEARCH.md §1, the StaffCommander-validated flow):
    self-select a tier card -> a capped NO-FAIL in-engine assessment (16 items,
    easiest mode = recognition, PASS = 0.85). Pass -> placed one step AHEAD of the
    tier's top; fail -> step DOWN one tier and re-test (gentle, re-validated).
@@ -744,7 +745,7 @@ const TIERS = [
 ];
 let placement = null; // {tierIdx, item, correct} while an assessment runs
 
-/* DAILY CHALLENGES (LEVEL_SYSTEM_RESEARCH.md §1: "3/day, date-seeded (FNV-1a
+/* DAILY CHALLENGES (research/LEVEL_SYSTEM_RESEARCH.md §1: "3/day, date-seeded (FNV-1a
    hash -> deterministic, no server)") + daily streak with a STREAK-FREEZE
    (§2's prescribed anxiety slack — one missed day can be absorbed). */
 function fnv1a(str) {
@@ -818,7 +819,7 @@ function renderDaily() {
   }
 }
 
-/* XP ranks (LEVEL_SYSTEM_RESEARCH.md: XP = +1/correct +50/mastery event; 11 named
+/* XP ranks (research/LEVEL_SYSTEM_RESEARCH.md: XP = +1/correct +50/mastery event; 11 named
    ranks, Beginner -> Maestro). Untimed by design: the same doc's strongest DON'T is
    time-based scoring for dictation. */
 const RANKS = [
@@ -1016,7 +1017,7 @@ function checkAchievements(extra = {}) {
   return unlocked;
 }
 const PROFICIENT_FLOOR = 80;
-/* The ONE mastery-event gem formula (LEVEL_SYSTEM_RESEARCH.md): 25 base +
+/* The ONE mastery-event gem formula (research/LEVEL_SYSTEM_RESEARCH.md): 25 base +
    score/120 + a clean-play bonus. Shared by ladder level-ups AND Interval Gym
    circuit completions so their reward is identical, not approximated. */
 function masteryEventGems(eventScore, cleanRate) {
@@ -1034,7 +1035,7 @@ function load() {
   if (!Number.isFinite(d.sessionStart)) d.sessionStart = Date.now();
   // Spaced review (core/review.js Leitner boxes): one entry per PASSED level.
   if (!d.review || !Array.isArray(d.review.entries)) d.review = { entries: [] };
-  // Gamification (LEVEL_SYSTEM_RESEARCH.md: volatile score + XP ranks + gems +
+  // Gamification (research/LEVEL_SYSTEM_RESEARCH.md: volatile score + XP ranks + gems +
   // achievements, decoupled from sticky mastery — score can never cost progress).
   if (!Number.isFinite(d.score)) d.score = 0;
   if (!Number.isFinite(d.xp)) d.xp = 0;
@@ -1087,7 +1088,7 @@ function idTag(id) { return id.toUpperCase().replace('_', '.'); } // internal/de
 // Position is the level's place in the playable order (inserted half-steps count too).
 function levelLabel(L) { return 'Level ' + (PLAYABLE.findIndex((x) => x.id === L.id) + 1); }
 
-/* MOTIVATION BAR (owner: the gamification exists — LEVEL_SYSTEM_RESEARCH.md — but
+/* MOTIVATION BAR (owner: the gamification exists — research/LEVEL_SYSTEM_RESEARCH.md — but
    a beginner can't SEE points/progress/streak). Surfaces them prominently on the
    card: a live streak badge, the M0 journey (or a level-up progress on other
    rungs), the running score, and an always-visible NEXT GOAL. Built from state
@@ -1340,7 +1341,7 @@ const M2_LAST_STAGE = M2_STAGE_NAMES.length - 1;               // capstone gate 
 // rhythm-first with an identity phase). Each entry stages the GENERATED vocabulary (degrees/leaps) +
 // rhythm per stage; the RENDERERS are unchanged (generation-agnostic). Generic handlers below read this
 // map for newRound gating, journey pips, clean-in-a-row advancement, and the capstone gate. Every stage
-// must stay within DEGREE/LEAP_INTRO_MINDEX and fold in L1–4 (see LEVELS_4_10_ROBUSTNESS.md stacking spine).
+// must stay within DEGREE/LEAP_INTRO_MINDEX and fold in L1–4 (see history/LEVELS_4_10_ROBUSTNESS.md stacking spine).
 //   degrees/leaps/hallRefs: per-stage arrays (null = keep the level's own). K: clean-in-a-row to advance.
 const STAGE_LADDERS = {
   // L7 — the sharpest "too fast" jump: introduce 4̂, then 5̂ + triad skips, then richer rhythm. one at a time.
@@ -2156,7 +2157,7 @@ function onRoundResult(L, result) {
       tileProgress = { done: Math.min(n, advLad.K), total: advLad.K, label: advLad.names[cur] + ' — ' + n + '/' + advLad.K + ' in a row' };
     }
   }
-  // VOLATILE SCORE (BeatQuest's economy, per LEVEL_SYSTEM_RESEARCH.md's decoupled
+  // VOLATILE SCORE (BeatQuest's economy, per research/LEVEL_SYSTEM_RESEARCH.md's decoupled
   // currencies): accuracy-scaled base + a clean-streak combo bonus. Untimed —
   // never speed-scored. A wrong answer earns nothing but never subtracts (mastery
   // already applies the learning penalty; score is the thrill meter, not the gate).
@@ -2546,7 +2547,7 @@ function openGym() {
 }
 // Interval Gym opens from the Practice menu (openPracticeMenu).
 
-/* SKILLS GYM (SKILLS_GYM_PLAN.md) — endless, auto-tuning practice of the M0/M1 foundation.
+/* SKILLS GYM (VISION.md §6) — endless, auto-tuning practice of the M0/M1 foundation.
    Refreshes retention (mastery + due reviews) but never advances the ladder. */
 let skillsGymMount = null;
 function closeSkillsGym() {
@@ -3026,7 +3027,7 @@ if (!S.onboarded && S.levelIdx === 0 && !Object.keys(S.items).length) {
   })();
 </script>
 <!-- Dev-only version tag (confirms which build deployed). Kept tiny + faint; the changelog lives in
-     git + LEVELS_4_10_ROBUSTNESS.md, NOT on the student's screen. -->
+     git + history/LEVELS_4_10_ROBUSTNESS.md, NOT on the student's screen. -->
 <div id="buildStamp" style="position:fixed;bottom:4px;right:8px;opacity:.28;font:10px -apple-system,sans-serif;z-index:998;pointer-events:none;">2026-07-05-DQ</div>
 </body>
 </html>

@@ -26,8 +26,8 @@
  *   - A skill ENTERS the queue at box 1 the moment it is first mastered in its
  *     game; from then on the scheduler owns its review cadence.
  *
- * See STRATEGY_AND_ROADMAP.md ("per-student mastery tracking + spaced
- * repetition") and HALL_CURRICULUM.md (skillId ↔ curriculum chapters/tiers).
+ * See VISION.md §2 ("per-student mastery tracking + spaced
+ * repetition") and research/HALL_CURRICULUM.md (skillId ↔ curriculum chapters/tiers).
  *
  * @module core/review
  */
