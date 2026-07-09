@@ -691,7 +691,7 @@
      2-measure dictation rounds, no-fail), and: pass (>=85%) -> the guided
      path STARTS AT that chapter with everything below marked proficient;
      fail -> back up one tier and test again, until the fit is found.
-     Mirrors MelodyQuest's flow; grounded in LEVEL_SYSTEM_RESEARCH.md §1.
+     Mirrors MelodyQuest's flow; grounded in research/LEVEL_SYSTEM_RESEARCH.md §1.
      Entirely additive: nothing here runs unless PLACE.active or the fresh-
      boot offer fires (suppressed under all test seams).
      ======================================================================== */
@@ -4632,7 +4632,10 @@
     document.body.classList.remove('login-mode');
     // Solo has no classroom — hide the "Connected to Room / Status" bar entirely.
     var statusBar = document.querySelector('.status-bar'); if (statusBar) statusBar.style.display = 'none';
-    rs.connected = true;
+    // `rs.connected` does NOT mean "joined a room" — no classroom transport exists
+    // (VISION.md §9). It is rhythm-student.js's flag for "the game surface is live and
+    // may accept input". Named badly, load-bearing, renamed when the room lands.
+    rs.connected = true;   // = game surface active, NOT a network connection
     buildHud();
     applyModeChrome();
     // Live theme switch INTO Kids mid-session: force guided + rebuild (the config

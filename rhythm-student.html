@@ -1108,26 +1108,36 @@
     </div>
 
     <!-- Login Form -->
+    <!-- Pre-game splash, shown only when this page is opened WITHOUT ?mode=solo.
+         index.html links ?mode=solo, so wireEntry() auto-starts the game and this
+         never appears (VISION.md §8.5). Classroom mode has no student transport in
+         this build, so it is stated as unavailable rather than offered as a choice.
+         The name/room inputs and #joinBtn stay in the DOM (hidden) because
+         rhythm-student.js:setupEventListeners binds them unconditionally on all
+         four pages that load it. -->
     <div class="login-form" id="loginForm">
-        <h2 style="text-align: center; margin-bottom: 20px;">Join Rhythm Session</h2>
-        <div class="form-group">
+        <h2 style="text-align: center; margin-bottom: 8px;">BeatQuest</h2>
+        <p style="text-align:center;opacity:.8;line-height:1.5;margin:0 0 20px">
+            Rhythm dictation — hear it, build it, and check it across every meter.
+        </p>
+        <button class="btn-login" id="soloBtn" style="background:linear-gradient(45deg,#16c2b0,#0e9e8e)">Start practising</button>
+        <p style="text-align:center;opacity:.6;font-size:.85rem;margin:18px 0 0">
+            Classroom mode — joining your teacher's room — is not available yet.
+        </p>
+        <div hidden aria-hidden="true">
             <label for="studentName">Your Name:</label>
-            <input type="text" id="studentName" placeholder="Enter your name" value="Test Student" required>
-        </div>
-        <div class="form-group">
+            <input type="text" id="studentName" placeholder="Enter your name">
             <label for="roomCode">Room Code:</label>
-            <input type="text" id="roomCode" placeholder="Enter room code" value="TEST123" required>
+            <input type="text" id="roomCode" placeholder="Enter room code">
+            <button id="joinBtn" type="button" disabled>Join Session</button>
         </div>
-        <button class="btn-login" id="joinBtn">Join Session</button>
-        <div style="text-align:center;margin:14px 0 4px;opacity:.7;font-size:.85rem">— or —</div>
-        <button class="btn-login" id="soloBtn" style="background:linear-gradient(45deg,#16c2b0,#0e9e8e)">Practice on your own</button>
     </div>
 
     <!-- Game Area -->
     <div class="game-area" id="gameArea">
         <div class="status-bar">
             <div>Connected to Room: <strong id="connectedRoom">-</strong></div>
-            <div>Status: <span id="connectionStatus">Connected</span></div>
+            <div>Status: <span id="connectionStatus">Not connected</span></div>
         </div>
 
         <!-- Answer staff on top (your work); rhythm bank below as the palette -->

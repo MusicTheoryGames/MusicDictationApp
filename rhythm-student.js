@@ -351,54 +351,31 @@ class RhythmStudent {
         });
     }
 
+    /**
+     * Classroom join. THERE IS NO TRANSPORT IN THIS BUILD.
+     *
+     * This repo contains no student client for the `rhythm-rooms/*` schema that
+     * rhythm-teacher.js broadcasts on. Until one exists, this must say so.
+     *
+     * It previously hid the login form, wrote "Connected" into #connectionStatus,
+     * flashed "Connected to rhythm session!", and then fed the page fabricated
+     * teacher messages on a setTimeout — so a teacher standing in front of a class
+     * saw a connected student who was connected to nothing. See VISION.md rule 12
+     * (the app never lies to the user) and §9.
+     */
     joinSession() {
-        console.log('joinSession called');
-        this.studentName = document.getElementById('studentName').value.trim();
-        this.roomCode = document.getElementById('roomCode').value.trim().toUpperCase();
-        console.log('Name:', this.studentName, 'Room:', this.roomCode);
-
-        if (!this.studentName || !this.roomCode) {
-            this.showFeedback('Please enter both your name and room code', 'error');
-            return;
-        }
-
-        // Hide login form, show game area
-        document.getElementById('loginForm').classList.add('hidden');
-        document.getElementById('gameArea').classList.add('active');
-
-        // Update UI
-        document.getElementById('connectedRoom').textContent = this.roomCode;
-        document.getElementById('connectionStatus').textContent = 'Connected';
-
-        this.connected = true;
-
-        // In a real implementation, this would connect to WebSocket server
-        this.setupWebSocket();
-        this.showFeedback('Connected to rhythm session!', 'success');
-
-        // Initialize with default settings
-        this.updateGameSettings({
-            measureCount: 2,
-            difficulty: 'medium',
-            tempo: 100
-        });
+        this.showFeedback(
+            'Classroom mode is not available yet. Choose "Practice on your own" to play.',
+            'error'
+        );
     }
 
-    setupWebSocket() {
-        // In a real implementation, this would connect to your server
-        // For now, we'll simulate receiving messages from teacher
-        console.log(`Student ${this.studentName} connected to room ${this.roomCode}`);
-
-        // Simulate receiving initial settings
-        setTimeout(() => {
-            this.handleTeacherMessage('new-rhythm', {
-                measureCount: 2,
-                difficulty: 'medium',
-                tempo: 100
-            });
-        }, 1000);
-    }
-
+    /**
+     * Entry point for the classroom transport, once one exists: the room
+     * subscription will call this with each message the teacher broadcasts.
+     * Currently UNCALLED — nothing produces these messages. Do not delete; this is
+     * the seam the live room will attach to (VISION.md §7).
+     */
     handleTeacherMessage(type, data) {
         switch (type) {
             case 'new-rhythm':
