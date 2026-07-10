@@ -32,7 +32,7 @@ const server = http.createServer((req, res) => {
   let urlPath;
   try { urlPath = decodeURIComponent(req.url.split('?')[0]); }
   catch { urlPath = req.url.split('?')[0]; }
-  if (urlPath === '/') urlPath = '/home.html';
+  if (urlPath === '/') urlPath = '/index.html';   // index.html is the one hub
 
   const filePath = path.normalize(path.join(ROOT, urlPath));
   // Prevent path traversal outside the project root.
