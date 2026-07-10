@@ -1,7 +1,7 @@
 # Sight-singing trainer — research + build plan (mic-verified, zero → confident)
 
 A research + planning document for a NEW app in the suite (alongside MelodyQuest
-melodic dictation and BeatQuest rhythm dictation): a **sight-singing + ear-training
+melodic dictation and RhythmQuest rhythm dictation): a **sight-singing + ear-training
 trainer that listens to the student's voice through the microphone and verifies they
 are singing the correct pitch.** Working name in this doc: **SingQuest** (naming is an
 open question, §8).
@@ -194,7 +194,7 @@ for an unreachable note.
 | **S6 Scale degrees over a drone** | Sing any of **1̂ 2̂ 3̂ 5̂** on request over the drone (pentatonic-safe subset first). | Correct degree within ±50¢, 5/6. | This is the functional-ear core (§1.3); degrees, not intervals — the skill that transfers. |
 | **S7 Sing the pentascale / scale** | Sing **1̂–2̂–3̂–4̂–5̂** ascending and descending in tune. | Each note ±50¢, contour correct, no gross octave break. | Wide-range practice starts here (§1.2 — wide beats narrow); celebrates a whole run. |
 | **S8 Echo a short tonal phrase** | Hear 3–4 in-key notes, **sing them back** (short-span, tonal — audiation, Gordon). | Each note within ±60¢, correct order/contour. | Short spans only (working-memory-safe; see melodic research §2.4 — sing-back is fine on SHORT material). "Sing what you heard." |
-| **S9 Sing stepwise notated melodies** | **Read** a short stepwise diatonic melody on the staff and **sing it** (movable-do). First real sight-singing. | ≥80% of notes ±50¢, correct octave, steady tempo (rhythm from BeatQuest lockstep). | The "I'm actually reading music" milestone — keep melodies tiny and diatonic. |
+| **S9 Sing stepwise notated melodies** | **Read** a short stepwise diatonic melody on the staff and **sing it** (movable-do). First real sight-singing. | ≥80% of notes ±50¢, correct octave, steady tempo (rhythm from RhythmQuest lockstep). | The "I'm actually reading music" milestone — keep melodies tiny and diatonic. |
 | **S10 Melodies with small leaps** | Sight-sing melodies containing **3rds and tonic-triad skips**. | ≥80% notes ±50¢; leap landings within ±60¢. | Leaps land on stable triad tones first (1̂/3̂/5̂) — the anchors from S4/S6 pay off. |
 | **S11 Minor mode** | Find home in **minor** (♭3̂ color) and sing degrees/melodies in minor (LA-based). | Sing 1̂ and ♭3̂ in minor ±50¢; short minor melody ≥80%. | Orient the ear to minor *before* drilling it (memory: *minor orient-first*); "hear the darker third." |
 | **S12 Wider leaps** | P4, P5, 6ths, octave in melodies. | Leap landings ±60¢; ≥80% overall. | Bigger jumps, still anchored to function; octave leap is a crowd-pleaser. |
@@ -230,7 +230,7 @@ parts (`INTERVAL_GYM_SPEC.md` §5.4, phases G3–G5 marked DONE). SingQuest is l
 | Scale-degree / solfège labels | movable-do (major do-based, minor LA/DO fork), fixed-do, numbers | `core/melodic.js` `labelNote`/`labelPalette` | reuse as-is |
 | Melody generation for S9–S14 | `generateMelody` (degrees/leaps/range/meter/color-tone flags, deterministic under seed) | `core/melodic.js` | reuse; feed each SingQuest level its degree/leap set |
 | Staff rendering for reading | `renderStaff` / `renderStaffPartial` | `melodic-shell-services.js` (VexFlow) | reuse for S9+ |
-| Rhythm lockstep | Hall `hallRhythmRef` ids; BeatQuest rhythm vocabulary | `core/curriculum.js` | cite refs; rhythm graded progressively later (memory) |
+| Rhythm lockstep | Hall `hallRhythmRef` ids; RhythmQuest rhythm vocabulary | `core/curriculum.js` | cite refs; rhythm graded progressively later (memory) |
 | Mastery / coverage / review | `createItemState`/`recordAnswer`/`viewItemAsOf`, coverage gating, `review.createEntry` Leitner | `core/mastery.js`, `core/review.js` | new item keys `sing:<level>:<skill>` |
 | Placement seed | 3-bucket experience → adaptive staircase | `core/placement.js` | wire the vocal-range probe as the seed |
 | Accounts / cloud sync | StaffCommander Supabase model: handle+PIN, RLS deny-all + SECURITY DEFINER RPCs, ONE `data` jsonb per player | (per memory: *StaffCommander Supabase model*) | **namespace SingQuest progress** in the blob — `player_save` OVERWRITES, so merge or you wipe other apps' progress |
@@ -336,7 +336,7 @@ and the remaining renderers.
 | **Tolerance calibration** | ±50/±100¢ is a reasoned default, not measured for *our* users — **instrument it** in the first slice and tune. [gap] |
 | **Range probe failure for true amusics (~1.5%)** | A tiny minority genuinely can't perceive/produce; the app must **fail gracefully** — never trap them; offer perception-only games and generous self-check; frame as "voices vary." Do not diagnose. |
 | **Sing-back memory harm** | The melodic research warns forced sing-back can overwrite memory on LONG material — so S8 echo stays **short-span (3–4 notes)**, opt-in (memory + `MELODIC_DICTATION_RESEARCH.md` §2.4). |
-| **Account blob overwrite** | StaffCommander `player_save` OVERWRITES the whole `data` jsonb — SingQuest progress **must be namespaced/merged** or it wipes MelodyQuest/BeatQuest saves (memory). |
+| **Account blob overwrite** | StaffCommander `player_save` OVERWRITES the whole `data` jsonb — SingQuest progress **must be namespaced/merged** or it wipes MelodyQuest/RhythmQuest saves (memory). |
 | **Motivation under exposure** | Enforce: nothing recorded/uploaded (live, discarded); needle not verdict; generous early bands; growth-mindset copy; short daily sessions; octave credit. (§1.6) |
 | **Naming** | "SingQuest" fits the family; owner to confirm (vs "VoiceQuest", etc.). |
 | **Fixed-do vs movable-do default / minor syllables** | Recommend movable-do + LA-based minor as defaults (both implemented); expose the fork. Owner to confirm. |

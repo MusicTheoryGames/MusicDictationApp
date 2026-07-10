@@ -287,7 +287,7 @@
   .melodic-motivation__pip.is-active { background: #e6b800; box-shadow: 0 0 0 3px rgba(230,184,0,.3); } /* you-are-here: solid amber */
   /* Level 4 two-step meter (Rhythm -> Notes): dots, not "Step 1/Step 2" words */
   .melodic-rhythm-steps { display: flex; justify-content: center; gap: 8px; margin: 8px 0 12px; min-height: 11px; }
-  /* Native figure-tile rhythm entry (ported BeatQuest bank; white surfaces so the note glyphs read on every theme) */
+  /* Native figure-tile rhythm entry (ported RhythmQuest bank; white surfaces so the note glyphs read on every theme) */
   .melodic-rhythmentry__staff { display: flex; justify-content: center; min-height: 92px; overflow-x: auto; margin: 4px 0 10px; background: #fff; border-radius: 10px; padding: 6px; }
   .melodic-rhythmentry__empty { opacity: .65; font-size: .9rem; padding: 28px 6px; text-align: center; color: #333; }
   .melodic-rhythmentry__beats { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 2px 0 12px; }
@@ -470,13 +470,13 @@
   .melodic-arcade__actions { display: flex; gap: 10px; justify-content: center; }
 
   /* ============================================================================
-     NATIVE RHYTHM GRID (Level 4) — the ACTUAL BeatQuest drag-and-drop engine
+     NATIVE RHYTHM GRID (Level 4) — the ACTUAL RhythmQuest drag-and-drop engine
      (rhythm-student.js) mounted natively in MelodyQuest: no iframe, no chrome.
      These are the STRUCTURAL rules lifted verbatim from tapping.html's <style>
      (sizes, staff layout, bar lines, time-sig, drop zones, placed notes). The
      per-theme COLOURS already live in suite-theme.css (which this page loads) and
      layer on top via the same class names — so the grid looks/behaves exactly as
-     it does in BeatQuest. .mq-rhythm-native is just the MelodyQuest layout host.
+     it does in RhythmQuest. .mq-rhythm-native is just the MelodyQuest layout host.
      ============================================================================ */
   .mq-rhythm-native { display: flex; flex-direction: column; gap: 12px; width: 100%; align-items: stretch; }
   .mq-rhythm-native .answer-area { order: 1; }
@@ -663,7 +663,7 @@
     </div>
   </aside>
 
-<!-- Off-screen stubs so the REAL rhythm-student.js engine (the BeatQuest drag-and-drop,
+<!-- Off-screen stubs so the REAL rhythm-student.js engine (the RhythmQuest drag-and-drop,
      reused verbatim on Level 4) constructs without error: its setupEventListeners() queries
      #joinBtn/#studentName/#roomCode, and showFeedback() queries #feedback. We never call
      joinSession (no network) — we drive the engine directly via updateGameSettings/placeTile. -->
@@ -671,8 +671,8 @@
   <input id="studentName" type="text"><input id="roomCode" type="text"><button id="joinBtn" type="button"></button>
   <div id="feedback"></div>
 </div>
-<!-- The actual BeatQuest rhythm engine (class RhythmStudent -> window.rhythmStudent). Level 4
-     mounts its bank + staff into MelodyQuest's own containers; no iframe, no BeatQuest chrome. -->
+<!-- The actual RhythmQuest rhythm engine (class RhythmStudent -> window.rhythmStudent). Level 4
+     mounts its bank + staff into MelodyQuest's own containers; no iframe, no RhythmQuest chrome. -->
 <script type="module" src="rhythm-student.js?v=20260704-native"></script>
 <script src="melodic-teach-content.js"></script>
 <script type="module">
@@ -2157,7 +2157,7 @@ function onRoundResult(L, result) {
       tileProgress = { done: Math.min(n, advLad.K), total: advLad.K, label: advLad.names[cur] + ' — ' + n + '/' + advLad.K + ' in a row' };
     }
   }
-  // VOLATILE SCORE (BeatQuest's economy, per research/LEVEL_SYSTEM_RESEARCH.md's decoupled
+  // VOLATILE SCORE (RhythmQuest's economy, per research/LEVEL_SYSTEM_RESEARCH.md's decoupled
   // currencies): accuracy-scaled base + a clean-streak combo bonus. Untimed —
   // never speed-scored. A wrong answer earns nothing but never subtracts (mastery
   // already applies the learning penalty; score is the thrill meter, not the gate).
@@ -2337,7 +2337,7 @@ setTimeout(applyKidsChrome, 300); // after suite-theme applies the saved theme
 document.getElementById('nextBtn').style.display = 'none'; // hidden until a round is graded
 document.getElementById('nextBtn').onclick = newRound;
 
-/* FREE LEVEL JUMP — mirrors BeatQuest's level select: explore any rung without
+/* FREE LEVEL JUMP — mirrors RhythmQuest's level select: explore any rung without
    grinding the guided gate (owners/teachers preview; students can too — the
    guided mastery gate still governs ADVANCEMENT from wherever you are, and
    each level's mastery record is per-level, so jumping never corrupts progress. */

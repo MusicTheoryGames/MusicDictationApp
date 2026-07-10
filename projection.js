@@ -1,4 +1,4 @@
-// Beat Quest Projection Display
+// RhythmQuest Projection Display
 class ProjectionDisplay {
     constructor() {
         this.roomCode = '';

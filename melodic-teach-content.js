@@ -3,7 +3,7 @@
  *
  * TEACH / INTRO CONTENT for MelodyQuest's guided ladder — the short educational
  * intro shown before each new melodic concept, so the ladder feels guided
- * rather than guesswork. The melodic sibling of teach-content.js (BeatQuest);
+ * rather than guesswork. The melodic sibling of teach-content.js (RhythmQuest);
  * same delivery shape: a DATA-only file exposing one global. The game reads
  * `window.MELODIC_TEACH_CONTENT` (or the module export) and renders it.
  *

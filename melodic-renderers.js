@@ -2404,7 +2404,7 @@ export function createRhythmIdentityRenderer(host, ctx) {
   statusEl.className = 'melodic-notation-entry__status';
   host.appendChild(statusEl);
 
-  // ---------- Step 1: dictate the RHYTHM by placing FIGURE TILES onto the staff — the BeatQuest
+  // ---------- Step 1: dictate the RHYTHM by placing FIGURE TILES onto the staff — the RhythmQuest
   // figure bank, ported NATIVE (no iframe, no hints/quiet/metronome/tap-back). The bank is
   // filtered to the figures this melody actually uses (+ a couple of decoys). ----------
   let rhythmHadMistake = false;
@@ -2412,7 +2412,7 @@ export function createRhythmIdentityRenderer(host, ctx) {
   const truthFigs = conv ? figureIdSequence(conv) : null;
   if (T) T.rhythmFigTruth = truthFigs; // test seam: the correct figure-tile sequence
 
-  // ---- The REAL BeatQuest engine (rhythm-student.js -> window.rhythmStudent), reused verbatim.
+  // ---- The REAL RhythmQuest engine (rhythm-student.js -> window.rhythmStudent), reused verbatim.
   // We mount its bank + staff into MelodyQuest's own containers and drive it via its public API
   // (updateGameSettings / placeTile / userAnswer / onAnswerChanged) — no iframe, no chrome. ----
   // The engine singleton. Read fresh (it may be constructed a beat after first paint on a cold
@@ -2428,7 +2428,7 @@ export function createRhythmIdentityRenderer(host, ctx) {
     for (const fam in RS.rhythmPatterns) { const p = RS.rhythmPatterns[fam].find((x) => x.id === id); if (p) return p; }
     return null;
   }
-  // BeatQuest grades by rhythmic ONSETS, not tile choice (a half and quarter+rest sound the same).
+  // RhythmQuest grades by rhythmic ONSETS, not tile choice (a half and quarter+rest sound the same).
   // RES=840 = LCM(2..8) so every figure's attacks land on integer grid indices. (ported: solo-mode.js)
   const RES = 840;
   const DUR_BEATS = { w: 4, h: 2, hd: 3, q: 1, qd: 1.5, '8': 0.5, '8d': 0.75, '16': 0.25, '32': 0.125, wr: 4, hr: 2, qr: 1, '8r': 0.5, '16r': 0.25 };
@@ -2594,7 +2594,7 @@ export function createRhythmIdentityRenderer(host, ctx) {
   function grade() {
     if (destroyed || phase === 'done') return;
     phase = 'done';
-    // Graded by rhythmic ONSET — the BeatQuest engine's own semantics (a half and a quarter+rest
+    // Graded by rhythmic ONSET — the RhythmQuest engine's own semantics (a half and a quarter+rest
     // sound identical, so either grades correct). The native grid is the ONLY rhythm-entry path.
     const rhythmAccuracy = gradeRhythmNative().accuracy;
     let idAccuracy = 100, correct, text;
@@ -2615,7 +2615,7 @@ export function createRhythmIdentityRenderer(host, ctx) {
     ctx.onResult({ correct, clean: correct && !rhythmHadMistake, accuracy: identityPhase ? Math.round((rhythmAccuracy + idAccuracy) / 2) : rhythmAccuracy, meta: { rhythmAccuracy, idAccuracy } });
   }
 
-  // The native BeatQuest drag-and-drop grid is the ONLY rhythm-entry path. If the engine isn't up
+  // The native RhythmQuest drag-and-drop grid is the ONLY rhythm-entry path. If the engine isn't up
   // yet on a cold load, renderNativeGridPhase shows "Loading…" and waits for it — never word buttons.
   renderNativeGridPhase();
 

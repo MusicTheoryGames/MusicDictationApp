@@ -305,4 +305,4 @@ No change to the streak/freeze rules.
 2. SING voice: is unaccompanied singing acceptable for v1, or must the drone
    sustain under the student's voice (harder detection, nicer pedagogy)?
 3. Naming: "Interval Gym" as the student-facing name, or something in the
-   BeatQuest/MelodyQuest family (e.g. "IntervalQuest")?
+   RhythmQuest/MelodyQuest family (e.g. "IntervalQuest")?

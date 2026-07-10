@@ -1,5 +1,5 @@
 /* ============================================================================
-   BeatQuest — STANDALONE (solo) practice mode · v1
+   RhythmQuest — STANDALONE (solo) practice mode · v1
    A self-study loop built ON TOP of the existing engine. It only READS/CALLS
    public pieces of window.rhythmStudent (rhythmPatterns, userAnswer, placeTile,
    clearAnswers, updateGameSettings, playWithWebAudio). It never alters note
@@ -1257,7 +1257,7 @@
      embodied learning pass (feel it before you transcribe it). The first listen is FREE
      (it doesn't count toward the listen cap — see playTarget), and grading is SOFT:
      tapping in time earns points, but it never blocks you or drains groove. Early levels
-     only; fades as rhythms are internalized. (BeatQuest tapping spec.) */
+     only; fades as rhythms are internalized. (RhythmQuest tapping spec.) */
   var TAPALONG_MAX_IDX = 2;   // Levels 1-3
   function tapAlongApplies() { return S.guided && !S.bonusRound && (S.guidedIdx || 0) <= TAPALONG_MAX_IDX; }
   var TAP = { active: false, taps: [], beats: [], dots: [] };

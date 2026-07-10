@@ -32,13 +32,14 @@ headlessly.
 
 | App | Entry point | Skill |
 |---|---|---|
-| **RhythmQuest** (still named BeatQuest in the UI) | `rhythm-student.html?mode=solo` | hear rhythm → write rhythm |
+| **RhythmQuest** | `rhythm-student.html?mode=solo` | hear rhythm → write rhythm |
 | **MelodyQuest** | `melodic-game.html` | hear melody → write melody |
 | **Tapping** | `tapping.html?mode=tapping` | see rhythm → perform rhythm |
 | **SingQuest** | `singquest.html` | see notation → sing it (probe + one level so far) |
 | **HarmonyQuest** | — | hear progression → write bass, then Roman numerals (unbuilt) |
 
-`index.html` is the hub. `rhythm-teacher.html` and `projection.html` are the classroom surface —
+`index.html` is the hub. **BeatQuest Casual** keeps its old name deliberately — it belongs to the
+Staff Commander suite and is still under test. `rhythm-teacher.html` and `projection.html` are the classroom surface —
 real, and **not yet reachable from the hub, because the student half of the room protocol does not
 exist.** See `VISION.md` §7 and §9.
 

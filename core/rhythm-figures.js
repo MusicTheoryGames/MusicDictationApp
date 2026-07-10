@@ -2,9 +2,9 @@
  * @file core/rhythm-figures.js
  * @module rhythm-figures
  *
- * NATIVE MelodyQuest rhythm-figure engine — the reusable pieces of BeatQuest's rhythm bank,
+ * NATIVE MelodyQuest rhythm-figure engine — the reusable pieces of RhythmQuest's rhythm bank,
  * ported OUT of the iframe/solo-mode so Level 4 can present the same beautiful figure-tile
- * drag-and-drop WITHOUT any of the BeatQuest chrome (hints, quiet mode, metronome, tap-back).
+ * drag-and-drop WITHOUT any of the RhythmQuest chrome (hints, quiet mode, metronome, tap-back).
  *
  * A FIGURE is one draggable tile = a per-beat (or multi-beat) rhythm cell the bank offers.
  * `durationsToFigures()` is the port of solo-mode.js `extConvert()`: it decomposes a melody's

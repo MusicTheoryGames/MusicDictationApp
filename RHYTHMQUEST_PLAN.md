@@ -5,36 +5,21 @@
 > this file wins. Sections here that predate `VISION.md` may carry corrected-since claims — §0b
 > records the ones already caught.
 >
-> **CURRENT STEP: T (tooling prerequisite)** — the mandatory Codex-review hook
-> (`scripts/critic.sh`, `scripts/pre-commit`, `scripts/install-hooks.sh`). Owner-approved
-> 2026-07-09; its own commit, before any further work. Lettered, not numbered, so it does not
-> collide with §7b's build-order **step 0** (stop the classroom from lying), which is done.
+> **CURRENT STEP: 1b** — the BeatQuest→RhythmQuest rename, **UI and prose only**. No localStorage key
+> is renamed. Displayed names and document titles change; no executable or game-state behaviour does.
 >
->**When the hook is installed**, `git commit` and `git merge`'s auto-commit are refused unless Codex
-> **returned SHIP** on a review bound to that exact tree object. It is not true that *every* commit
-> is refused: `--no-verify`, `CRITIC_OVERRIDE=1`, the replay commands, removing the hook, and index
-> mutation after the hook passes all get through. Codex is shown a *text diff*, not the tree itself,
-> so binary blobs are not reviewed. Applying a finding changes the tree and voids the receipt, so
-> each commit needs its own pass.
+> **NO localStorage KEY IS RENAMED, AND NONE WILL BE.** Owner's decision, 2026-07-09, after Codex
+> found a progress-loss bug in the migration this plan originally specified: migrate a student at
+> level 6, roll back the deploy, let the old build advance the legacy key to level 9, roll forward —
+> and the new build loads the stale new key at level 6. Their data is on disk; they cannot see it.
+> Mirroring every write does not fix it (the old build writes only the legacy key). Preferring
+> "whichever profile is further along" does, at the cost of a merge rule, two writes per save, and a
+> special case for a student who restarts on purpose — none of which buys anything a user can see.
+> So `beatquest-guided-<mode>` and `beatquest-placed-<mode>` stay, alongside `beatquest-solo` and
+> `beatquest-theme`, which were never going to be renamed. A localStorage key is an internal
+> identifier, like `window.BeatQuestSolo`.
 >
-> **It is not a security boundary.** The bypass list is the header of `scripts/pre-commit` and is
-> not repeated here — four partial copies of it drifted, and three became false, which is the exact
-> failure this repo keeps having. It is not claimed to be complete: Git has more ways to move a ref
-> than I can prove I have enumerated. It stops forgetting, not deciding. Any bypass must be
-> disclosed in the commit message and to the owner.
->
-> **NEXT: 1b** — the BeatQuest→RhythmQuest rename + localStorage migration (§7b).
->
-> Step 1a (repo + doc hygiene) landed as `b684a32`; the hub fix as `db9b5a2` (§7b). Step 0 done except the deliberately
-> deferred "For teachers" link. Any change that does not serve the current step is scope creep and
-> should be rejected in review.
->
-> **Step 1 was split, 2026-07-09.** It originally required doc hygiene and the BeatQuest→RhythmQuest
-> rename *in one commit* (§9). An adversarial review flagged the rename as missing; rather than
-> quietly redefine the step, it is split, and here is why: the doc pass moves 33 files and rewrites
-> reference paths across 31 more. Bundling a user-visible rename plus a localStorage migration into
-> that diff makes it unreviewable, and this is the commit that defines what every future agent reads.
-> **1a = doc hygiene. 1b = rename + migration.** Nothing else changed about the plan.
+> Any change that does not serve the current step is scope creep and should be rejected in review.
 
 ## 0. THE CLASSROOM IS BROKEN — read this first
 
@@ -120,8 +105,9 @@ Four claims in an earlier draft of this plan were wrong. They are corrected abov
 Three architectural objections from the same review, accepted:
 
 - **Split-brain risk.** Building `rhythm-quest.html` without extracting `solo-mode.js`'s
-  capabilities leaves four rhythm implementations drifting apart: BeatQuest, RhythmQuest, the
-  teacher's private pattern table, and the projector. The new page is still right (§3), but the
+  capabilities leaves four rhythm implementations drifting apart: the shipped engine
+  (`solo-mode.js`), the proposed `rhythm-quest.html`, the teacher's private pattern table, and
+  the projector. The new page is still right (§3), but the
   scheduler and tap-back extractions are load-bearing, not optional.
 - **`core/room.js` cannot be "extracted from three implementations,"** because there are not three
   implementations of one protocol. Write the schema and fixtures first; move code second.
@@ -229,7 +215,7 @@ Three problems prompted this plan:
 
 1. **A missing ladder, not a missing app.** MelodyQuest is one continuous ladder (M0–M26)
    whose first nine rungs withhold notation entirely — the teaching *is* the early levels.
-   BeatQuest is that same ladder with those rungs missing: it opens at drag-to-notate on
+   RhythmQuest is that same ladder with those rungs missing: it opens at drag-to-notate on
    Hall chapter 1 and assumes you already know how to take rhythmic dictation. Its
    `teach-content.js` is a text screen before each level, not a curriculum.
 
@@ -279,7 +265,7 @@ nobody re-plans against them.
   never invoked; `solo-mode.js` uses its own DOM-coupled `checkAnswer()` (`:2617`). It is waiting
   for exactly the use described in §3.
 
-- **BeatQuest and Tapping are one page.** `tapping.html` is `rhythm-student.html` booted
+- **RhythmQuest and Tapping are one page.** `tapping.html` is `rhythm-student.html` booted
   with `?mode=tapping`; `core/ladder.js`'s `ladderForMode` returns "the same 31 levels" for
   both. They are presented as two products and persist to two blobs
   (`beatquest-guided-dictation` / `beatquest-guided-tapping`).
@@ -316,20 +302,34 @@ The suite has two verbs, and they are different skills.
 |---|---|
 | **Tapping** | stays a separate tile — rhythmic *performance*, not dictation |
 | **SingQuest** | **deferred** as a standalone app (§7). Its mic layer (`core/pitch.js`, `core/singquest.js`) gets harvested into the dictation trio's optional sing-back step. |
-| **BeatQuest Casual** | leave on the home screen, untouched — belongs to the Staff Commander suite; owner is still testing it |
+| **BeatQuest Casual** | keeps its name — belongs to the Staff Commander suite. Only its `<title>`/`<h1>`, which carried the old PRO name "BeatQuest — Rhythm Dictation", become "BeatQuest Casual — Rhythm Dictation". |
 
 Rationale: McHose's manual has exactly three parts — Rhythmic Dictation, Melodic Dictation,
 Harmonic Dictation. That is the spine. "Beat" is one rung of rhythm, and we are about to
 build a rung literally called *find the pulse*.
 
-**Rename scope.** `BeatQuest` → `RhythmQuest` in `index.html`, `home.html`,
-`rhythm-student.html`, `beatquest-casual.html`'s parent links, and the docs. localStorage
-migration: on boot, if `rhythmquest-guided-<mode>` is absent and `beatquest-guided-<mode>`
-exists, copy it forward and leave the old key in place (one-way, idempotent, no data loss
-if the user rolls back). Same for `beatquest-placed-<mode>`. Do **not** rename
-`beatquest-solo` (free-play prefs) or `beatquest-theme` (suite-wide, read by
-`melodic-game.html` too) in the same pass — they are shared surface and should move
-separately, if at all.
+**Rename scope.** `BeatQuest` → `RhythmQuest` in UI text and in prose comments.
+
+*Identifiers do NOT change:* `window.BeatQuestSolo`, `window.BeatQuestTheme`, `'BeatQuestProjection'`,
+the npm name `@beatquest/core`, `beatquest-theme`, `beatquest-solo`, `beatquest-guided-*`,
+`beatquest-placed-*`, and the filenames `beatquest-casual.html` and `beatquest.html`.
+
+*Prose the rename deliberately leaves alone (not an exhaustive list — the rule is what matters:
+never rename a statement about the past, or a sentence that must name the old product to mean
+anything):*
+- **BeatQuest Casual** keeps its name — it belongs to the owner's Staff Commander suite. Its
+  `<title>` and `<h1>` carried the old PRO name "BeatQuest — Rhythm Dictation"; they become
+  **"BeatQuest Casual — Rhythm Dictation"**.
+- `beatquest.html:16` reads *"BeatQuest is now RhythmQuest."* — a redirect for old bookmarks. It has
+  to name the old product or it says nothing. Renaming it yields "RhythmQuest is now RhythmQuest."
+- `beatquest.html:7` and `home.html:7` are HTML comments recording what those two URLs used to
+  serve — a "Join Beat Quest" room-code login, and the second hub. Statements about the past.
+- `VISION.md` and this file's own old→new mapping table EXPLAIN the rename; they must name both
+  products. `VISION.md:395` names an `archive/` filename.
+- `history/` and `archive/` record what was true when written (README.md:60). Renaming a changelog
+  falsifies it. Filenames are identifiers and never change.
+
+**No localStorage key is renamed** — see the CURRENT STEP block for why.
 
 **The reading gate.** McHose: *"Only after the student has thoroughly mastered a particular
 rhythmic problem through rhythmic reading should dictation be presented."* Tapping stays its
@@ -698,7 +698,10 @@ SingQuest as a standalone product only after the dictation trio is coherent.
    state and hide the room-code form. Minutes of work, one call site. Add a "For teachers" link to
    `index.html` so the working teacher tool is reachable on the deployed site at all.
 
-1. **Repo hygiene + doc hygiene + rename** (§9). Delete only what is provably dead and *not* part
+1. **Repo hygiene + doc hygiene + rename** (§9). *Split when executed: **1a** was the doc pass
+   (`b684a32`), **1a+** the hub fix (`db9b5a2`), and **1b** is the rename — the CURRENT STEP.
+   The file deletions listed below have NOT happened.*
+   Delete only what is provably dead and *not* part
    of the classroom: `app_modular.js`, `index_modular.html`, the six `questions_*.js`,
    `question_templates.js`, `rhythm-patterns-complete.js`, `extract_*.js`,
    `create_modular_files.js`, and ~10 scratch Puppeteer scripts (`_s3.js`, `_s4.js`,
@@ -707,7 +710,9 @@ SingQuest as a standalone product only after the dictation trio is coherent.
    **Archive as history:** `app.js`, `app.js.backup`, `student.html` → `archive/`. They implement
    the old `rooms/*` **voting** classroom, not the rhythm-dictation one — keep them for the record,
    do not mine them for protocol (§0b).
-   **Do not touch:** `rhythm-teacher.*`, `projection.*`. These are product.
+   **Do not delete or refactor:** `rhythm-teacher.*`, `projection.*`. These are product.
+   (Step 1b does change their visible product name — `projection.html` displayed "Beat Quest" —
+   which is a string edit, not a refactor.)
    `home.html` is wired into `dev-server.js:35` and `solo-mode.js:2456,2481` — repoint to
    `index.html`, don't just delete. Leave `beatquest-casual.html` on the home screen; the owner is
    still testing it.
@@ -782,7 +787,7 @@ generated from `MELODIC_CURRICULUM.md` (it says so on p. 3) and its central engi
 is genuinely new and worth building: **spaced retention, transfer checks across keys,
 anti-farming rules, and an error taxonomy reporting component scores separately.**
 `core/feedback.js` and `core/review.js` (Leitner) already exist and are half of it;
-`core/review.js` is wired into MelodyQuest but **not** into BeatQuest.
+`core/review.js` is wired into MelodyQuest but **not** into RhythmQuest.
 
 Reject the pass gates as written. They sum to roughly 2,000 scored exercises across a mandated
 multi-week calendar before a student sees an eight-bar period (48 probes for M0, 72 for M2,

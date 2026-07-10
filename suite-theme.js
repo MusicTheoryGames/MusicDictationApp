@@ -1,4 +1,4 @@
-/* BeatQuest Suite — theme switcher (shared across every module).
+/* Suite theme switcher (shared across every module).
    Applies a theme class to <body>, persists the choice, and builds the picker.
    Purely cosmetic — never touches game logic. */
 (function () {

@@ -500,7 +500,7 @@ async function unlockAudio() {
   try { const s2 = c.createBufferSource(); s2.buffer = c.createBuffer(1, 1, 22050); s2.connect(c.destination); s2.start(0); } catch (e) {}
   return c;
 }
-/* Pre-warm on the FIRST user gesture anywhere on the page (BeatQuest gets this
+/* Pre-warm on the FIRST user gesture anywhere on the page (RhythmQuest gets this
    for free from its big Start-button flow; MelodyQuest's first gesture may be
    the Hear-it click itself, so warm the context as early as possible). */
 if (typeof document !== 'undefined') {
@@ -592,7 +592,7 @@ async function play(melody, opts = {}) {
   let t = c.currentTime + 0.12;
   // COUNT-OFF (research/LEVEL_SYSTEM_RESEARCH.md §2: "always give meter + count-off up
   // front"): one bar of metronome ticks in the melody's meter before the melody —
-  // beat 1 accented, same tick voice family as BeatQuest's metronome.
+  // beat 1 accented, same tick voice family as RhythmQuest's metronome.
   if (opts.countOff !== false) {
     const [top, bottom] = String(melody.meter || '4/4').split('/').map(Number);
     const compound = top % 3 === 0 && top > 3;
