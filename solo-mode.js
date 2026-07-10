@@ -3075,7 +3075,7 @@
   // Human label per mastery band (from core/mastery LEVELS). No emoji.
   var BAND_LABEL = { attempted: 'Attempted', familiar: 'Familiar', proficient: 'Proficient', mastered: 'Mastered' };
   /* GROOVE RING — the answer frame's border drawn as a depleting progress ring (track + fill),
-     ported verbatim from the approved groove-mockups.html. A grey track is the full frame; two
+     ported verbatim from the approved groove-mockups.html (now archive/groove-mockups.html). A grey track is the full frame; two
      colour half-paths from top-centre down each side show groove% of the perimeter, draining
      symmetrically from the bottom up. Recomputed every render + on resize so it never distorts
      when the frame changes size (e.g. the 16-bar). Colour = the same green→red hue as before. */
@@ -4722,9 +4722,9 @@
       host.innerHTML =
         '<div style="font-weight:800;margin-bottom:6px;letter-spacing:.05em;opacity:.75">DEV · LEVEL SCROLL</div>' +
         '<div style="display:flex;gap:5px;align-items:center;margin-bottom:6px">' +
-          '<button id="bqDevPrev" style="flex:0 0 auto;cursor:pointer">◀</button>' +
+          '<button id="bqDevPrev" style="flex:0 0 auto;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px"><path d="M14.5 5 7.5 12l7 7"/></svg></button>' +
           '<select id="bqDevSel" style="flex:1 1 auto;min-width:0;font:12px system-ui;padding:3px"></select>' +
-          '<button id="bqDevNext" style="flex:0 0 auto;cursor:pointer">▶</button>' +
+          '<button id="bqDevNext" style="flex:0 0 auto;cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px"><path d="M9.5 5 16.5 12l-7 7"/></svg></button>' +
         '</div>' +
         '<div style="display:flex;gap:5px;flex-wrap:wrap">' +
           '<button id="bqDevGO" style="cursor:pointer">Game Over</button>' +

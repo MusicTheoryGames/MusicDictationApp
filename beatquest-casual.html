@@ -1429,7 +1429,7 @@ body.casual-skin .answer-staff.dense-staff .beat-drop-zone{ margin-right:2px!imp
 body.casual-skin .answer-staff.dense-staff .beat-drop-zone.measure-end:not(.final-cell){ margin-right:8px!important; }
 /* 4 rows of 4 bars — tighten the row-to-row gap so all rows fit the viewport height. */
 body.casual-skin .answer-staff.dense-staff .staff-container + .staff-container{ margin-top:14px!important; }
-/* No remove ✕ — students just drag a new rhythm onto a slot to replace it. */
+/* No remove button — students just drag a new rhythm onto a slot to replace it. */
 body.casual-skin .remove-btn{ display:none!important; }
 
 /* ============ HEADER = a plain control row, ALL buttons visible (Play + Speed + Metronome +
@@ -1478,6 +1478,7 @@ body.casual-skin .answer-area{ margin-top:16px!important; }
       .mm-tile img{ max-width:80%; max-height:60%; pointer-events:none; }
       .mm-tile.off{ opacity:.34; filter:grayscale(.55); border-style:dashed; }
       .mm-tile .hear{ position:absolute; bottom:4px; right:5px; width:22px; height:22px; border-radius:50%; background:#eef2fb; border:none; display:flex; align-items:center; justify-content:center; font-size:.72rem; color:#5b6ee1; cursor:pointer; }
+      .ico{width:1em;height:1em;display:inline-block;vertical-align:-.14em}
       .mm-tile .chk{ position:absolute; top:5px; left:5px; width:19px; height:19px; border-radius:50%; background:#57cc8a; color:#fff; display:flex; align-items:center; justify-content:center; font-size:.66rem; font-weight:900; }
       .mm-tile.off .chk{ display:none; }
       .mm-start{ margin-top:20px; width:100%; background:linear-gradient(180deg,#51d6a6,#22b083); color:#fff; border:none; border-radius:16px; padding:16px; font-weight:900; font-size:1.1rem; cursor:pointer; box-shadow:0 6px 0 #128a63; }
@@ -1493,7 +1494,7 @@ body.casual-skin .answer-area{ margin-top:16px!important; }
         <p class="mm-lead">Tap the rhythms you can already read. Not sure about one? Leave it — we'll double-check as you play.</p>
         <div class="mm-section-title">Which of these can you read? <span>· ♪ to hear</span></div>
         <div class="mm-tiles" id="intakeTiles"></div>
-        <button class="mm-mini" id="intakeMore">Show compound (6/8) rhythms ▾</button>
+        <button class="mm-mini" id="intakeMore">Show compound (6/8) rhythms <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 9.5 12 15l6-5.5"/></svg></button>
         <div class="mm-intake-actions">
           <button id="intakeNew">I'm brand new</button>
           <button class="mm-start" id="intakeContinue">Continue →</button>
@@ -1679,7 +1680,7 @@ body.casual-skin .answer-area{ margin-top:16px!important; }
       function tile(id,sel){ var f=FIG[id]||{n:id}; var d=document.createElement('div'); d.className='mm-tile'; d.dataset.id=id;
         var img=new Image(); img.src=GLY+id+'.png'; img.alt=f.n; img.onerror=function(){ d.dataset.noglyph='1'; };
         d.appendChild(img);
-        if(sel){ var c=document.createElement('span'); c.className='chk'; c.textContent='✓'; d.appendChild(c); }
+        if(sel){ var c=document.createElement('span'); c.className='chk'; c.innerHTML='<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12.6 9.6 17 19 6.8"/></svg>'; d.appendChild(c); }
         var hb=document.createElement('button'); hb.className='hear'; hb.title='Hear'; hb.innerHTML=PLAY_SVG;
         hb.onclick=function(e){ e.stopPropagation(); hear(id); }; d.appendChild(hb);
         if(sel){ d.onclick=function(){ var off=d.classList.toggle('off'); if(off)SEL.delete(id); else SEL.add(id); }; }
@@ -1717,7 +1718,7 @@ body.casual-skin .answer-area{ margin-top:16px!important; }
       var KNOWN=new Set();
       function intakeTile(id){ var f=FIG[id]||{n:id}; var d=document.createElement('div'); d.className='mm-tile off'; d.dataset.id=id;
         var img=new Image(); img.src=GLY+id+'.png'; img.alt=f.n; img.onerror=function(){ d.dataset.noglyph='1'; }; d.appendChild(img);
-        var c=document.createElement('span'); c.className='chk'; c.textContent='✓'; d.appendChild(c);
+        var c=document.createElement('span'); c.className='chk'; c.innerHTML='<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12.6 9.6 17 19 6.8"/></svg>'; d.appendChild(c);
         var hb=document.createElement('button'); hb.className='hear'; hb.title='Hear'; hb.innerHTML=PLAY_SVG; hb.onclick=function(e){ e.stopPropagation(); hear(id); }; d.appendChild(hb);
         d.onclick=function(){ var off=d.classList.toggle('off'); if(off)KNOWN.delete(id); else KNOWN.add(id); };
         return d; }

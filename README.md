@@ -39,9 +39,12 @@ headlessly.
 | **HarmonyQuest** | — | hear progression → write bass, then Roman numerals (unbuilt) |
 
 `index.html` is the hub. **BeatQuest Casual** keeps its old name deliberately — it belongs to the
-Staff Commander suite and is still under test. `rhythm-teacher.html` and `projection.html` are the classroom surface —
-real, and **not yet reachable from the hub, because the student half of the room protocol does not
-exist.** See `VISION.md` §7 and §9.
+Staff Commander suite and is still under test.
+
+**There is no classroom.** The old teacher tool and projector were archived on 2026-07-10: they
+broadcast on a room schema no student client ever spoke, and they were hard-coded to 4/4 while the
+curriculum spans ten meters. A new teacher interface, built against the Quest games, is the
+replacement. See `VISION.md` §7 and §9.
 
 ## Layout
 

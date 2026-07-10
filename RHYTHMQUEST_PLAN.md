@@ -2,11 +2,17 @@
 
 > **This is the SEQUENCED WORK. `VISION.md` is the SOURCE OF TRUTH.**
 > Where they disagree about a *fact*, `VISION.md` wins. Where they disagree about *what to do next*,
-> this file wins. Sections here that predate `VISION.md` may carry corrected-since claims — §0b
-> records the ones already caught.
+> this file wins. Sections here that predate `VISION.md` may carry claims corrected since.
 >
-> **CURRENT STEP: 1b** — the BeatQuest→RhythmQuest rename, **UI and prose only**. No localStorage key
-> is renamed. Displayed names and document titles change; no executable or game-state behaviour does.
+> **CURRENT STEP: 1c — the great cut.** Owner, 2026-07-10: *"the ONLY games that will be part of
+> this going forward are the QUEST games"* — RhythmQuest, MelodyQuest, SingQuest, BeatQuest Casual,
+> and the unbuilt HarmonyQuest and CounterQuest. Everything else moved to `archive/` (89 files,
+> nothing deleted). One thing was rescued: the hand-authored melody bank, now at
+> `content/melody-multiple-choice/`. The record is `archive/README.md`; this file does not repeat it.
+>
+> The old teacher tool went too. A **new** teacher interface will be built against the Quest games.
+>
+> Step 1b (the BeatQuest→RhythmQuest rename) landed as `cade60e`.
 >
 > **NO localStorage KEY IS RENAMED, AND NONE WILL BE.** Owner's decision, 2026-07-09, after Codex
 > found a progress-loss bug in the migration this plan originally specified: migrate a student at
@@ -20,189 +26,6 @@
 > identifier, like `window.BeatQuestSolo`.
 >
 > Any change that does not serve the current step is scope creep and should be rejected in review.
-
-## 0. THE CLASSROOM IS BROKEN — read this first
-
-The owner states that classroom use by teachers is **a main part of this app.** It does not
-work in the deployed build, and it fails silently.
-
-**Verified by grep, zero hits for `firebase` / `rhythm-rooms` / `onValue` in the entire live
-student path** (`rhythm-student.html`, `rhythm-student.js`, `solo-mode.js`, `core-bridge.js`,
-`beatquest-casual.html`, `beatquest.html`). Instead, `rhythm-student.js:387`:
-
-```js
-setupWebSocket() {
-    // In a real implementation, this would connect to your server
-    // For now, we'll simulate receiving messages from teacher
-    console.log(`Student ${this.studentName} connected to room ${this.roomCode}`);
-    // Simulate receiving initial settings
-    setTimeout(() => { this.handleTeacherMessage('new-rhythm', {...}) }, ...)
-```
-
-The student types a room code, the page writes "Connected" into `#connectionStatus`, shows a
-green "Connected to rhythm session!" toast, and then **feeds itself fake teacher messages.**
-
-What is real:
-- `rhythm-teacher.js` creates a room and writes to `rhythm-rooms/${roomCode}` — `currentRhythm`,
-  `playCommand`, `revealedBeats` (`:251-279, :632-668`). Works.
-- `projection.js` subscribes to `rhythm-rooms/${roomCode}` and renders (`:72-83`). Works.
-- Teacher and projector agree on the Firebase path in source. **Nobody has observed the loop run**
-  (`VISION.md` §9). Do not call it working.
-
-What is broken — and it is worse than "the listener wasn't ported":
-
-- **No student client for `rhythm-rooms/*` has ever existed.** `student.html:260` and `app.js`
-  speak a *different, older protocol*: `rooms/${roomCode}` with `/students/` and `/votes/`,
-  plus `currentQuestion` and `votingEnabled`. That is the multiple-choice **voting** classroom
-  belonging to the dead 480-question app. It is not the rhythm-dictation classroom. **There is
-  nothing to port.** The teacher tool has broadcast into a void since it was written.
-- Neither `rhythm-teacher.html` nor `projection.html` is reachable from `index.html`, the page
-  Netlify serves. They are linked only from `rhythm.html` and `beatquest.html`, themselves
-  unlinked. **A teacher cannot find the teacher tool on the deployed site.**
-- **The teacher tool is 4/4-only.** `rhythm-teacher.js:348` loops `for (let b = 0; b < 4; b++)`,
-  and `:559,:566` and `projection.js:55-57` compute `measureCount * 4` and `(i % 4) + 1`. The
-  student curriculum covers 2/4, 3/4, 4/4, 2/2, 3/2, 6/8, 9/8, 12/8, 6/4 and 6/16. Wiring
-  Firebase will not make the classroom correct.
-- `rhythm-teacher.js` carries its own private `this.rhythmPatterns` table (`:5-35`) — it does not
-  use `core/curriculum.js`, so its content has drifted from the 31-chapter ladder students play.
-
-**Consequences for this plan, which override everything below:**
-
-1. **Nothing in the classroom stack gets deleted.** `rhythm-teacher.*`, `projection.*` are
-   product, not dead code. `app.js` / `student.html` are archived as history — but **not** as a
-   protocol reference; they document a feature we are not rebuilding.
-2. **The classroom is not "broken," it is unfinished.** It was never a working three-way loop.
-   Treat it as new construction with two working reference implementations (teacher, projector),
-   not as a regression to repair.
-3. **Step 0 is protocol truth, not UI triage.** Decide the schema, write it down, build a
-   teacher → student → projector integration harness. Hiding the fake "Connected" banner is still
-   worth ten minutes (a teacher should not be misled in front of a class), but on its own it
-   replaces a lie with a dead end, and linking the teacher tool from `index.html` would send
-   users into a still-broken loop.
-4. RhythmQuest (the new page, §3) must be designed against that schema from the start, rather
-   than repeating the mistake of building a student game a teacher cannot drive.
-5. MelodyQuest has **no** classroom surface at all (`archive/MELODIC_CLASSROOM_PLAN.md` is honest that
-   `melodic-teacher.html` does not exist). If classroom is core to the product, that is a gap in
-   the flagship app, not a nice-to-have.
-
-## 0b. Corrections from adversarial review (Codex, gpt-5.5, read-only over the repo)
-
-Four claims in an earlier draft of this plan were wrong. They are corrected above and here.
-
-- **"`app.js`/`student.html` hold the only working student-side room protocol." FALSE.**
-  Two incompatible schemas: `rooms/*` (voting, dead app) vs `rhythm-rooms/*` (rhythm classroom).
-  Verified: `student.html:260,268,300,352` vs `rhythm-teacher.js:265-279`.
-- **"`RHYTHM_FIGURES` is the ~10 one-beat cell bank R7 needs." FALSE.** It is pure and DOM-free,
-  but it contains multi-beat figures — whole (4), dotted-half (3), half (2), dotted-quarter+eighth
-  (2), half-rest (2) (`core/rhythm-figures.js:16-30`). `core/rhythm-chunks.js` must **filter** a
-  one-beat subset, not wrap the table.
-- **"Zero `roman` references anywhere." Sloppy.** `grep -i roman` hits `late-Romantic`
-  (`core/melodic-curriculum.js:670`) and `Times New Roman` (`melodic-game.html:515`). The
-  substantive claim — there is no Roman-numeral data model — stands.
-- **"`core/grading.js` is dead code." Overstated.** `gradeDictation` is called only by its own
-  test, but `core-bridge.js:28-34` does expose the module on `window.LevelCore`. Exposed, unused.
-
-Three architectural objections from the same review, accepted:
-
-- **Split-brain risk.** Building `rhythm-quest.html` without extracting `solo-mode.js`'s
-  capabilities leaves four rhythm implementations drifting apart: the shipped engine
-  (`solo-mode.js`), the proposed `rhythm-quest.html`, the teacher's private pattern table, and
-  the projector. The new page is still right (§3), but the
-  scheduler and tap-back extractions are load-bearing, not optional.
-- **`core/room.js` cannot be "extracted from three implementations,"** because there are not three
-  implementations of one protocol. Write the schema and fixtures first; move code second.
-- **The `?exttarget=1` seam is the wrong classroom injection point.** It is a MelodyQuest
-  iframe/postMessage contract (`solo-mode.js:4753-4774`): it consumes `{durations, meter}`, forces
-  guided mode off, hides chrome, and returns only aggregate `{allCorrect, wrongBeats, totalBeats}`
-  (`:2781-2794`). The teacher protocol needs pattern IDs, per-student answers, reveal state, and
-  identity. Reusing it would be adapter-on-adapter.
-
-Two misses, added:
-
-- `core/curriculum.js` + `core/ladder.js` already encode the 31-level rhythm ladder. A new
-  `core/rhythm-curriculum.js` must hold **only the R0–R11 pre-notation rungs** and must not
-  restate the Hall chapters, or it becomes a competing source of truth.
-- **Anonymous rooms are not privacy-free.** Track A still puts student display names and answers
-  in Firebase. Before it ships: security rules, room TTL/cleanup, room-code abuse handling, and a
-  stated data-retention policy. The plan deferred all of this to Track B; that was wrong.
-
-## 2b. Restoring the classroom loop
-
-One end of the wire works (teacher → projector). The student end has never existed. This is
-construction, not repair, and the order matters.
-
-1. **Write the schema before touching code.** One document, then `core/room.js` as its pure
-   executable form: message shapes, a room-state reducer, validation. No Firebase in it — the same
-   discipline as every other `core/` module. Cover the full lifecycle: create room, join, assign
-   rhythm, play, submit answer, reveal beat, disconnect, close room. Derive it from what
-   `rhythm-teacher.js` + `projection.js` *already agree on* (`rhythm-rooms/${code}`,
-   `currentRhythm`, `playCommand`, `revealedBeats`), because those two are the only working
-   contract in the repo. Ignore `rooms/*` in `app.js`/`student.html` — different feature.
-2. **Build a three-way integration harness** (teacher → student → projector) against fixtures,
-   before any UI. Without it, "wire Firebase" is untestable and the loop stays unverifiable.
-3. **Fix the 4/4 assumption.** `rhythm-teacher.js:348,559,566` and `projection.js:55-57` hard-code
-   four beats per measure. The schema must carry meter, and the reveal grid must be derived from
-   `core/curriculum.js`'s `meter.beatsPerMeasure`, not from `* 4`.
-4. **Reconcile `rhythm-teacher.js`'s private `rhythmPatterns` (`:5-35`) with `core/curriculum.js`**,
-   so the teacher assigns from the same 31-chapter ladder the students are graded against.
-5. **Give the student game a real transport.** A thin `room-transport.js` (Firebase-bearing, the
-   way `melodic-shell-services.js` is audio-bearing) plus a genuine classroom mode in the student
-   page. **Do not route this through `?exttarget=1`** — that seam is a MelodyQuest iframe contract
-   that forces guided mode off, hides chrome, and returns only aggregate results
-   (`solo-mode.js:2781-2794`). The teacher needs pattern IDs, per-student answers, reveal state,
-   and identity. It is the wrong shape.
-6. **Security before launch, not with accounts.** Anonymous rooms still carry student display names
-   and answers. Firebase security rules, room TTL and cleanup, room-code abuse handling, and a
-   written retention stance are Track A requirements.
-7. **Point `index.html` at the teacher tool** — but only once the loop actually closes. Linking it
-   sooner sends teachers into a broken feature.
-8. **Then MelodyQuest.** Once `core/room.js` exists, a melodic classroom is a transport plus a
-   renderer, not a new architecture. `archive/MELODIC_CLASSROOM_PLAN.md` becomes buildable.
-
-Meanwhile, independently and immediately: **stop the student page from lying.**
-`rhythm-student.js:387 setupWebSocket()` fakes a connection and prints "Connected". Ten minutes,
-one call site. It does not fix the classroom; it stops misleading a teacher standing in front of
-a class.
-
-### DECIDED: both live drill and assigned practice
-
-This is the largest scope item in the plan, and it introduces a requirement the suite has never
-had: **student accounts.**
-
-Every byte of progress today lives in `localStorage` on one device. There is no server
-persistence of any kind — `archive/MUSIC_SUITE_XP_SPEC.md` proposes a cloud save blob and is explicit
-that "nothing here is built." A roster is a list of students whose progress the teacher can see
-from a different machine. That cannot be done with `localStorage`, and no amount of Firebase
-realtime-room code gets you there.
-
-The good news is that the data model is already right. `core/mastery.js` emits, per student per
-skill, an `ItemState` of `{score, level, recent[], sessions[], lastSeen, attempts, corrects}`
-with 50/80/95 bands. A teacher dashboard is a query over that. It has nowhere to go, not the
-wrong shape.
-
-**Two tracks, different costs:**
-
-- **Track A — live room (mostly exists).** Firebase Realtime Database, `rhythm-rooms/${code}`.
-  Teacher and projector already work. The job is `core/room.js` + `room-transport.js` and wiring
-  the live student page in through `solo-mode.js`'s `?exttarget=1` seam. No accounts needed —
-  a room code and a display name is the whole identity model, which is also the right call for
-  a classroom of minors.
-
-- **Track B — roster and assignments (net new).** Needs auth, a per-student server-side profile,
-  and a teacher-owned class list. This is the one place where the plan calls for infrastructure
-  rather than refactoring.
-
-**Backend recommendation: extend Firebase rather than adopt a second stack.** Firebase Auth plus
-Firestore sits next to the Realtime Database already in the repo, shares one config, and Track A
-depends on it regardless. The alternative is Supabase, which the owner uses elsewhere; that
-consistency is a real argument, but it means running two backends here or migrating the working
-room code. Do not decide this by taste — decide it when Track A ships, because Track A will tell
-you whether the Firebase setup is healthy.
-
-**Sequencing:** Track A first. It restores a feature that is advertised and broken. Track B is a
-product with a signup flow, a privacy posture for student data (FERPA/COPPA questions the moment
-a minor's name and progress leave the device), and a support burden. It should not be started in
-the same breath.
 
 ## Context
 
@@ -273,11 +96,12 @@ nobody re-plans against them.
 - **`index.html` is the deployed front door, not `home.html`.** Netlify publishes the repo
   root. `home.html` is only the local dev-server root (`dev-server.js:35`).
 
-- **`app.js` and `student.html` implement a DIFFERENT classroom.** `rooms/${code}` with `/votes/`
-  and `currentQuestion` — the multiple-choice voting feature of the dead 480-question app, not the
-  rhythm-dictation classroom (`rhythm-rooms/${code}`). Archive them for the record; there is no
-  protocol to salvage. `rhythm-teacher.js` does not depend on `app.js`; it carries its own
-  `rhythmPatterns` table at `:5-35`. See §0 and §0b.
+- **The two classrooms were different, and both are archived.** `archive/app.js` +
+  `archive/student.html` spoke `rooms/${code}` with `/votes/` and `currentQuestion` — the
+  multiple-choice voting feature of that dead multiple-choice app. `archive/rhythm-teacher.js` +
+  `archive/projection.js` spoke `rhythm-rooms/${code}` and had no student client at all. Neither is
+  a protocol to salvage; the teacher tool even carried its own `rhythmPatterns` table rather than
+  reusing the curriculum. A new teacher interface will be built against the Quest games.
 
 - **`~/Developer/music-dictation`, branch `tapping`, checkpoint `e9f1dcd`.** The repo was moved out
   of the iCloud-synced Desktop on 2026-07-09; 129 files — including all of MelodyQuest, SingQuest
@@ -439,7 +263,7 @@ core/rhythm-sketch.js       gradeRhythmSketch(sketch, target)                   
 - `core/rhythm-figures.js:16` `RHYTHM_FIGURES` — pure, DOM-free, ported out of `solo-mode.js` for
   MelodyQuest Level 4. **Not a one-beat bank**: it also holds whole (4 beats), dotted-half (3),
   half (2), dotted-quarter+eighth (2), half-rest (2). `core/rhythm-chunks.js` must *filter* the
-  `beats === 1` subset for R7, not wrap the table (§0b).
+  `beats === 1` subset for R7, not wrap the table.
 - `core/grading.js:429` `gradeDictation` — grades R6/R9/R10/R11 directly. The marked-grid
   answer *is* the `{measures:[beats:[offsets]]}` shape it already takes. This finally wires
   the dead grader.
@@ -693,37 +517,18 @@ SingQuest as a standalone product only after the dictation trio is coherent.
 
 ## 7b. Build order
 
-0. **Stop the classroom from lying** (§0, §2b). DECIDED: replace `rhythm-student.js:387
-   setupWebSocket()`'s simulated connection with an honest "Classroom mode is not available yet"
-   state and hide the room-code form. Minutes of work, one call site. Add a "For teachers" link to
-   `index.html` so the working teacher tool is reachable on the deployed site at all.
-
-1. **Repo hygiene + doc hygiene + rename** (§9). *Split when executed: **1a** was the doc pass
-   (`b684a32`), **1a+** the hub fix (`db9b5a2`), and **1b** is the rename — the CURRENT STEP.
-   The file deletions listed below have NOT happened.*
-   Delete only what is provably dead and *not* part
-   of the classroom: `app_modular.js`, `index_modular.html`, the six `questions_*.js`,
-   `question_templates.js`, `rhythm-patterns-complete.js`, `extract_*.js`,
-   `create_modular_files.js`, and ~10 scratch Puppeteer scripts (`_s3.js`, `_s4.js`,
-   `gate_*_tmp.js`, `tock_*_tmp.js`, `handswap_check_tmp.js`, `lab_check_tmp.js`,
-   `render_check_tmp.js`).
-   **Archive as history:** `app.js`, `app.js.backup`, `student.html` → `archive/`. They implement
-   the old `rooms/*` **voting** classroom, not the rhythm-dictation one — keep them for the record,
-   do not mine them for protocol (§0b).
-   **Do not delete or refactor:** `rhythm-teacher.*`, `projection.*`. These are product.
-   (Step 1b does change their visible product name — `projection.html` displayed "Beat Quest" —
-   which is a string edit, not a refactor.)
-   `home.html` is wired into `dev-server.js:35` and `solo-mode.js:2456,2481` — repoint to
-   `index.html`, don't just delete. Leave `beatquest-casual.html` on the home screen; the owner is
-   still testing it.
+0. **Stop the classroom from lying.** DONE (`8df8da2`), and overtaken: the classroom stack is
+   archived. `rhythm-student.js` no longer fakes a connection; it says there is no teacher tool.
+1. **Repo hygiene + doc hygiene + rename** (§9). **DONE, and superseded.** `1a` was the doc pass
+   (`b684a32`), `1a+` the hub fix (`db9b5a2`), `1b` the rename (`cade60e`), then `1c` archived
+   everything that is not a Quest game. The record is `archive/README.md`; it is not repeated here.
    Everything here is now safely reversible: checkpoint commit `e9f1dcd`, pushed to
    `origin/tapping`.
 
-2. **Build the classroom — Track A, live room** (§2b). Schema first, then a teacher → student →
-   projector integration harness, then the 4/4 fix, then a real transport. Room code + display name
-   is the whole identity model — but security rules, TTL, and a retention stance ship with it, not
-   with accounts.
-
+2. **Build a NEW teacher interface** for the Quest games. Nothing survives from the old one; do not
+   read it. Schema first, then a teacher → student → projector harness over fixtures, then a real
+   transport with auth, room TTL and a written retention stance. Meter comes from
+   `core/curriculum.js`, never 4/4 — the old tool hard-coded 4/4 and that alone made it unusable.
 3. **Surface the moat** (small, high-leverage). Promote protonotation and the bookend drill out of
    the Practice submenu onto the ladder where they belong, and say plainly in the UI that you do
    not have to write left-to-right. This is the one differentiator the peer-reviewed literature
@@ -747,7 +552,7 @@ SingQuest as a standalone product only after the dictation trio is coherent.
 
 10. **Arcade layer** (§6) — wire the four orphan prototypes, build the missing mode-games.
 
-11. **Track B — accounts, roster, assignments** (§2b). Deliberately last, and deliberately
+11. **Accounts, roster, assignments.** Deliberately last, and deliberately
     separate. It is a product with a signup flow, a student-data privacy posture, and a support
     burden — not a refactor. Decide the backend after Track A ships.
 
@@ -813,7 +618,7 @@ Executed. What actually happened, so nobody re-plans it:
   live code replaced with `VISION.md` sections. 10 stale git worktrees pruned.
 
 **Anything below this line in this plan predates `VISION.md`. Where they disagree about a fact,
-`VISION.md` wins — several claims here were later falsified (see §0b).**
+`VISION.md` wins — several claims here were later falsified.**
 
 ## 10. Codex as a critic (setup)
 

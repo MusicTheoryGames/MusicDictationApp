@@ -31,6 +31,7 @@
   /* controls */
   .zones{position:absolute;left:0;right:0;top:150px;bottom:132px;z-index:4;display:flex;flex-direction:column;}
   .zones div{flex:1;}
+  .ico{width:1em;height:1em;display:inline-block;vertical-align:-.14em}
   .chev{position:absolute;right:16px;z-index:5;font-size:1.4rem;opacity:.5;color:#fff;pointer-events:none;}
   .chev.up{top:168px;} .chev.dn{bottom:150px;}
   .foot{position:absolute;left:0;right:0;bottom:22px;text-align:center;z-index:7;}
@@ -41,10 +42,12 @@
   .hint{margin-top:9px;font-size:.66rem;opacity:.5;line-height:1.4;padding:0 20px;}
   .over{position:absolute;inset:0;z-index:12;background:#04081add;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:30px;}
   .over.show{display:flex;} .over h2{font-size:1.4rem;}
-</style></head><body>
+
+    .life { width: 1em; height: 1em; display: inline-block; vertical-align: -0.12em; margin-right: .08em; }
+  </style></head><body>
 <div class="wrap"><div class="phone" id="phone">
   <div class="stars" id="stars"></div>
-  <div class="hud"><div class="brand">CONTOUR RUNNER<small>run the shape of the tune</small></div><div class="lives" id="lives">♥♥♥</div></div>
+  <div class="hud"><div class="brand">CONTOUR RUNNER<small>run the shape of the tune</small></div><div class="lives" id="lives" role="img" aria-label="lives remaining"></div></div>
   <div class="combo" id="combo">x0</div>
   <div class="h"><b id="score">0</b><small>SCORE</small></div>
   <div class="cue" id="cue">Tap Start</div>
@@ -58,7 +61,7 @@
     <div class="runner" id="runner"><svg width="46" height="46" viewBox="0 0 52 52"><ellipse cx="26" cy="46" rx="14" ry="4" fill="#00000022"/><circle cx="26" cy="26" r="17" fill="#ff8f4c"/><circle cx="20" cy="22" r="4" fill="#fff"/><circle cx="33" cy="22" r="4" fill="#fff"/><circle cx="21" cy="23" r="1.8" fill="#222"/><circle cx="34" cy="23" r="1.8" fill="#222"/><path d="M20 32q6 5 12 0" stroke="#7a3a12" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg></div>
   </div>
   <div class="zones" id="zones"><div id="zUp"></div><div id="zDn"></div></div>
-  <div class="chev up">▲</div><div class="chev dn">▼</div>
+  <div class="chev up"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 15.5 12 8.5l7 7"/></svg></div><div class="chev dn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 8.5 12 15.5l7-7"/></svg></div>
   <div class="foot"><div class="labsys" id="labsys"><button data-s="num" class="on">1̂ 3̂ 5̂</button><button data-s="mov">Moveable do</button><button data-s="fix">Fixed do</button></div>
     <button class="go" id="go">Start</button>
     <div class="hint">Home plays first. Then a note sounds — HOP the runner to its pitch height before it reaches the line. Your path traces the melody.</div></div>
@@ -71,6 +74,12 @@
   const LANE_DEG=[1,3,5], LANE_COL=['#7fe0a0','#ffd36b','#7fb8ff'];
   const track=document.getElementById('track'),runner=document.getElementById('runner'),gate=document.getElementById('gate'),trailwrap=document.getElementById('trailwrap'),goalline=document.getElementById('goalline');
   const cue=document.getElementById('cue'),scoreEl=document.getElementById('score'),livesEl=document.getElementById('lives'),comboEl=document.getElementById('combo'),over=document.getElementById('over');
+  const HEART='<svg class="life" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20.4 4.6 13a4.6 4.6 0 0 1 6.5-6.5l.9.9.9-.9A4.6 4.6 0 1 1 19.4 13Z" fill="currentColor"/></svg>';
+  // In-house SVG — never emoji or glyph icons (VISION.md §6). renderLives() writes markup,
+  // so it uses innerHTML, never textContent.
+  function renderLives(n){ const k=Math.max(0,n); livesEl.innerHTML = HEART.repeat(k);
+    livesEl.setAttribute('aria-label', k + (k === 1 ? ' life' : ' lives') + ' remaining'); }
+  renderLives(3);   // the HUD used to hard-code three hearts in markup; seed it here instead
   let AC=null;const midi=d=>({1:60,3:64,5:67})[d],hz=m=>440*Math.pow(2,(m-69)/12);
   function tone(d,long){try{AC=AC||new(window.AudioContext||webkitAudioContext)();const o=AC.createOscillator(),o2=AC.createOscillator(),g=AC.createGain();o.type='sine';o2.type='triangle';o.frequency.value=hz(midi(d));o2.frequency.value=hz(midi(d))*2;const g2=AC.createGain();g2.gain.value=.07;o2.connect(g2);g2.connect(AC.destination);o.connect(g);g.connect(AC.destination);const t=AC.currentTime,dur=long?.6:.45;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.28,t+.02);g.gain.exponentialRampToValueAtTime(.0006,t+dur);g2.gain.exponentialRampToValueAtTime(.0004,t+dur*.7);o.start(t);o2.start(t);o.stop(t+dur+.05);o2.stop(t+dur);}catch(e){}}
   const W=390, GOALX=96;            // runner + goal line x
@@ -99,10 +108,10 @@
     setTimeout(()=>d.remove(),react*3.2);
     gate.style.display='none';
     if(ok){ combo++; score+=10+combo*2; scoreEl.textContent=score; comboEl.textContent='x'+combo; comboEl.classList.toggle('on',combo>1); runner.classList.remove('hit');void runner.offsetWidth;runner.classList.add('hit'); if(combo%5===0&&react>620)react-=70; }
-    else { lives--; combo=0; comboEl.classList.remove('on'); livesEl.textContent='♥'.repeat(Math.max(0,lives)); runner.classList.remove('stumb');void runner.offsetWidth;runner.classList.add('stumb'); cue.textContent='that was '+LAB[SYS][LANE_DEG[target]-1]; if(lives<=0){return gameOver();} }
+    else { lives--; combo=0; comboEl.classList.remove('on'); renderLives(lives); runner.classList.remove('stumb');void runner.offsetWidth;runner.classList.add('stumb'); cue.textContent='that was '+LAB[SYS][LANE_DEG[target]-1]; if(lives<=0){return gameOver();} }
     busy=false; T(nextNote, 520); }
   function gameOver(){ playing=false; clearTimers(); gate.style.display='none'; document.getElementById('overttl').textContent='Run over'; document.getElementById('oversub').textContent='Score '+score; over.classList.add('show'); }
-  function start(){ over.classList.remove('show'); clearTimers(); score=0;lives=3;combo=0;react=1200;scoreEl.textContent='0';livesEl.textContent='♥♥♥';comboEl.classList.remove('on');trailwrap.innerHTML=''; playing=true; place(); anchorHome(nextNote); }
+  function start(){ over.classList.remove('show'); clearTimers(); score=0;lives=3;combo=0;react=1200;scoreEl.textContent='0';renderLives(lives);comboEl.classList.remove('on');trailwrap.innerHTML=''; playing=true; place(); anchorHome(nextNote); }
   document.getElementById('go').onpointerdown=start; document.getElementById('again').onpointerdown=start;
   document.querySelectorAll('#labsys button').forEach(x=>x.onpointerdown=()=>{SYS=x.dataset.s;document.querySelectorAll('#labsys button').forEach(y=>y.classList.toggle('on',y===x));relabel();});
   window.__runner={start,hop,lane:()=>lane,target:()=>target,score:()=>score,playing:()=>playing};

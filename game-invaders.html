@@ -2,6 +2,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>Ear Arcade — Note Invaders</title>
 <style>
+  .ico{width:1em;height:1em;display:inline-block;vertical-align:-0.14em}
+
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;-webkit-user-select:none;user-select:none;}
   html,body{height:100%;overflow:hidden;font-family:ui-monospace,"SFMono-Regular",Menlo,monospace;background:#04040c;color:#d8ffe6;}
   .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:18px;background:radial-gradient(120% 80% at 50% 0%,#0a1024,#04040c 70%);}
@@ -51,13 +53,13 @@
   <div class="hud"><div class="l">SCORE<b id="score">0</b></div><div class="m">COMBO<b id="combo">x0</b></div><div class="r">WAVE<b id="wave">1</b></div></div>
   <div class="banner" id="banner"></div>
   <div class="cue" id="cue">TAP START</div>
-  <button class="replay" id="replay">▶ HEAR</button>
+  <button class="replay" id="replay"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 5.5 18.5 12 8 18.5Z" fill="currentColor" stroke="none"/></svg> HEAR</button>
   <div class="field" id="field">
     <div class="hpwrap" id="hpwrap"><div class="hp" id="hp"></div></div>
     <div class="swarm" id="swarm"></div>
   </div>
   <div class="cannon" id="cannon"><svg viewBox="0 0 60 34"><rect x="26" y="0" width="8" height="14" fill="#5affa0"/><rect x="10" y="14" width="40" height="14" rx="4" fill="#39d98a"/><rect x="4" y="24" width="52" height="8" rx="3" fill="#1c8f5c"/></svg></div>
-  <button class="fire" id="fireBtn">FIRE ✦</button>
+  <button class="fire" id="fireBtn">FIRE <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3.2 13.9 9l5.8 1.9-5.8 1.9L12 20.8 10.1 12.8 4.3 10.9 10.1 9Z" fill="currentColor" stroke="none"/></svg></button>
   <div class="foot"><div class="labsys" id="labsys"><button data-s="num" class="on">1 3 5</button><button data-s="mov">do mi sol</button><button data-s="fix">fixed</button></div>
     <button class="go" id="go">START</button><div class="hint" id="hint">Home sounds first. SHOOT the invader whose degree matches the note you hear.</div></div>
   <div class="over" id="over"><h2 id="overttl">GAME OVER</h2><div id="oversub" style="opacity:.7;font-size:.8rem"></div><button class="go" id="again">PLAY AGAIN</button></div>
@@ -114,7 +116,7 @@
   function nextTarget(){const al=aliveInvs();if(!al.length){return winWave();}const degs=[...new Set(al.map(v=>+v.dataset.deg))];target=degs[Math.floor(Math.random()*degs.length)];cue.textContent='SHOOT WHAT YOU HEAR';setTimeout(()=>toneDeg(target),240);}
   function shoot(el){if(!playing||mode==='boss')return;const deg=+el.dataset.deg;beamTo(el);zap();
     if(mode==='match'){ if(deg===target){kill(el,deg);score+=100+wave*10+combo*5;combo++;setScore();setCombo();floatAt(el,'+'+(100+wave*10));setTimeout(nextTarget,260);}else{miss('MISS — LISTEN AGAIN');setTimeout(()=>toneDeg(target),380);} }
-    else if(mode==='order'){ if(deg===melody[mpos]){kill(el,deg);toneDeg(deg);mpos++;score+=80+combo*5;combo++;setScore();setCombo();floatAt(el,'✓');if(mpos>=melody.length)return winWave();}else{combo=0;setCombo();miss('WRONG ORDER — HEAR IT AGAIN');setTimeout(playMelody,500);} } }
+    else if(mode==='order'){ if(deg===melody[mpos]){kill(el,deg);toneDeg(deg);mpos++;score+=80+combo*5;combo++;setScore();setCombo();floatAt(el,'HIT');if(mpos>=melody.length)return winWave();}else{combo=0;setCombo();miss('WRONG ORDER — HEAR IT AGAIN');setTimeout(playMelody,500);} } }
   function kill(el,deg){el.classList.add('hit');burstAt(el,COL[deg]);setTimeout(()=>el.remove(),260);}
   function miss(msg){cue.textContent=msg;combo=0;setCombo();shake();phone.animate([{filter:'brightness(1)'},{filter:'brightness(.45) hue-rotate(-30deg)'},{filter:'brightness(1)'}],{duration:220});}
   function march(isBoss){ // slide + step down

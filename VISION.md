@@ -178,10 +178,24 @@ the feature changes, not the rule.
     a working-memory task; timing pressure and motion consume exactly the resources the exercise
     trains. Notation levels have no timer and no particles. The silence is the point.
 11. **No emoji. No clipart.** Every icon is a custom in-house SVG.
-    *Enforcement is currently partial and must be widened:* `core/no-emoji.test.js:21` scans only
-    eight MelodyQuest/SingQuest files. It has never looked at `solo-mode.js`, `rhythm-student.js`,
-    or `rhythm-teacher.js` — and `rhythm-teacher.js:335` ships a `✓` glyph today. Extend the test
-    to the whole UI surface and fix what it finds.
+    *Enforcement, rebuilt 2026-07-10 [observed: `cd core && npm test`, 469 pass].*
+    `core/no-emoji.test.js` has three tests. **STRICT** bans emoji and icon/arrow/geometric glyphs.
+    **EMOJI-ONLY** bans everything STRICT does except arrows (`U+2190`–`U+21FF`) and geometric shapes
+    (`U+25A0`–`U+25FF`), which those files use in prose comments and in one level title
+    ("Simple ↔ compound"). `U+2669`–`U+266F` (`♩ ♪ ♫ ♬ ♭ ♮ ♯`) are music notation, allowed by both.
+    The third test **re-derives the shipped UI surface from the served entry points** and fails if any
+    file it reaches is in neither list, or if any reference it sees cannot be read. `core/` modules are
+    covered — `core/melodic-curriculum.js`'s level titles are rendered to students at
+    `melodic-game.html:1218` — and so is `suite-theme.css`, because CSS `content:` renders text.
+    One exemption remains, `NOT_UI`: three files — one third-party bundle and two generated data
+    maps — each with its reason written beside it. It is the same mechanism that once hid four drum emoji, so keep it small. That test is the
+    point: the old whitelist named eight files by hand and **excluded every offender**, passing green
+    while four shipped pages carried 🥁 in an `<h1>`.
+    **What it does not do**, stated because a guard that overstates itself is the bug it exists to
+    prevent: it is a static crawler, not a loader. It reads `src`/`href`, static `import … from`, and
+    `melodic-game.html`'s `ARCADE_GAMES` literals. It cannot see a dynamic `import()`, a `src`
+    assembled at runtime, or a bare specifier. It cannot tell a comment from markup, or an icon from
+    typography — a reviewer must. EMOJI-ONLY files still render arrow glyphs as text ("Continue →").
 12. **The app never lies to the user — or to the next developer.** No "Connected" over a simulated
     socket. No comment claiming a capability the code lacks. No document calling something
     "working" that nobody has watched work. If a feature is unavailable, it says so.
@@ -336,38 +350,18 @@ symmetric-collection level (M19, M24, M26) to multiple-choice, because no cross-
 grader exists. Its own comment calls this "an honest registered gap, not a substitution
 (audit §A5)" **[source]**.
 
-**The classroom loop is not closed.**
-
-- `rhythm-teacher.js:266` writes to `rhythm-rooms/${code}`; `projection.js:80` subscribes to the
-  same path. The two agree on the path **[source]**. No record exists of anyone running the loop against a live Firebase project **[inferred]**, and it
-  is certainly not [observed] by this document. Do not claim it works.
-- **This repo contains no student client for `rhythm-rooms/*` [source].** `rhythm-student.js`'s
-  `joinSession()` now says classroom mode is unavailable and returns; `handleTeacherMessage()` remains
-  as the uncalled seam a real transport will attach to **[source]**. Until 2026-07-09 it instead wrote
-  "Connected to rhythm session!" to the user, set `#connectionStatus` to Connected, and fed the page
-  fabricated teacher messages on a `setTimeout` — a rule-12 violation, now removed **[inferred:
-  history]**.
-- **Two of the teacher's four broadcasts destroy the room [source].** `new-rhythm` (`rhythm-teacher.js:649`)
-  and `reveal-all` (`:668`) call Firebase `set()` on the room *root* with a partial object, which *replaces* the node
-  — wiping `students`, `created`, and `type`, the very roster its own `onValue` listener reads. They
-  must be `update()`. (`play-rhythm` and `reveal-beat` write child paths and are safe.) `reveal-all`
-  also hardcodes `revealedBeats: [1,2,3,4]`, a third 4/4 assumption after `:348` and `projection.js:55`. A teacher pressing "New Rhythm" twice would
-  lose the class roster, which is further reason to doubt this loop has ever been run **[inferred]**.
-- `student.html:260,268,300,351` and `app.js` implement a *different* schema: `rooms/${code}`,
-  `/students/`, `/votes/`, `currentQuestion` **[source]** — the multiple-choice voting feature of an
-  app no longer reachable from `index.html` **[inferred]**. **The protocol is not reusable; the Firebase client mechanics are.**
-  `student.html:254-355` contains room lookup, student registration, snapshot subscription, and
-  answer writes **[source]** — read it as a code reference. No record of anyone running it
-  **[inferred]**. Do not port its schema.
-- `rhythm-teacher.js:348` and `projection.js:55` hard-code four beats per measure **[source]**, so
-  the teacher tool cannot express the other meters the game already offers (`solo-mode.js:241-250`
-  lists 2/4, 3/4, 4/4, 2/2, 3/2, 6/8, 9/8, 12/8, 6/4, 6/16, plus changing meter) **[source]**.
+**There is no classroom, and no teacher tool.** The stack — `rhythm-teacher.*`, `projection.*` — is
+in `archive/` **[source]**, moved 2026-07-10 at the owner's instruction: *"we will want a new teacher
+interface to link to our current games."* It hard-coded 4/4 while the curriculum spans ten meters
+**[source]**. This repo contains no student client for its `rhythm-rooms/*` schema **[source]**; that
+none ever existed, and that the loop never ran, are **[inferred]** — no record shows either way.
+Nothing in the live tree speaks any room protocol **[source]**.
 
 **Also true [source].** `solo-mode.js` has no renderer dispatch — mode is a binary `S.mode` branch;
 `GUIDE.playable()` (`:394`) silently skips any level with zero figures. `RHYTHM_FIGURES`
 (`core/rhythm-figures.js:16`) is pure but is *not* a one-beat bank; it contains whole, half,
-dotted-half and half-rest figures too. `core/no-emoji.test.js:21` covers only eight files, all
-MelodyQuest/SingQuest. `core/curriculum.js` is the only `core/` module with no test.
+dotted-half and half-rest figures too. `core/no-emoji.test.js` derives the shipped UI surface
+from the entry points by static crawl; it cannot see dynamic imports (see §6). `core/curriculum.js` is the only `core/` module with no test.
 `archive/MUSIC_SUITE_XP_SPEC.md` describes a different product (Staff Commander); nothing in it is built
 here.
 

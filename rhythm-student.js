@@ -352,10 +352,12 @@ class RhythmStudent {
     }
 
     /**
-     * Classroom join. THERE IS NO TRANSPORT IN THIS BUILD.
+     * Classroom join. THERE IS NO TRANSPORT IN THIS BUILD, AND NO TEACHER TOOL EITHER.
      *
-     * This repo contains no student client for the `rhythm-rooms/*` schema that
-     * rhythm-teacher.js broadcasts on. Until one exists, this must say so.
+     * The old teacher tool and projector broadcast on a `rhythm-rooms/*` schema that no
+     * student client ever spoke. Both were archived on 2026-07-10 (archive/rhythm-teacher.js,
+     * archive/projection.js); the owner wants a new teacher interface built against the Quest
+     * games. Until one exists, this must say so.
      *
      * It previously hid the login form, wrote "Connected" into #connectionStatus,
      * flashed "Connected to rhythm session!", and then fed the page fabricated

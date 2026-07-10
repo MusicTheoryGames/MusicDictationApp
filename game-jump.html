@@ -31,12 +31,14 @@
   .labsys button.on{background:#ffffff36;border-color:#fff;}
   .hint{margin-top:10px;font-size:.7rem;opacity:.55;}
   .puff{position:absolute;z-index:6;width:8px;height:8px;border-radius:50%;background:#fff;pointer-events:none;}
-</style></head><body>
+
+    .life { width: 1em; height: 1em; display: inline-block; vertical-align: -0.12em; margin-right: .08em; }
+  </style></head><body>
 <div class="wrap"><div class="phone" id="phone">
   <div class="stars" id="stars"></div>
   <div class="cloud" style="top:220px;left:40px;width:70px;height:22px"></div>
   <div class="cloud" style="top:420px;left:250px;width:56px;height:18px"></div>
-  <div class="hud"><div class="brand">SKY HOP<small>hop to the note's height</small></div><div class="lives" id="lives">♥♥♥</div></div>
+  <div class="hud"><div class="brand">SKY HOP<small>hop to the note's height</small></div><div class="lives" id="lives" role="img" aria-label="lives remaining"></div></div>
   <div class="h"><b id="score">0</b><small>HEIGHT</small></div>
   <div class="cue" id="cue">Tap Start</div>
   <div class="stage" id="stage">
@@ -56,14 +58,20 @@
   let AC=null;const midi=d=>({1:60,3:64,5:67})[d],hz=m=>440*Math.pow(2,(m-69)/12);
   function tone(d){try{AC=AC||new(window.AudioContext||webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type='triangle';o.frequency.value=hz(midi(d));o.connect(g);g.connect(AC.destination);const t=AC.currentTime;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.28,t+.02);g.gain.exponentialRampToValueAtTime(.001,t+.6);o.start(t);o.stop(t+.62);}catch(e){}}
   const scoreEl=document.getElementById('score'),livesEl=document.getElementById('lives');
+  const HEART='<svg class="life" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20.4 4.6 13a4.6 4.6 0 0 1 6.5-6.5l.9.9.9-.9A4.6 4.6 0 1 1 19.4 13Z" fill="currentColor"/></svg>';
+  // In-house SVG — never emoji or glyph icons (VISION.md §6). renderLives() writes markup,
+  // so it uses innerHTML, never textContent.
+  function renderLives(n){ const k=Math.max(0,n); livesEl.innerHTML = HEART.repeat(k);
+    livesEl.setAttribute('aria-label', k + (k === 1 ? ' life' : ' lives') + ' remaining'); }
+  renderLives(3);   // the HUD used to hard-code three hearts in markup; seed it here instead
   let target=1,score=0,lives=3,playing=false,curTop=74;
   function ask(){target=DEG[Math.floor(Math.random()*3)];tone(target);cue.textContent='which height?';}
   function anchorHome(cb){ cue.textContent='home = '+LAB[SYS][0]; const low=ledges.find(l=>+l.dataset.deg===1); if(low)low.animate([{filter:'brightness(1.7)'},{filter:'brightness(1)'}],{duration:750}); tone(1); setTimeout(cb,950); }
-  function start(){score=0;lives=3;livesEl.textContent='♥♥♥';scoreEl.textContent='0';playing=true;setTop(74);anchorHome(ask);}
+  function start(){score=0;lives=3;renderLives(3);scoreEl.textContent='0';playing=true;setTop(74);anchorHome(ask);}
   function setTop(t){curTop=t;hopper.style.top=t+'%';}
   ledges.forEach(l=>l.onpointerdown=()=>{ if(!playing){tone(+l.dataset.deg);return;} const d=+l.dataset.deg; tone(d);
     if(d===target){ const tt=parseFloat(l.style.top); hop(tt); score+=10; scoreEl.textContent=score; puff(); cue.textContent='up you go!'; setTimeout(ask,650); }
-    else { lives--; livesEl.textContent='♥'.repeat(Math.max(0,lives)); l.animate([{transform:'translateX(-50%) translateY(0)'},{transform:'translateX(-50%) translateY(6px)'},{transform:'translateX(-50%) translateY(0)'}],{duration:200}); wob(); if(lives<=0){playing=false;cue.textContent='Fell! Tap Start.';} else cue.textContent='missed — listen again'; setTimeout(()=>{if(playing)tone(target);},500); }
+    else { lives--; renderLives(lives); l.animate([{transform:'translateX(-50%) translateY(0)'},{transform:'translateX(-50%) translateY(6px)'},{transform:'translateX(-50%) translateY(0)'}],{duration:200}); wob(); if(lives<=0){playing=false;cue.textContent='Fell! Tap Start.';} else cue.textContent='missed — listen again'; setTimeout(()=>{if(playing)tone(target);},500); }
   });
   function hop(tt){ hopper.animate([{top:curTop+'%'},{top:(Math.min(curTop,tt)-14)+'%',offset:.5},{top:tt+'%'}],{duration:420,easing:'cubic-bezier(.3,-.4,.4,1)'}); setTimeout(()=>setTop(tt),400);
     // world "climbs": shift ledges down a touch then reset (feel of ascending)

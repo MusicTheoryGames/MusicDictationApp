@@ -144,11 +144,11 @@
   <div class="meta" id="meta"></div>
 
 <script type="module">
-import { labelNote, labelPalette } from './core/melodic.js';
-import { keyChoices, buildRound } from './melodic-round.js';
-import { melodicLadder, melodicLevel } from './core/melodic-curriculum.js';
-import { createServices } from './melodic-shell-services.js';
-import { createRecognitionRenderer, createLabelingRenderer, createTonicContourRenderer, createMissingNoteRenderer, createErrorDetectRenderer, createNotationEntryRenderer } from './melodic-renderers.js';
+import { labelNote, labelPalette } from '../core/melodic.js';
+import { keyChoices, buildRound } from '../melodic-round.js';
+import { melodicLadder, melodicLevel } from '../core/melodic-curriculum.js';
+import { createServices } from '../melodic-shell-services.js';
+import { createRecognitionRenderer, createLabelingRenderer, createTonicContourRenderer, createMissingNoteRenderer, createErrorDetectRenderer, createNotationEntryRenderer } from '../melodic-renderers.js';
 
 // exerciseMode -> renderer factory, per MELODIC_RENDERER_SPEC.md §3 (one renderer per
 // value; only the ones actually built so far are listed — everything else shows a

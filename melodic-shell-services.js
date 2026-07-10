@@ -5,7 +5,7 @@
  * The SHELL's `services` object (MELODIC_RENDERER_SPEC.md §2) — the ONLY door a
  * renderer has to notation rendering, audio, labeling, and themed UI atoms.
  * Renderers NEVER import VexFlow/Tone/DOM color directly; this module is where
- * those imports actually live, extracted from melodic-lab.html's proven inline
+ * those imports actually live, extracted from archive/melodic-lab.html's inline
  * VexFlow-render + Tone-playback logic so a renderer can reuse it through the
  * `services` contract instead of duplicating it.
  *

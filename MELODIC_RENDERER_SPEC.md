@@ -9,8 +9,10 @@ Companion to `MELODIC_ENGINE_SPEC.md` (the engine) and `MELODIC_CURRICULUM.md` (
 rendering, themes, and mastery; a **renderer** owns ONE exercise mode's interaction and
 reports a graded result. One renderer per `exerciseMode` value.
 
-Proven reference: `melodic-lab.html` already does the recognition flow end-to-end
-(generate → VexFlow render → Tone play → click-to-grade). Renderers formalize that.
+Reference implementation: `archive/melodic-lab.html` wires the recognition flow end-to-end
+(generate → VexFlow render → Tone play → click-to-grade) **[source]**. It was archived on
+2026-07-10 and its imports were repointed; nobody has run it in a browser since, so treat it as a
+shape to copy, not as proof that the shape works **[inferred]**. Renderers formalize it.
 
 ---
 

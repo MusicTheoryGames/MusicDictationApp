@@ -147,7 +147,7 @@
  * — NOT a separate ladder structure.
  *
  * @typedef {Object} TappingDifficulty
- * @property {number}  rank     Performance-difficulty rank 1–7 (the ★ count in
+ * @property {number}  rank     Performance-difficulty rank 1–7 (the star count in
  *                              research/TAPPING_RESEARCH.md's 16-level table, mapped onto
  *                              the 31 chapters).
  * @property {string}  scaffold Short scaffolding/curve note (what to coach), esp.
@@ -858,7 +858,7 @@ const LEVEL_DEFAULTS = {
 /* ---------------------------------------------------------------------------
  * TAPPING performance-difficulty per chapter (grounded in research/TAPPING_RESEARCH.md).
  *
- * research/TAPPING_RESEARCH.md grades a 16-level PERFORMANCE ladder (★1–7) and tags each
+ * research/TAPPING_RESEARCH.md grades a 16-level PERFORMANCE ladder (1–7 stars) and tags each
  * Hall chapter cluster. We carry that per-chapter onto our 31 matched levels as
  * a difficulty `rank` (1–7) + a short `scaffold` note. The three INFLECTION
  * points the research calls out — syncopation (Ch9, hands first disagree), the

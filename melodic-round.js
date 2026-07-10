@@ -4,8 +4,9 @@
  *
  * ONE place that turns (level, key-choice, seed) into a playable round:
  * the melody, its distractors, and which renderer kind should mount it.
- * Both the proof harness (melodic-lab.html) and the real game page import
- * THIS — the round-building rules live once, so the lab can never drift
+ * Both the archived lab (archive/melodic-lab.html — a reference, not a verified harness) and the
+ * real game page import
+ * THIS — the round-building rules live once, so the lab could not drift
  * from what the game actually plays (the exact divergence-bug class the
  * reuse-verified-code rule exists to prevent).
  *
