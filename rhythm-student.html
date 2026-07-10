@@ -261,7 +261,10 @@
             position: relative;
             /* Each staff LINE carries the responsive height (was on .answer-staff),
                so one row keeps its original look and extra rows stack below it. */
-            height: clamp(140px, 14vw, 210px);
+            /* was clamp(140px,14vw,210px): 14vw scales with viewport WIDTH, floor 140px, so on a wide
+                 desktop the box was ~2x the staff's content and the line (top:44%) floated in empty
+                 space. Lowered to hug content; phone media queries override this rule. */
+              height: clamp(112px, 9vw, 150px);
             margin-top: 0;
         }
 
@@ -580,6 +583,15 @@
             z-index: 2;
         }
 
+          /* The VexFlow host CENTRES its own notehead (rhythm-vexflow-renderer.js's
+             noteheadCenteredShiftY), so it must NOT inherit the PNG's -66% nudge, which pushed the
+             notehead ~15px ABOVE the line. Centre the host on the line (top:44%, -50%) and the
+             centred notehead lands on it. Owner: "get the render actually on the staff line". */
+          .placed-vexflow {
+              top: 44%;
+              transform: translateY(-50%);
+          }
+
         .remove-btn {
             position: absolute;
             top: -8px;
@@ -758,11 +770,6 @@
                 top: -9px;
                 right: -9px;
             }
-
-            /* Smaller VexFlow notation on mobile */
-            .beat-notation svg {
-                transform: translateX(-50%) scale(1.1) !important;
-            }
         }
 
         /* Very small phones */
@@ -795,11 +802,6 @@
                 min-height: 40px;
                 font-size: 0.6rem;
             }
-
-            /* Even smaller notation for tiny screens */
-            .beat-notation svg {
-                transform: translateX(-50%) scale(1.0) !important;
-            }
         }
 
         /* Focus-layout toggles exist only on touch screens (shown in the mobile
@@ -828,7 +830,13 @@
                have to come up enough that the glyph bottom clears the beat numbers,
                which stay put at the bottom. */
             .staff-line { top: 50%; }
-            .placed-note { top: 50%; transform: translateY(-66%) scale(1.22); transform-origin: left center; }
+            /* `:not(.placed-vexflow)` — this corrects a PNG GLYPH, whose notehead sits low inside its
+                 image box. A VexFlow host is already centred by normalizeRenderedSvg(), and scaling it
+                 1.22x from `left center` shifts every notehead off its measured beat onset. The class
+                 is on the host (rhythm-student.js's renderPatternArt), so the generic selector caught
+                 it. Codex found it; it fires on any coarse pointer, which is every phone. */
+              .placed-note:not(.placed-vexflow) { top: 50%; transform: translateY(-66%) scale(1.22); transform-origin: left center; }
+              .placed-vexflow { top: 50%; transform: translateY(-50%); }
             .answer-time-sig { top: 50%; font-size: 30px !important; }   /* was up to 62px */
             .answer-ts-inline .ts-stack { top: 50%; }
             .beat-drop-zone::before { font-size: 0.85rem; bottom: 4px; }  /* beat # near the line */
@@ -1224,7 +1232,21 @@
             window.addEventListener('load', function () { observeHud(); syncBarHeight(); });
         })();
     </script>
-    <script type="module" src="rhythm-student.js?v=20260705optI37"></script>
+        <!-- VexFlow answer renderer — OPT-IN, via `?renderer=hybrid|vexflow`.
+         The DEFAULT PATH STILL PAYS ~18.7 KB: rhythm-vexflow-renderer.js loads unconditionally, because
+         `bankDir()` in rhythm-student.js reads its `mode()` to choose the tile art, and a page that
+         had not loaded it would be blind to the switch. What the default path does NOT pay is
+         vendor/vexflow.js, 992 KB, injected only when the param is present.
+         document.write is deliberate: it is the one synchronous way to insert a script during parse
+         so it is defined before `rhythm-student.js`, a deferred module, runs. Nothing else on these
+         pages uses document.write. -->
+    <script>
+      if (/[?&]renderer=(hybrid|vexflow)(&|$)/.test(window.location.search)) {
+        document.write('<scr' + 'ipt src="vendor/vexflow.js"><\/scr' + 'ipt>');
+      }
+    </script>
+    <script src="rhythm-vexflow-renderer.js?v=20260710-vexflow"></script>
+    <script type="module" src="rhythm-student.js?v=20260710-vexflow"></script>
     <script src="suite-theme.js?v=20260701-kidsmode"></script>
     <!-- Guided-level ENGINE bridge: loads core/ (curriculum, ladder, mastery,
          grading) over HTTP and exposes window.LevelCore. Must precede solo-mode.js,
@@ -1233,6 +1255,6 @@
     <!-- TEACH content (window.TEACH_CONTENT): per-level intro copy the teach
          screens read. DATA only; classic global, must precede solo-mode.js. -->
     <script src="teach-content.js?v=20260629-teach"></script>
-    <script src="solo-mode.js?v=20260705optI37"></script>
+    <script src="solo-mode.js?v=20260710-vexflow"></script>
 </body>
 </html>

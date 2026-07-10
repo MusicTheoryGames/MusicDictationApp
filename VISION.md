@@ -233,47 +233,85 @@ later with accounts.
 
 ## 8. The finish line for the next release
 
-> **Classroom-ready: Aaron can run a real lesson, with real students, on real hardware, next term.**
+> **Amended twice by the owner.**
+> **2026-07-09:** the RhythmQuest UI redesign ships **before** the classroom. §4 makes the arcade/UI
+> layer load-bearing rather than garnish — this is a paid consumer subscription, so retention is the
+> business — and the owner has seen the redesign run and prefers it.
+> **2026-07-10:** the old teacher tool and projector were archived. A classroom release now means
+> building a **new** teacher interface against the Quest games, not repairing the old one.
 
-**In scope: the live room only. Assigned practice, rosters, and accounts are explicitly NOT in
-this release** — they do not block it, and no account system is built for it.
+**The next release is the RhythmQuest UI.** It is done when items 1–5 are **[observed]** — by a
+person, in a browser, on the hardware in item 4.
 
-The release is done when items 1–6 are **[observed]** — by a person, in a browser, on the hardware
-in item 4 — *and* item 7's clauses each pass an automated test or exist as a written policy. Both
-kinds of evidence are required; neither substitutes for the other.
-
-1. A teacher lands on `index.html` and can reach the teacher tool.
-2. **Teacher → student → projector works end to end**, with an automated integration harness over
-   the room schema, *and* one observed run on real hardware. Neither alone counts.
-3. **Meter matrix.** A round is correctly created, played, answered, and revealed in each of:
-   `2/4`, `3/4`, `4/4`, `2/2`, `3/2`, `6/8`, `9/8`, `12/8`. Irregular (`5/8`, `7/8`), `6/4`, `6/16`
-   and changing meter are **out of scope** for this release. Testable non-preclusion criterion: the
-   room schema carries `{ beatsPerMeasure: number[], beatUnit: string }` and no code path computes
-   beats as `measureCount * 4`; a schema test asserts a `5/8` room round-trips through
-   create/play/reveal without loss, even though no UI exposes it.
+1. The redesign's visual language is on the live engine: layout viewport-locked on both axes, Submit
+   and Check in reserved action rows, bank tiles and answer cells sharing sizing variables.
+2. **The bank is always PNG; the answer is VexFlow.** That is the redesign's split — `renderBeatBank`
+   never draws VexFlow, `shouldRenderPlacedVex` gates only the answer. `?renderer=png|hybrid|vexflow`,
+   default `png`, controls TWO things and neither is a VexFlow bank: it switches the ANSWER renderer
+   (PNG vs VexFlow), and `bankDir()` reads it to pick the bank's PNG ART (`bank/` vs `bank-tight/`).
+   The bank is PNG in every mode.
+   **In place (owner confirming on-device): the answer renders VexFlow for eighteen figures** —
+   modelled on the redesign's
+   non-asset `beatVexPatterns` set, `half` included — in RhythmQuest and BeatQuest Casual (they share
+   `renderPatternArt`), stems down, no five-line staff, noteheads centred on their beat onsets.
+   *Evidence:* verified by driving both pages in a headless browser (place a figure, read the
+   notehead's y against the staff line, confirm the bank stays PNG). The owner is confirming final
+   notehead placement on-device; that is the remaining [observed] step. There is no automated
+   regression test for SVG positioning yet — a known gap, not a claim of coverage.
+   **Not delivered: compound meter.** Compound `cd-*` and the other meter families (`hb dh de tpl`) and
+   whole/dotted-half/half-rest stay PNG in the answer, matching the redesign's `renderAssetOnly`.
+   Compound VexFlow is being finished by the owner + Codex in a redesign-visible session; the
+   `!meterFigDir` guard in `renderPatternArt` is the single point where it flips on. Compound needs a
+   dotted-quarter beat unit and its own onset table.
+3. Tap-back is re-skinned, and **its behaviour is unchanged**: the `TB` state machine
+   (`idle → ready → metro → countoff → capture → done`), the lock-in phase, per-bar results, "Try
+   again", and the BL/BR hand-swap forced at the capstone. The prototype's tap-back is a demo — its
+   beat pad is never wired, so the dual-task mechanic is absent. Do not port it.
 4. **Hardware/browser targets:** Safari on iPad (the students' device), plus current Chrome and
    Safari on macOS. Nothing else is promised.
-5. The student's landing screen is the game. Not a fake login with `Test Student` and `TEST123`
-   prefilled (`rhythm-student.html:1115,1119`).
-6. Nothing in the UI claims a connection, a score, or a capability that isn't real (rule 12).
-7. **Live-room safety.** "Anonymous" does not mean "no identity" — Firebase rules cannot
-   distinguish two students without one. Every clause below needs a passing test or a written note:
-   - **Identity:** every participant signs in with **Firebase Anonymous Auth** and gets a `uid`. A
-     student's answer lives at `rhythm-rooms/$code/answers/$uid`. The teacher's `uid` is stored on
-     the room at creation. *Rules test:* a student `uid` cannot write another `uid`'s answer, cannot
-     write `currentRhythm` or `revealedBeats`, and cannot read the room without having joined it.
-   - **Room codes:** 6 characters from Crockford base32 (no `I`, `L`, `O`, `U`), giving ~2³⁰
-     possibilities. Joins are rate-limited to 5 failed attempts per `uid` per minute. A room rejects
-     joins beyond a teacher-set cap. *Test:* code generator never emits an excluded character; the
-     6th failed join is rejected.
-   - **Expiry:** a room with no teacher heartbeat for **2 hours** becomes unreadable; its data is
-     deleted within **24 hours**. *Test:* a scheduled-cleanup function, exercised against the
-     emulator with a clock injected.
-   - **Retention:** a note in this repo states what is stored (display name, answers, timings), for
-     how long, and how a teacher deletes a room immediately.
+5. Nothing in the UI claims a connection, a score, or a capability that isn't real (rule 12).
+   "Show answer" is gone from the hint menu: it is a forfeit, not a hint, and the code said so —
+   `msg("Here's the correct rhythm. (No points — hit Next for a new one.)")`.
+
+**Then the classroom.** A teacher must be able to run a real lesson, with real students, on real
+hardware. On 2026-07-10 the owner decided to build a **new** teacher interface rather than continue
+the old one. (That is a decision, not a claim about the code, so it carries no evidence tag.)
+Two facts about the old one **[source]**: it hard-coded 4/4 while the curriculum spans ten meters,
+and this repo contains no student client for the schema it broadcast on. Whether it could have been
+repaired is **[inferred]**; nobody tried.
+What the replacement must satisfy, restated from the release this section used to describe — as a
+target, not a plan:
+
+- A teacher lands on `index.html` and can reach the teacher tool.
+- **Teacher → student → projector works end to end**, with an automated integration harness over the
+  room schema, *and* one observed run on real hardware. Neither alone counts.
+- **Meter matrix.** A round is correctly created, played, answered and revealed in each of `2/4`,
+  `3/4`, `4/4`, `2/2`, `3/2`, `6/8`, `9/8`, `12/8`. Irregular (`5/8`, `7/8`), `6/4`, `6/16` and
+  changing meter are out of scope. Testable non-preclusion criterion: the room schema carries
+  `{ beatsPerMeasure: number[], beatUnit: string }` and no code path computes beats as
+  `measureCount * 4`; a schema test asserts a `5/8` room round-trips through create/play/reveal
+  without loss, even though no UI exposes it.
+- The student's landing screen is the game, not a login.
+- **Live-room safety.** "Anonymous" does not mean "no identity" — Firebase rules cannot distinguish
+  two students without one. Each clause needs a passing test or a written note:
+  - **Identity:** every participant signs in with **Firebase Anonymous Auth** and gets a `uid`. A
+    student's answer lives at `rhythm-rooms/$code/answers/$uid`. The teacher's `uid` is stored on the
+    room at creation. *Rules test:* a student `uid` cannot write another `uid`'s answer, cannot write
+    `currentRhythm` or `revealedBeats`, and cannot read the room without having joined it.
+  - **Room codes:** 6 characters from Crockford base32 (no `I`, `L`, `O`, `U`), ~2³⁰ possibilities.
+    Joins rate-limited to 5 failed attempts per `uid` per minute; a room rejects joins beyond a
+    teacher-set cap. *Test:* the generator never emits an excluded character; the 6th failed join is
+    rejected.
+  - **Expiry:** a room with no teacher heartbeat for **2 hours** becomes unreadable; its data is
+    deleted within **24 hours**. *Test:* a scheduled-cleanup function against the emulator with an
+    injected clock.
+  - **Retention:** a note in this repo states what is stored (display name, answers, timings), for
+    how long, and how a teacher deletes a room immediately.
+
+Assigned practice, rosters and accounts are explicitly NOT in either release.
 
 Everything else in the restructure plan — the R0–R11 teaching ladder, the harmonic axis,
-HarmonyQuest, the arcade layer — is downstream of that and waits.
+HarmonyQuest, CounterQuest, the arcade layer — is downstream of both and waits.
 
 ## 9. What is actually true about the code today
 

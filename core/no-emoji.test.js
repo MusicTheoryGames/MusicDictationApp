@@ -41,6 +41,7 @@ const UI_FILES = [
   'beatquest.html',
   'tapping.html',
   'suite-theme.js',
+  'rhythm-vexflow-renderer.js',
   'suite-theme.css',                 // CSS `content:` can render a glyph
   'rhythm-assets/rhythm-assets.js',  // its `name` values render as image alt text
 ];

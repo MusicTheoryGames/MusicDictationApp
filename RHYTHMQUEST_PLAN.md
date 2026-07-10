@@ -4,11 +4,13 @@
 > Where they disagree about a *fact*, `VISION.md` wins. Where they disagree about *what to do next*,
 > this file wins. Sections here that predate `VISION.md` may carry claims corrected since.
 >
-> **CURRENT STEP: 1c — the great cut.** Owner, 2026-07-10: *"the ONLY games that will be part of
-> this going forward are the QUEST games"* — RhythmQuest, MelodyQuest, SingQuest, BeatQuest Casual,
-> and the unbuilt HarmonyQuest and CounterQuest. Everything else moved to `archive/` (89 files,
-> nothing deleted). One thing was rescued: the hand-authored melody bank, now at
-> `content/melody-multiple-choice/`. The record is `archive/README.md`; this file does not repeat it.
+> **CURRENT STEP: 2 — the RhythmQuest UI.** `VISION.md` §8 was amended (owner, 2026-07-09) so the
+> redesign ships before the classroom; §8 now carries the five observable criteria. Step 1c (archive
+> everything that is not a Quest game) landed as `d2f926e`; its record is `archive/README.md`.
+>
+> Bring the UI to the engine, never the engine to the UI. The prototype has no engine. The owner
+> keeps his five themes: the redesign is the LAYOUT, and mpc/manuscript/arcade/brutalist/kids re-skin
+> it. Measured: `suite-theme.css` is 266 theme-scoped rules of 289.
 >
 > The old teacher tool went too. A **new** teacher interface will be built against the Quest games.
 >

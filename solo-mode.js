@@ -680,7 +680,7 @@
             }
           }
         }
-        data.idx = i; S.guidedIdx = i; applyLevel(); persist(); return true;
+          data.idx = i; S.guidedIdx = i; applyLevel(); persist(); return true;
       }
     };
   })();
@@ -802,7 +802,6 @@
     count: '<svg viewBox="0 0 20 20" class="ic"><path d="M5 15V8M10 15V5M15 15v-4"/></svg>',
     filter: '<svg viewBox="0 0 20 20" class="ic"><path d="M2.5 4h15l-6 7.2v4.6l-3 1.6v-6.2z"/></svg>',
     hear: '<svg viewBox="0 0 20 20" class="ic"><path d="M3 8v4h3l4 3V5L6 8z"/><path d="M13.5 7c1.6 1.4 1.6 5.6 0 7"/></svg>',
-    eye:   '<svg viewBox="0 0 20 20" class="ic"><path d="M1.5 10S5 4.5 10 4.5 18.5 10 18.5 10 15 15.5 10 15.5 1.5 10 1.5 10z"/><circle cx="10" cy="10" r="2.4"/></svg>',
     check: '<svg viewBox="0 0 20 20" class="ic"><path d="M4 10.5l4 4 8-9"/></svg>',
     next:  '<svg viewBox="0 0 20 20" class="ic ic-fill"><path d="M5 4l8 6-8 6z"/><path d="M14.5 4v12" class="ic-stroke"/></svg>',
     flame: '<svg viewBox="0 0 20 20" class="ic ic-fill ic-sm"><path d="M10 2c1.1 3 4 4.2 4 8a4 4 0 11-8 0c0-2.2 1.1-3.2 2-4.2.2 1.2 1 2 2 2.2.3-2.4-2-3.6-2-8z"/></svg>',
@@ -4252,7 +4251,6 @@
           '<button id="soloHearBeat" class="hint">' + IC.hear + 'Hear a beat' + hintCostBadge(GROOVE_HINT_PLAY) + '</button>' +
           '<button id="soloHintCount" class="hint">' + IC.count + 'Count sounds' + hintCostBadge(GROOVE_HINT_COUNT) + '</button>' +
           '<button id="soloHintBeats" class="hint">' + IC.search + 'Find mistakes' + hintCostBadge(GROOVE_HINT_MISTAKES) + '</button>' +
-          '<button id="soloReveal" class="hint">' + IC.eye + 'Show answer</button>' +
         '</span>' +
         '<label class="solo-toggle solo-cfg"><input type="checkbox" id="soloCorrect"> Fix-it mode</label>' +
       '</div>' +
@@ -4380,19 +4378,22 @@
     // Tapping game   -> INLINE on the main staff (the rhythm is already shown).
     // Same openTapBack logic path; only the render target differs.
     document.getElementById('soloTapBack').onclick = function () { openTapBack(S.mode === 'tapping'); };
-    document.getElementById('soloReveal').onclick = function () {
-      if (S.solved) return;
-      S.solved = true; S.streak = 0; S.wrongThisRound = true;
-      stopPulse(); clearMarks(); revealCorrect();
-      // GUIDED: revealing the answer ends the round unsolved -> counts as wrong (-30),
-      // never passes the capstone.
-      guidedRecord(false, false, 0);
-      msg('Here’s the correct rhythm. (No points — hit Next for a new one.)');
-      document.getElementById('soloSubmit').style.display = 'none';
-      document.getElementById('soloNext').style.display = '';
-      syncBankPad();
-      save(); render();
-    };
+    /* NO "Show answer" BUTTON. It was never a hint, it was a forfeit, and the code said so: it
+       zeroed the streak, recorded the round wrong, hid Submit, and printed
+       "(No points — hit Next for a new one.)". A hint costs groove and leaves you playing.
+       Removed 2026-07-10 at the owner's instruction: "a hint that is 'show the answer' is not a
+       hint at all and worthless".
+
+       revealCorrect() STAYS. Its four callers are three different things — check before you assume:
+         newTappingRound()     PRE-FILLS the staff with the rhythm you are about to perform. Tapping
+                               is not dictation; there the notation is the prompt, not the answer.
+         checkAnswer() x2      the AUTOMATIC reveal after a wrong answer when Fix-it mode is off —
+                               the engine showing you what you missed, not you asking to skip.
+         forceCapstoneRound()  a DEV/QA seam (`_dev`, ?dev=1 only). It places the exact correct
+                               answer so submit() can pass the capstone gate without a human
+                               notating eight bars.
+       I first wrote that all four were wrong-answer reveals, then that three were. Both wrong.
+       Codex read them. Line numbers are deliberately omitted here: they were stale within a day. */
     // PATH toggle: Guided (the matched ladder spine) vs Free play (the original
     // free meter/level pickers). Switching re-points the level vocabulary and meter.
     var pathSel = document.getElementById('soloPath');
@@ -4698,7 +4699,15 @@
     _dev: {
       // GUIDE.place has NO frontier guard (unlike gotoIndex) and marks levels below as
       // proficient — exactly what a QA run through every level needs.
-      jump: function (i) { if (GUIDE.avail() && GUIDE.place(i, true)) { S.bonusRound = false; S.groove = 100; newRound(); return true; } return false; },
+      jump: function (i) {
+        // Dev-only. The dropdown lists every level; only jump to a READY one (compound is not ready
+        // until Codex's work lands). Check first so place() — a production function — is never asked
+        // to build a level it can't.
+        var t = this.levels().filter(function (l) { return l.i === i; })[0];
+        if (!t || !t.playable) { msg('DEV: level ' + (i + 1) + ' is not ready yet.'); return false; }
+        if (GUIDE.avail() && GUIDE.place(i, true)) { S.bonusRound = false; S.groove = 100; newRound(); return true; }
+        return false;
+      },
       levels: function () { try { return GUIDE.ladder().map(function (l, k) { return { i: k, title: l.title, playable: GUIDE.playable(l) }; }); } catch (e) { return []; } },
       curIdx: function () { return S.guidedIdx; },
       gameOver: function () { showGameOver(); },
@@ -4736,7 +4745,7 @@
       var fill = function () {
         var lv = window.BeatQuestSolo._dev.levels();
         if (!lv.length) return false;
-        sel.innerHTML = lv.map(function (l) { return '<option value="' + l.i + '"' + (l.playable ? '' : ' disabled') + '>' + (l.i + 1) + ' · ' + l.title + (l.playable ? '' : ' (n/a)') + '</option>'; }).join('');
+        sel.innerHTML = lv.map(function (l) { return '<option value="' + l.i + '">' + (l.playable ? '' : '· ') + (l.i + 1) + ' · ' + l.title + (l.playable ? '' : ' (n/a)') + '</option>'; }).join('');
         sel.value = window.BeatQuestSolo._dev.curIdx();
         return true;
       };

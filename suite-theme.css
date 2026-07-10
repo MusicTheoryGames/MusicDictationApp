@@ -28,7 +28,7 @@ body.theme-mpc .rhythm-tile{background:linear-gradient(180deg,#2a2a2d,#161618) !
   box-shadow:inset 0 2px 1px rgba(255,255,255,.08),inset 0 -4px 8px rgba(0,0,0,.6),0 3px 0 #0a0a0b !important}
 /* hover lights the pad up GREEN (MPC LCD), as a glowing outline — no movement */
 body.theme-mpc .rhythm-tile:hover{border-color:#39ff8b !important;box-shadow:inset 0 0 18px rgba(57,255,139,.38),0 0 9px rgba(57,255,139,.35),0 3px 0 #0a0a0b !important}
-body.theme-mpc .rhythm-tile img{filter:invert(1) brightness(1.4) drop-shadow(0 0 5px rgba(57,255,139,.45))}
+body.theme-mpc .rhythm-tile img,body.theme-mpc .rhythm-tile svg{filter:invert(1) brightness(1.4) drop-shadow(0 0 5px rgba(57,255,139,.45))}
 body.theme-mpc .answer-staff{background:#c9d6b9 !important;border:2px solid #1c1c1e !important;border-radius:8px !important;
   box-shadow:inset 0 3px 12px rgba(0,0,0,.4),inset 0 0 40px rgba(120,140,90,.4) !important}
 body.theme-mpc .staff-line{background:#26301c !important}
@@ -59,7 +59,7 @@ body.theme-manuscript .rhythm-bank h3,body.theme-manuscript .answer-area h3{font
 body.theme-manuscript .rhythm-tile{background:#fbf6e7 !important;border:1px solid #d8c9a6 !important;border-radius:4px !important;
   box-shadow:0 1px 2px rgba(120,95,55,.2) !important}
 body.theme-manuscript .rhythm-tile:hover{background:#fff;box-shadow:0 4px 10px rgba(120,95,55,.25) !important}
-body.theme-manuscript .rhythm-tile img{filter:none;mix-blend-mode:multiply}
+body.theme-manuscript .rhythm-tile img,body.theme-manuscript .rhythm-tile svg{filter:none;mix-blend-mode:multiply}
 body.theme-manuscript .answer-staff{background:#f5ecd6 !important;border:1.5px solid #2a2118 !important;border-radius:3px !important;
   box-shadow:0 1px 0 #fff,inset 0 0 40px rgba(150,120,70,.15) !important}
 body.theme-manuscript .staff-line{background:#2a2118 !important}
@@ -95,7 +95,7 @@ body.theme-arcade .rhythm-tile{background:radial-gradient(120% 120% at 50% 20%,#
   box-shadow:0 0 12px rgba(255,46,166,.5),inset 0 0 16px rgba(255,46,166,.25),0 5px 0 #7a0f52 !important}
 body.theme-arcade .rhythm-tile:nth-child(even){border-color:#16f0ff !important;
   box-shadow:0 0 12px rgba(22,240,255,.5),inset 0 0 16px rgba(22,240,255,.2),0 5px 0 #0a6e78 !important}
-body.theme-arcade .rhythm-tile img{filter:invert(1) brightness(1.7) drop-shadow(0 0 6px #fff)}
+body.theme-arcade .rhythm-tile img,body.theme-arcade .rhythm-tile svg{filter:invert(1) brightness(1.7) drop-shadow(0 0 6px #fff)}
 body.theme-arcade .answer-staff{background:radial-gradient(120% 120% at 50% 0,#10082b,#060219) !important;
   border:2px solid #16f0ff !important;border-radius:6px !important;box-shadow:inset 0 0 40px rgba(22,240,255,.18),0 0 18px rgba(22,240,255,.25) !important}
 body.theme-arcade .staff-line{background:#16f0ff !important;box-shadow:0 0 10px #16f0ff}
@@ -118,7 +118,7 @@ body.theme-brutalist .rhythm-bank h3,body.theme-brutalist .answer-area h3{font-f
 body.theme-brutalist .rhythm-tile{background:#fff !important;border:2px solid #111 !important;border-radius:0 !important;box-shadow:none !important}
 /* hover = red outline + hard offset, NOT a black fill (which hid the glyph) */
 body.theme-brutalist .rhythm-tile:hover{background:#fff !important;border-color:#e3231b !important;box-shadow:5px 5px 0 #e3231b !important}
-body.theme-brutalist .rhythm-tile img{filter:none;mix-blend-mode:multiply}
+body.theme-brutalist .rhythm-tile img,body.theme-brutalist .rhythm-tile svg{filter:none;mix-blend-mode:multiply}
 body.theme-brutalist .answer-staff{background:#fff !important;border:3px solid #111 !important;border-radius:0 !important;box-shadow:none !important}
 body.theme-brutalist .staff-line{background:#111 !important;height:3px !important}
 body.theme-brutalist .answer-time-sig{color:#111 !important}
@@ -234,6 +234,12 @@ body.theme-brutalist #soloHud select{font-family:'Space Mono',monospace;font-wei
 /* ============================================================================
    PER-THEME accents (no universal colors): Play button, groove bar, bar ink.
    ========================================================================== */
+/* The `.rhythm-tile svg` here is DEAD/DEFENSIVE: the bank is always PNG, so no SVG is inside a
+   .rhythm-tile today. Kept only so a future SVG-in-tile change is themed, not broken.
+   The ANSWER glyph carries `.placed-note`, so it inherits each theme's `.placed-note` treatment —
+   `filter:none` on most themes, `invert(1)...` on arcade. A ported VexFlow answer glyph therefore
+   gets the SAME theme treatment the PNG glyph got; that is intended, not a bug. */
+
 /* --bar-ink => middle bar line + final double bar match each theme's staff ink.
    --groove-ok => the groove bar's "healthy" fill (100%). */
 body.theme-mpc .answer-staff{--bar-ink:#26301c}
@@ -444,7 +450,7 @@ body.theme-kids .solo-levelsel,                /* LEVEL */
 body.theme-kids .solo-barsel,                  /* BARS */
 body.theme-kids .solo-keybind,                 /* BEAT/RHYTHM key rebind */
 body.theme-kids .solo-cfg,                     /* Fix-it mode */
-body.theme-kids .solo-hints,                   /* the five-button hint row */
+body.theme-kids .solo-hints,                   /* the four-button hint row */
 body.theme-kids #soloHintsToggle,              /* mobile Hints dropdown toggle */
 body.theme-kids #soloSettingsToggle{display:none !important}  /* mobile Settings toggle (its panel is now empty) */
 

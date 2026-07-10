@@ -758,11 +758,6 @@
                 top: -9px;
                 right: -9px;
             }
-
-            /* Smaller VexFlow notation on mobile */
-            .beat-notation svg {
-                transform: translateX(-50%) scale(1.1) !important;
-            }
         }
 
         /* Very small phones */
@@ -795,11 +790,6 @@
                 min-height: 40px;
                 font-size: 0.6rem;
             }
-
-            /* Even smaller notation for tiny screens */
-            .beat-notation svg {
-                transform: translateX(-50%) scale(1.0) !important;
-            }
         }
 
         /* Focus-layout toggles exist only on touch screens (shown in the mobile
@@ -828,7 +818,13 @@
                have to come up enough that the glyph bottom clears the beat numbers,
                which stay put at the bottom. */
             .staff-line { top: 50%; }
-            .placed-note { top: 50%; transform: translateY(-66%) scale(1.22); transform-origin: left center; }
+            /* `:not(.placed-vexflow)` — this corrects a PNG GLYPH, whose notehead sits low inside its
+                 image box. A VexFlow host is already centred by normalizeRenderedSvg(), and scaling it
+                 1.22x from `left center` shifts every notehead off its measured beat onset. The class
+                 is on the host (rhythm-student.js's renderPatternArt), so the generic selector caught
+                 it. Codex found it; it fires on any coarse pointer, which is every phone. */
+              .placed-note:not(.placed-vexflow) { top: 50%; transform: translateY(-66%) scale(1.22); transform-origin: left center; }
+              .placed-vexflow { top: 50%; transform: translateY(-50%); }
             .answer-time-sig { top: 50%; font-size: 30px !important; }   /* was up to 62px */
             .answer-ts-inline .ts-stack { top: 50%; }
             .beat-drop-zone::before { font-size: 0.85rem; bottom: 4px; }  /* beat # near the line */
@@ -1297,8 +1293,6 @@ body.casual-skin.pick-armed .beat-drop-zone{ box-shadow:inset 0 0 0 2.5px #5b6ee
 /* Owner: KILL the purple message line between the controls and the answer — worthless.
    Scoring feedback is the floating +/- pops + result overlays; count-in is the flash. */
 body.casual-skin #soloHud #soloMsg, body.casual-skin #soloMsg{ display:none!important; }
-/* "Show answer" is a giveaway, not a hint — drop it from the casual hint menu */
-body.casual-skin #soloReveal{ display:none!important; }
 /* ---- Teach / warm-up modal → casual light theme (was the dark tap-back surface) ---- */
 body.casual-skin .tapback-ov{
   --tb-accent:#22b083!important;
@@ -1398,8 +1392,9 @@ body.casual-skin .answer-staff::before,
 body.casual-skin .staff-container::after,
 body.casual-skin .staff-container::before{ display:none!important; background:none!important; }
 /* KEEP IT SIMPLE (like the reference): hide advanced helper clutter */
-/* Show the full PRO hint set (Narrow options, Count sounds, Find mistakes, Hear a
-   beat, Show answer). Only the Settings toggle is hidden — config lives on the menu. */
+      /* Show the full PRO hint set: Narrow options, Count sounds, Find mistakes, Hear a beat —
+         four hints, each costing groove. Only the Settings toggle is hidden; config lives on the
+         menu. ("Show answer" was removed from the engine on 2026-07-10.) */
 body.casual-skin #soloSettingsToggle{ display:none!important; }
 /* ---- answer = a LINE of fixed-size tiles, IDENTICAL to the bank tiles ----
    Each slot is a fixed width == a bank tile (not stretched to fill the bar), and
@@ -1626,7 +1621,21 @@ body.casual-skin .answer-area{ margin-top:16px!important; }
             window.addEventListener('load', function () { observeHud(); syncBarHeight(); });
         })();
     </script>
-    <script type="module" src="rhythm-student.js?v=20260705optI37"></script>
+        <!-- VexFlow answer renderer — OPT-IN, via `?renderer=hybrid|vexflow`.
+         The DEFAULT PATH STILL PAYS ~18.7 KB: rhythm-vexflow-renderer.js loads unconditionally, because
+         `bankDir()` in rhythm-student.js reads its `mode()` to choose the tile art, and a page that
+         had not loaded it would be blind to the switch. What the default path does NOT pay is
+         vendor/vexflow.js, 992 KB, injected only when the param is present.
+         document.write is deliberate: it is the one synchronous way to insert a script during parse
+         so it is defined before `rhythm-student.js`, a deferred module, runs. Nothing else on these
+         pages uses document.write. -->
+    <script>
+      if (/[?&]renderer=(hybrid|vexflow)(&|$)/.test(window.location.search)) {
+        document.write('<scr' + 'ipt src="vendor/vexflow.js"><\/scr' + 'ipt>');
+      }
+    </script>
+    <script src="rhythm-vexflow-renderer.js?v=20260710-vexflow"></script>
+    <script type="module" src="rhythm-student.js?v=20260710-vexflow"></script>
     <script src="suite-theme.js?v=20260701-kidsmode"></script>
     <!-- Guided-level ENGINE bridge: loads core/ (curriculum, ladder, mastery,
          grading) over HTTP and exposes window.LevelCore. Must precede solo-mode.js,
@@ -1635,7 +1644,7 @@ body.casual-skin .answer-area{ margin-top:16px!important; }
     <!-- TEACH content (window.TEACH_CONTENT): per-level intro copy the teach
          screens read. DATA only; classic global, must precede solo-mode.js. -->
     <script src="teach-content.js?v=20260629-teach"></script>
-    <script src="solo-mode.js?v=20260705optI37"></script>
+    <script src="solo-mode.js?v=20260710-vexflow"></script>
     <script>
     /* ---- Casual main menu (Guided / Free Play). Visual + navigation; Start hands
        off to the real engine via the (hidden) solo button. Free-play figure
@@ -1644,7 +1653,10 @@ body.casual-skin .answer-area{ margin-top:16px!important; }
       var $=function(id){return document.getElementById(id);};
       // Casual has its own intake — suppress PRO RhythmQuest's placement checklist modal.
       try{ localStorage.setItem('beatquest-placed-dictation','1'); }catch(e){}
-      var GLY='rhythm-assets/bank/';
+      /* Follow the ?renderer= switch, or intake shows one image and the game shows another
+         for the same figure. With the switch off this is 'bank/', exactly as before. */
+      var GLY = 'rhythm-assets/' +
+        ((window.RhythmVexFlow && window.RhythmVexFlow.mode() !== 'png') ? 'bank-tight' : 'bank') + '/';
       var FIG={
         'quarter':{n:'Quarter',on:[0]}, 'two-eighths':{n:'Two eighths',on:[0,.5]},
         'quarter-rest':{n:'Quarter rest',on:[]}, 'half':{n:'Half',on:[0],span:2},

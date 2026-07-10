@@ -26,6 +26,26 @@ const GLYPH_NOTEHEAD_OFFSET = 11;
 const METER_FIG_DIRS = { 'cd-': 'compound', 'hb-': 'halfbeat', 'dh-': 'dottedhalf', 'de-': 'dotted16', 'tpl-': 'tuplets' };
 function meterFigDir(id) { if (!id) return null; for (const p in METER_FIG_DIRS) { if (id.indexOf(p) === 0) return METER_FIG_DIRS[p]; } return null; }
 
+/* WHICH TILE ART. `bank/` is the source of truth, hand-tuned, never regenerated. It is TWO size
+   families: 79 files at 720x360 and 20 at 380x192.
+   `bank-tight/` is the redesign's art — the same 99 filenames, each trimmed to its alpha bounding
+   box but with a MINIMUM CANVAS PER FAMILY, so a quarter rest does not end up the visual weight of
+   four beamed sixteenths. The result is NOT one size: 76 land at 640x443 and the remaining 23 range
+   from 360x249 to 668x462. (I wrote "640x443" for all of them. Measure, do not remember.)
+   Produced by tools/generate-tight-bank-assets.py, which regenerates all 99 byte-for-byte from
+   bank/ — verified by sha256, 2026-07-10. Selected by `?renderer=`, alongside the VexFlow switch. */
+function bankDir() {
+    try {
+        // Gated on the renderer module being loaded. melodic-game.html imports this file but not
+        // rhythm-vexflow-renderer.js; without this it would serve the redesign's tight art with the
+        // old PNG figures and none of the VexFlow, i.e. half the switch. The two halves ship or they
+        // do not. Codex caught it.
+        if (!window.RhythmVexFlow) return 'bank';
+        const m = window.RhythmVexFlow.mode();
+        return (m === 'hybrid' || m === 'vexflow') ? 'bank-tight' : 'bank';
+    } catch (e) { return 'bank'; }
+}
+
 // Touch devices (phone/tablet) get a single horizontal scrolling staff instead
 // of the desktop multi-line wrap, so playback can autoscroll left->right.
 function isMobileStaff() {
@@ -461,17 +481,22 @@ class RhythmStudent {
     }
 
     renderTileNotation(pattern, container) {
-        console.log('Loading PNG asset for pattern:', pattern.id);
-
         try {
             // Clear container
             container.innerHTML = '';
+
+              /* THE BANK IS ALWAYS A PNG — VexFlow never draws a chooser tile (the redesign's
+                 renderBeatBank has no renderer mode). `?renderer=` never switches the bank to VexFlow.
+                 It DOES pick which PNG: bankDir() returns `bank/` in png mode and `bank-tight/` in
+                 hybrid/vexflow (the redesign's tighter crops). So the switch changes the bank's ART
+                 but never its RENDERER. I first wired VexFlow in here too — the wrong half of hybrid,
+                 and what mangled the placed bank tiles the owner saw. */
 
             // One-beat figure sets (compound cd-, half-beat hb-, dotted-half dh-,
             // dotted-eighth de-, tuplets tpl-) all have their own centered bank PNGs.
             if (meterFigDir(pattern.id)) {
                 const cimg = document.createElement('img');
-                cimg.src = `./rhythm-assets/bank/${pattern.id}.png`;
+                cimg.src = `./rhythm-assets/${bankDir()}/${pattern.id}.png`;
                 cimg.style.width = '100%';
                 cimg.style.height = '100%';
                 cimg.style.objectFit = 'contain';
@@ -493,7 +518,7 @@ class RhythmStudent {
             const img = document.createElement('img');
             // Use the centered/normalized bank versions (trimmed to content, so
             // the actual glyph is centered in the tile, not the image box).
-            img.src = `./rhythm-assets/bank/${asset.file.replace(/\.svg$/, '.png')}`;
+            img.src = `./rhythm-assets/${bankDir()}/${asset.file.replace(/\.svg$/, '.png')}`;
             img.style.width = '100%';
             img.style.height = '100%';
             img.style.objectFit = 'contain';
@@ -957,6 +982,45 @@ class RhythmStudent {
     // image), so a READ-ONLY staff (e.g. the tap-back overlay) renders identically
     // to the answer board. Does NOT touch userAnswer or add a remove button.
     renderPatternArt(notationArea, patternId, beatsNeeded) {
+        /* THE ANSWER RENDERER — `?renderer=hybrid|vexflow`, default off. This is the seam VISION §8
+           item 2 names: the placed answer, not the chooser bank.
+
+           It dispatches BEFORE the tiles-skin branch on purpose. BeatQuest Casual renders through
+           that branch, and it returns early; putting VexFlow after it meant Casual kept its PNGs
+           while the PRO staff drew notation — the same figure, two different images, which is the
+           exact property the shared sizing exists to guarantee. Codex caught it.
+
+           The PRO staff otherwise draws each figure as separate SVG note glyphs positioned at their
+           beat offsets (NOTE_DECOMPOSITION + GLYPH_NOTEHEAD_OFFSET). VexFlow draws the figure once
+           and pins each notehead to its true onset (strictOnsetProfiles) — the same job, done once.
+
+           `!meterFigDir(patternId)` excludes EVERY meter-specific figure family, not just compound:
+           `cd-` `hb-` `dh-` `de-` `tpl-` (see METER_FIG_DIRS). Those have their own staff-spanning
+           SVGs. `hasFigure()` then decides the rest. Any miss falls through to the art below;
+           renderFigure() returns false rather than throwing. */
+          /* THE ANSWER AREA IS VexFlow. The goal (owner): all-VexFlow answer, all-PNG bank.
+             VexFlow draws every figure it has a spec for; PNG is the fallback for figures whose
+             VexFlow was never finished AND for any figure renderFigure() declines (e.g. vexflow.js
+             not loaded) — today the meter-specific families (`cd- hb- dh- de- tpl-`,
+             filtered by meterFigDir) and whole/dotted-half/half-rest (no spec). The redesign is in
+             the same state: its compound cd-* carry VexFlow specs flagged `renderAssetOnly`, so
+             hybrid renders them PNG; finishing compound flips them to VexFlow, at which point drop
+             the `!meterFigDir` guard for the finished families.
+
+             The host is sized like the redesign's .placed-vex-host — it fills the cell box
+             (width = beats * cell) and the CSS + normalizeRenderedSvg place the notation. NOT
+             height:100%, which read the oversized staff panel and blew the glyph to ~180px beside a
+             ~90px PNG. */
+          const VXF = window.RhythmVexFlow;
+          if (VXF && VXF.mode() !== 'png' && !meterFigDir(patternId) && VXF.hasFigure(patternId)) {
+              const host = document.createElement('div');
+              host.className = 'placed-note placed-vexflow';
+              host.style.width = ((beatsNeeded || 1) * 100) + '%';
+              notationArea.appendChild(host);
+              if (VXF.renderFigure(host, patternId)) return;
+              host.remove();   // it declined; fall through to the art
+          }
+
         // ── CASUAL TILES-SKIN placement (OWNER-APPROVED FINAL — "that's perfect", 2026-07-05) ──
         // WHY the app has two asset sets: the PRO staff uses wide, staff-spanning SVGs
         // (rhythm-assets/<figDir>/<id>.svg) whose noteheads land exactly on their beat
@@ -993,7 +1057,7 @@ class RhythmStudent {
             // Single-note (half) or one-beat figures: the natural-size bank PNG (never beats*100%,
             // which blows up a half note); the merged green cells form the spanning container.
             const timg = document.createElement('img');
-            timg.src = `./rhythm-assets/bank/${patternId}.png`;
+            timg.src = `./rhythm-assets/${bankDir()}/${patternId}.png`;
             timg.className = 'placed-note';
             timg.style.width = '100%';
             timg.alt = patternId;
@@ -1003,6 +1067,7 @@ class RhythmStudent {
         const decomposition = NOTE_DECOMPOSITION[patternId];
         const asset = this.rhythmAssets[patternId];
         const figDir = meterFigDir(patternId);
+
         if (figDir) {
             const img = document.createElement('img');
             img.src = `./rhythm-assets/${figDir}/${patternId}.svg`;
