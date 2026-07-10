@@ -19,7 +19,7 @@
  *
  * PURE, framework-agnostic ES module in the core/ house style (same discipline as
  * core/melodic.js and core/gym.js): NO DOM, NO audio, NO I/O, NO wall-clock, NO
- * Firebase. Every function takes all data as parameters and returns NEW data;
+ * Supabase. Every function takes all data as parameters and returns NEW data;
  * inputs are never mutated.
  */
 

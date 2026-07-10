@@ -5,10 +5,10 @@
  * long-term-retention engine.
  *
  * Design constraints (deliberate, do not loosen):
- *   - PURE & FRAMEWORK-AGNOSTIC. No I/O, no DOM, no Firebase, no `Date.now()`
+ *   - PURE & FRAMEWORK-AGNOSTIC. No I/O, no DOM, no Supabase, no `Date.now()`
  *     read internally. The current time is ALWAYS injected as `now` (epoch ms).
  *     This makes every function deterministic and trivially unit-testable, and
- *     lets the imperative shell (Firebase / localStorage / UI) own all effects.
+ *     lets the imperative shell (Supabase / localStorage / UI) own all effects.
  *   - GAME-AGNOSTIC. The only key is a universal `skillId` string. Rhythm,
  *     melodic, interval, chord… every game contributes skills into ONE shared
  *     queue, and the scheduler interleaves them transparently. A skillId is an

@@ -6,8 +6,11 @@
 >
 > **CURRENT STEP: 2 — the RhythmQuest UI, AND (owner, 2026-07-10) the live-room foundation in
 > parallel.** `VISION.md` §8 was amended (owner, 2026-07-09) so the redesign ships before the
-> classroom; §8 now carries the five observable criteria, and a third amendment (2026-07-10) authorizes
-> the classroom's back-end **foundation** to be built in parallel with the UI finish. The owner is
+> classroom; §8 now carries the five observable criteria, a third amendment (2026-07-10) authorizes
+> the classroom's back-end **foundation** to be built in parallel with the UI finish, and a fourth
+> (2026-07-10) sets the backend to **Supabase — one shared project for the whole suite** (§11's
+> backend question resolved).
+> The owner is
 > completing the UI separately (with Codex); concurrently the live room begins with the pure,
 > no-network `core/room.js`. The live room's *release* still follows the UI's — only its foundation is
 > in scope now. Step 1c (archive everything that is not a Quest game) landed as `d2f926e`; its record
@@ -563,7 +566,8 @@ SingQuest as a standalone product only after the dictation trio is coherent.
 
 11. **Accounts, roster, assignments.** Deliberately last, and deliberately
     separate. It is a product with a signup flow, a student-data privacy posture, and a support
-    burden — not a refactor. Decide the backend after Track A ships.
+    burden — not a refactor. The backend is decided (Supabase, one project for the suite — §11 /
+    VISION §8, owner 2026-07-10); what waits is the accounts product built on it.
 
 **Deferred, explicitly:** the public-domain melody corpus proposed in the RTF's second half
 (OpenScore Lieder, Florence Price dataset, Mutopia, PDMX). Good idea, wrong quarter. The

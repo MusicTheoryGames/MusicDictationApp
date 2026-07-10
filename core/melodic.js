@@ -6,7 +6,7 @@
  *
  * PURE, framework-agnostic ES module following Functional Core / Imperative Shell,
  * the same discipline as `core/mastery.js` and `core/curriculum.js`:
- *   - NO DOM, NO audio, NO I/O, NO wall-clock, NO Firebase.
+ *   - NO DOM, NO audio, NO I/O, NO wall-clock, NO Supabase.
  *   - Every function takes all data as parameters and returns NEW data; inputs are
  *     never mutated (melodies are immutable value objects).
  *   - All randomness flows through an INJECTED, deterministic seed (a tiny splitmix32

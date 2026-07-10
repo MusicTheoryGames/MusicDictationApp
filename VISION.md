@@ -233,7 +233,7 @@ later with accounts.
 
 ## 8. The finish line for the next release
 
-> **Amended three times by the owner.**
+> **Amended four times by the owner.**
 > **2026-07-09:** the RhythmQuest UI redesign ships **before** the classroom. §4 makes the arcade/UI
 > layer load-bearing rather than garnish — this is a paid consumer subscription, so retention is the
 > business — and the owner has seen the redesign run and prefers it.
@@ -245,6 +245,14 @@ later with accounts.
 > schema made meter-aware, teacher-`uid`-bearing, and roster/answer-preserving. This does **not**
 > re-order what *ships*: the UI redesign is still the next release and the live room's own release
 > still follows it. What changed is only that foundation work is authorized now, not deferred.
+> **2026-07-10 (later still):** the chosen backend is **Supabase — one project for the whole suite**
+> (a decision, not yet built). Every Quest game is to read and write that one project, because a
+> student is one identity across the suite and the teacher dashboard + cross-game data (and later
+> leaderboards) require shared storage; the data is not to be split per game, and it is a new project
+> dedicated to this suite rather than a reused sibling one (minor-student PII). The live room will
+> therefore use **Supabase anonymous sign-in + Realtime + row-level security** instead of Firebase.
+> This closes §11's Firebase-vs-Supabase question. `core/room.js` stays backend-agnostic — only its
+> module doc is retargeted from Firebase to Supabase.
 
 **The next release is the RhythmQuest UI.** It is done when items 1–5 are **[observed]** — by a
 person, in a browser, on the hardware in item 4.
@@ -298,19 +306,19 @@ target, not a plan:
   `measureCount * 4`; a schema test asserts a `5/8` room round-trips through create/play/reveal
   without loss, even though no UI exposes it.
 - The student's landing screen is the game, not a login.
-- **Live-room safety.** "Anonymous" does not mean "no identity" — Firebase rules cannot distinguish
+- **Live-room safety.** "Anonymous" does not mean "no identity" — row-level security cannot distinguish
   two students without one. Each clause needs a passing test or a written note:
-  - **Identity:** every participant signs in with **Firebase Anonymous Auth** and gets a `uid`. A
-    student's answer lives at `rhythm-rooms/$code/answers/$uid`. The teacher's `uid` is stored on the
-    room at creation. *Rules test:* a student `uid` cannot write another `uid`'s answer, cannot write
-    `currentRhythm` or `revealedBeats`, and cannot read the room without having joined it.
+  - **Identity:** every participant signs in with **Supabase anonymous sign-in** and gets a `uid`. A
+    student's answer is a row keyed by `(room, uid)` in an `answers` table; the teacher's `uid` is
+    stored on the room row at creation. *RLS test:* a student `uid` cannot write another `uid`'s
+    answer, cannot write the room's rhythm or revealed beats, and cannot read a room it has not joined.
   - **Room codes:** 6 characters from Crockford base32 (no `I`, `L`, `O`, `U`), ~2³⁰ possibilities.
     Joins rate-limited to 5 failed attempts per `uid` per minute; a room rejects joins beyond a
     teacher-set cap. *Test:* the generator never emits an excluded character; the 6th failed join is
     rejected.
   - **Expiry:** a room with no teacher heartbeat for **2 hours** becomes unreadable; its data is
-    deleted within **24 hours**. *Test:* a scheduled-cleanup function against the emulator with an
-    injected clock.
+    deleted within **24 hours**. *Test:* a scheduled cleanup (pg_cron or an Edge Function) against a
+    local Supabase instance with an injected clock.
   - **Retention:** a note in this repo states what is stored (display name, answers, timings), for
     how long, and how a teacher deletes a room immediately.
 
@@ -447,13 +455,14 @@ here.
 - Absolute pitch, interval-name drilling as an end in itself, or anything that rewards piano
   background over hearing. (Chenette, MTO 27.2.)
 
+**Recently resolved.** The **backend** is decided — Supabase, one project for the whole suite (the
+live room and, later, accounts/assigned-practice all in it); a new project dedicated to this suite,
+not a reused sibling one (minor-student PII), and never split per game (§8, owner 2026-07-10).
+
 **Open decisions, recorded so nobody resolves them by accident.**
 - The suite name (§5).
 - Whether to *add* school site licensing alongside the consumer subscription (§4). The subscription
   itself is decided.
-- Backend for accounts, when assigned practice is eventually built: extend the existing Firebase,
-  or adopt Supabase as used in sibling projects. Decide *after* the live room ships, because it
-  will tell us whether Firebase is healthy. Not a v1 question (§8).
 - Whether SingQuest is a standalone product at all, or whether its mic layer (`core/pitch.js`) is
   simply the optional sing-back step inside the dictation trio.
 - Whether `home.html` becomes the real front door, or is deleted and `solo-mode.js:2456,2481`

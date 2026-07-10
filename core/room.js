@@ -3,11 +3,11 @@
  * PURE state logic for the live dictation room (VISION §7/§8).
  *
  * No effects: no DOM, no network, no clock, no randomness. `now` (a timestamp)
- * and entropy (bytes) are injected. The imperative shell — a Firebase transport,
- * built separately — owns all effects, calls `reduce()` to fold messages into
- * state, and enforces *authorization* (only the teacher assigns/reveals; a
- * student writes only their own answers) via security rules keyed on
- * `teacherUid` and the answering `uid`. This module enforces *state validity*.
+ * and entropy (bytes) are injected. A separate imperative shell — a Supabase
+ * transport, not yet built — will own all effects: it will call `reduce()` to fold
+ * messages into state and enforce *authorization* (only the teacher assigns/reveals;
+ * a student writes only their own answers) via row-level security keyed on
+ * `teacherUid` and the answering `uid`. This module enforces *state validity* only.
  *
  * RHYTHM MODEL. A room is created for ONE meter, and carries a `figures`
  * VOCABULARY — a map `{ figureId: beats }` of the figures valid in this room

@@ -5,7 +5,7 @@
  * MASTERY ENGINE — per-(profile, skill) weighted-Leitner mastery meter.
  *
  * PURE, framework-agnostic ES module following Functional Core / Imperative Shell:
- *   - NO I/O, NO DOM, NO Firebase, NO timers, NO randomness.
+ *   - NO I/O, NO DOM, NO Supabase, NO timers, NO randomness.
  *   - Every function takes all data as parameters and returns new data.
  *   - `now` (epoch milliseconds) is INJECTED into every function that does a time
  *     calculation; the module never reads the wall clock itself.
