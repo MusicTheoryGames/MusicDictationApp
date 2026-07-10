@@ -1,0 +1,62 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "verdict",
+    "scope",
+    "correctness",
+    "vision_conflict",
+    "lies",
+    "missed_call_sites",
+    "reuse",
+    "reasoning"
+  ],
+  "properties": {
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "SHIP",
+        "FIX-FIRST",
+        "REJECT"
+      ],
+      "description": "SHIP only if the change is correct, in scope, and free of false claims."
+    },
+    "scope": {
+      "type": "string",
+      "description": "Does this diff serve the CURRENT STEP in RHYTHMQUEST_PLAN.md? If not, say what should have been worked on instead."
+    },
+    "correctness": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Defects, each citing file:line. What breaks?"
+    },
+    "vision_conflict": {
+      "type": "string",
+      "description": "Does it violate a non-negotiable in VISION.md \u00a76, or drift from the \u00a78 finish line?"
+    },
+    "lies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Code, comments or docs that now assert something untrue. Cite file:line."
+    },
+    "missed_call_sites": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Places that needed the same edit and did not get it. Grep before answering."
+    },
+    "reuse": {
+      "type": "string",
+      "description": "Existing core/ function that should have been used instead."
+    },
+    "reasoning": {
+      "type": "string",
+      "description": "One line: why this verdict."
+    }
+  }
+}

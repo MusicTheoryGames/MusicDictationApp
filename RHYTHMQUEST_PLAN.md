@@ -5,7 +5,27 @@
 > this file wins. Sections here that predate `VISION.md` may carry corrected-since claims — §0b
 > records the ones already caught.
 >
-> **CURRENT STEP: 1a of 11** — repo + doc hygiene (§7b). Step 0 done except the deliberately
+> **CURRENT STEP: T (tooling prerequisite)** — the mandatory Codex-review hook
+> (`scripts/critic.sh`, `scripts/pre-commit`, `scripts/install-hooks.sh`). Owner-approved
+> 2026-07-09; its own commit, before any further work. Lettered, not numbered, so it does not
+> collide with §7b's build-order **step 0** (stop the classroom from lying), which is done.
+>
+>**When the hook is installed**, `git commit` and `git merge`'s auto-commit are refused unless Codex
+> **returned SHIP** on a review bound to that exact tree object. It is not true that *every* commit
+> is refused: `--no-verify`, `CRITIC_OVERRIDE=1`, the replay commands, removing the hook, and index
+> mutation after the hook passes all get through. Codex is shown a *text diff*, not the tree itself,
+> so binary blobs are not reviewed. Applying a finding changes the tree and voids the receipt, so
+> each commit needs its own pass.
+>
+> **It is not a security boundary.** The bypass list is the header of `scripts/pre-commit` and is
+> not repeated here — four partial copies of it drifted, and three became false, which is the exact
+> failure this repo keeps having. It is not claimed to be complete: Git has more ways to move a ref
+> than I can prove I have enumerated. It stops forgetting, not deciding. Any bypass must be
+> disclosed in the commit message and to the owner.
+>
+> **NEXT: 1b** — the BeatQuest→RhythmQuest rename + localStorage migration (§7b).
+>
+> Step 1a (repo + doc hygiene) landed as `b684a32`; the hub fix as `db9b5a2` (§7b). Step 0 done except the deliberately
 > deferred "For teachers" link. Any change that does not serve the current step is scope creep and
 > should be rejected in review.
 >

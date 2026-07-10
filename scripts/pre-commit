@@ -1,0 +1,171 @@
+#!/bin/sh
+# CODEX REVIEW GATE — install with:  scripts/install-hooks.sh
+# Installed as pre-commit (git commit, --amend) and pre-merge-commit (git merge).
+#
+# WHAT IT DOES. Authoritative. README.md, RHYTHMQUEST_PLAN.md, critic.sh and install-hooks.sh
+# restate this; each restatement must carry all three clauses or it is a lie.
+#
+#   WHEN Git runs this hook (git commit, git commit --amend, git merge's auto-commit — not the
+#   many other paths that create a commit or move a ref),
+#   AND no bypass is used (--no-verify skips it; CRITIC_OVERRIDE=1 makes it pass),
+#   THEN it refuses unless scripts/critic.sh produced a SHIP verdict bound to this exact tree.
+#
+# "Bound to this tree" is weaker than "Codex read this tree". The receipt names a tree id and this
+# hook refuses any other; but Codex was shown a TEXT DIFF, which is lossy for binary blobs.
+#
+# NOT A SECURITY BOUNDARY. It stops you from forgetting. It cannot stop you from deciding.
+# These defeat it, and the list is NOT claimed to be exhaustive — Git has more ways to move a ref
+# than I can prove I have enumerated:
+#
+#   - CRITIC_OVERRIDE=1 (loud, must be disclosed); --no-verify (silent); removing or replacing the
+#     hook; pointing core.hooksPath elsewhere.
+#   - Commits made by rebase, cherry-pick, revert, am, fast-import, filter-branch, commit-tree.
+#     (git am does run pre-applypatch, which could reject it — we do not install one.)
+#   - Refs moved onto unreviewed commits: fast-forward merge or pull, update-ref, reset --hard,
+#     branch -f, a fetch refspec, git replace, a push from elsewhere.
+#   - Editing .git/critic/receipt, or forging the verdict JSON it names. We re-derive the verdict
+#     from that JSON rather than trust the receipt's own line, but we cannot authenticate the file.
+#   - This hook runs BEFORE the commit-message editor. An editor can modify a tracked file and
+#     `git add` it after these checks pass. No pre-commit hook can prevent that.
+#
+# Things that look like bypasses and are not: merge --squash, apply --index, hash-object and add
+# create no commit, and the ordinary commit that follows IS gated. So is `commit --amend`.
+#
+# An automatic non-fast-forward `git merge` builds a tree nobody reviewed, so it normally blocks.
+# Do this instead:
+#     git merge --no-commit <branch>
+#     ./scripts/critic.sh "merge <branch>"
+#     git commit
+#
+# WHY IT IS STRICT. One earlier version hashed only the working tree: you could stage `x=1`, edit
+# to `x=2`, have Codex review `x=2`, and commit the unreviewed `x=1`. Another accepted a REJECT
+# receipt. Both were caught in review.
+#
+# One receipt covers one commit. critic.sh resolves HEAD to a commit id once, pins the diff and both
+# tree ids to it, and exports GIT_NO_REPLACE_OBJECTS=1 so a replacement ref cannot redirect that id.
+# It records the id; this hook refuses a receipt taken at a different HEAD, and exports the same
+# variable so its hashes agree. Applying a review finding changes the tree and voids the receipt, so
+# every commit needs its own pass. That is the cost, and it is the right one: on 2026-07-09 two
+# commits landed after a FIX-FIRST verdict, with the findings applied but the resulting tree never
+# re-checked.
+#
+# Escape hatch, deliberately loud and deliberately awkward:
+#   CRITIC_OVERRIDE=1 git commit ...
+set -eu
+
+# Consistency hardening, not a fix. Measured: neither `git write-tree` (which reads the index) nor
+# `git rev-parse HEAD` (which reads the ref) dereferences through a replacement ref — both returned
+# the same value with and without this. `git rev-parse HEAD^{tree}` DOES get redirected, which is why
+# critic.sh, whose reads go through objects, genuinely needs it. Set here so the two agree by
+# construction rather than by argument.
+export GIT_NO_REPLACE_OBJECTS=1
+
+if [ "${CRITIC_OVERRIDE:-}" = "1" ]; then
+  echo "=========================================================" >&2
+  echo " pre-commit: CRITIC_OVERRIDE set — CODEX REVIEW SKIPPED." >&2
+  echo " Say so in the commit message and to whoever owns this."  >&2
+  echo "=========================================================" >&2
+  exit 0
+fi
+
+RECEIPT="$(git rev-parse --absolute-git-dir)/critic/receipt"   # absolute: works from any cwd
+# critic.sh refuses to write through a symlinked receipt; refuse to read one, for the same reason and
+# for consistency. This is hygiene, not a gate: the threat model already grants that a receipt's
+# contents can be forged by anyone who can write .git. `-L` before `-f`: a dangling symlink is
+# neither -f nor -e, and would otherwise fall into the "no receipt" branch with a misleading message.
+if [ -L "$RECEIPT" ]; then
+  echo "BLOCKED: $RECEIPT is a symlink. Remove it and re-run ./scripts/critic.sh" >&2
+  exit 1
+fi
+if [ ! -f "$RECEIPT" ]; then
+  echo "BLOCKED: no Codex review receipt for this repository." >&2
+  echo "  Run:  ./scripts/critic.sh \"<what changed and why>\"" >&2
+  exit 1
+fi
+
+# 1. The commit must be the whole working tree — nothing unstaged, nothing untracked.
+#    Otherwise the committed tree differs from the one Codex read.
+if ! git diff --quiet; then
+  echo "BLOCKED: unstaged changes. The commit would differ from the tree Codex reviewed." >&2
+  git diff --name-only | sed 's/^/  unstaged: /' >&2
+  exit 1
+fi
+UNTRACKED=$(git ls-files --others --exclude-standard)
+if [ -n "$UNTRACKED" ]; then
+  echo "BLOCKED: untracked files. critic.sh refuses to review while they exist, so this tree" >&2
+  echo "         was never reviewed as it stands." >&2
+  printf '%s\n' "$UNTRACKED" | sed 's/^/  untracked: /' >&2
+  echo "  git add them, or remove them, then re-review." >&2
+  exit 1
+fi
+
+# 2a. Index bits that decouple the index from the worktree make "index == worktree" a lie.
+if git ls-files -v | grep -qE '^[[:lower:]S]'; then
+  echo "BLOCKED: assume-unchanged / skip-worktree bits are set. The index may not match the" >&2
+  echo "         worktree Codex read. Clear them (git update-index --no-assume-unchanged ...)." >&2
+  git ls-files -v | grep -E '^[[:lower:]S]' | sed 's/^/  /' >&2
+  exit 1
+fi
+
+# 2b. The receipt must have been taken at THIS HEAD, or `--amend`/`--allow-empty` could reuse it.
+WAS_HEAD=$(sed -n 's/^head=//p' "$RECEIPT")
+NOW_HEAD=$(git rev-parse HEAD 2>/dev/null || echo "")
+if [ -z "$WAS_HEAD" ] || [ "$WAS_HEAD" != "$NOW_HEAD" ]; then
+  echo "BLOCKED: the receipt was taken at a different HEAD." >&2
+  echo "  receipt HEAD: ${WAS_HEAD:-<none>}" >&2
+  echo "  current HEAD: ${NOW_HEAD:-<none>}" >&2
+  echo "  Re-run ./scripts/critic.sh before this commit." >&2
+  exit 1
+fi
+
+# 3. The TREE OBJECT being committed must equal the reviewed one. A patch hash is lossy — two
+#    different binaries both diff as "Binary files ... differ". A tree id covers paths, blobs
+#    and file modes exactly. With the checks above, write-tree here yields precisely the tree this
+#    commit will record.
+is_sha() { printf '%s' "$1" | grep -Eq '^[0-9a-f]{40,64}$'; }
+NOW=$(git write-tree)
+is_sha "$NOW" || { echo "BLOCKED: could not compute the tree id." >&2; exit 1; }
+WAS=$(sed -n 's/^tree=//p' "$RECEIPT")
+is_sha "$WAS" || { echo "BLOCKED: receipt tree id is malformed. Re-run scripts/critic.sh." >&2; exit 1; }
+if [ "$NOW" != "$WAS" ]; then
+  echo "BLOCKED: the tree changed since the last Codex review." >&2
+  echo "  reviewed: $WAS" >&2
+  echo "  current:  $NOW" >&2
+  if [ "$(basename "$0")" = "pre-merge-commit" ]; then
+    # Expected, always, for an automatic merge: the merged tree did not exist when you reviewed.
+    echo "  This is an automatic merge. Its tree could not have been reviewed in advance." >&2
+    echo "  Do this instead:" >&2
+    echo "    git merge --abort" >&2
+    echo "    git merge --no-commit <branch>" >&2
+    echo "    ./scripts/critic.sh \"merge <branch>\"" >&2
+    echo "    git commit" >&2
+  else
+    echo "  Re-run:  ./scripts/critic.sh \"<what changed since the last pass>\"" >&2
+  fi
+  echo "  (Or, if you must:  CRITIC_OVERRIDE=1 git commit ...)" >&2
+  exit 1
+fi
+
+# 4. The verdict must be SHIP — re-derived from the VERDICT JSON the receipt names, not read from
+#    the receipt's own `verdict=` line. (Not from the transcript: that is the human-readable
+#    `transcript=` file, which nothing parses.) The receipt is a plain file anyone can edit, so
+#    trusting its `verdict=` line would let a forged line pass. We re-parse the final-message JSON
+#    ourselves; parse-verdict.sh validates its full shape, so prose cannot smuggle a verdict.
+#    (A forged JSON file is still possible. Nothing here is a security boundary.)
+VFILE=$(sed -n 's/^verdict_file=//p' "$RECEIPT")
+if [ -z "$VFILE" ] || [ ! -r "$VFILE" ]; then
+  echo "BLOCKED: receipt names no readable verdict JSON (${VFILE:-<none>})." >&2
+  echo "  Re-run ./scripts/critic.sh" >&2
+  exit 1
+fi
+VERDICT=$("$(git rev-parse --show-toplevel)/scripts/parse-verdict.sh" "$VFILE" 2>/dev/null) || VERDICT=""
+if [ "$VERDICT" != "SHIP" ]; then
+  echo "BLOCKED: Codex's verdict on this tree was ${VERDICT:-<unparseable>}, not SHIP." >&2
+  echo "  verdict JSON: $VFILE" >&2
+  echo "  Fix the findings, then re-run ./scripts/critic.sh (a fix changes the tree anyway)." >&2
+  echo "  (Or, if you must:  CRITIC_OVERRIDE=1 git commit ...)" >&2
+  exit 1
+fi
+
+echo "pre-commit: Codex reviewed tree $NOW — VERDICT: SHIP"
+echo "pre-commit: verdict at $(sed -n 's/^verdict_file=//p' "$RECEIPT")"

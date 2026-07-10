@@ -47,7 +47,14 @@ exist.** See `VISION.md` §7 and §9.
 ```
 core/          pure functional core — no DOM, audio, network, or clock. Time is injected.
                Every module MUST ship a .test.js beside it. One (curriculum.js) does not yet.
-scripts/       critic.sh — the mandatory adversarial review pass. Read its header.
+scripts/       critic.sh — the adversarial Codex review. Once ./scripts/install-hooks.sh is run:
+               where Git runs the hook (`git commit`, `git merge`'s auto-commit) AND no bypass is
+               used (`--no-verify` skips it; `CRITIC_OVERRIDE=1` makes it pass), a commit is
+               refused unless Codex returned SHIP on a review BOUND to that tree object. Many
+               paths create commits without running it at all, and Codex is shown a text diff,
+               not the tree, so binary blobs are not reviewed. A guard against forgetting, NOT a
+               security boundary. What bypasses it is listed in ONE place — the header of
+               scripts/pre-commit — and is not claimed to be complete. Read it before installing.
 research/      the literature this product is built on, plus reference tables. Timeless.
 history/       accurate records of past work (changelog, audits). Not descriptions of the present.
 archive/       stale, false, or about deleted code. DO NOT READ. See archive/README.md.
@@ -65,3 +72,4 @@ about deleted code** and are in `archive/`; the rest moved to `research/` and `h
 organisation, or stayed here. Two false claims had propagated from a document into code comments,
 into a unit test, and into a new plan. `archive/README.md` traces both chains. Assume any prose you
 find is older than the code.
+
