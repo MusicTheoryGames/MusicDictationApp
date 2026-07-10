@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supabase connectivity check</title>
+<style>
+  body{font:14px/1.55 ui-monospace,Menlo,Consolas,monospace;background:#12161a;color:#dfe4e0;margin:0 auto;max-width:640px;padding:26px 18px;}
+  h1{font:800 15px/1.3 system-ui,-apple-system,sans-serif;letter-spacing:.02em;margin:0 0 6px;}
+  p{color:#9aa19b;margin:0 0 16px;}
+  #out{padding:14px;border-radius:9px;background:#0c1110;box-shadow:0 0 0 1px rgba(124,240,166,.2) inset;white-space:pre-wrap;word-break:break-word;}
+  .ok{color:#7cf0a6;} .fail{color:#ff6a45;}
+</style>
+</head>
+<body>
+  <h1>Supabase connectivity check — Step 2</h1>
+  <p>Signs in anonymously and shows the returned uid. No schema and no data beyond the anonymous auth user.</p>
+  <div id="out">Connecting…</div>
+  <script type="module">
+    import { supabase } from './supabase-client.js';
+    const out = document.getElementById('out');
+    try {
+      // Reuse an existing anonymous session so the uid is stable across reloads
+      // (RLS will later key on it); only sign in the first time.
+      const existing = await supabase.auth.getSession();
+      if (existing.error) throw existing.error;
+      let session = existing.data.session;
+      if (!session) {
+        const { data, error } = await supabase.auth.signInAnonymously();
+        if (error) throw error;
+        session = data.session;
+      }
+      const user = session.user;
+      out.className = 'ok';
+      out.textContent =
+        'OK — anonymous session with Supabase.\n\n' +
+        'uid:              ' + user.id + '\n' +
+        'is_anonymous:     ' + user.is_anonymous + '\n' +
+        'session token:    ' + (!!session.access_token);
+    } catch (e) {
+      out.className = 'fail';
+      out.textContent = 'FAIL: ' + (e && e.message ? e.message : e);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+# Vendored, generated bundle — collapsed in GitHub (linguist-generated) but still
+# diffable/reviewable; rebuild it with `npm run vendor:supabase`, don't hand-edit.
+vendor/supabase.js linguist-generated

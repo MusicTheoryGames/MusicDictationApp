@@ -1,11 +1,16 @@
 {
   "scripts": {
     "dev": "node dev-server.js",
-    "start": "node dev-server.js"
+    "start": "node dev-server.js",
+    "vendor:supabase": "node scripts/vendor-supabase.mjs"
   },
   "dependencies": {
     "jsdom": "^27.0.0",
     "puppeteer": "^24.22.0",
     "vexflow": "^5.0.0"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.110.2",
+    "esbuild": "^0.28.1"
   }
 }
