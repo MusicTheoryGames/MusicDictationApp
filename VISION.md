@@ -178,7 +178,7 @@ the feature changes, not the rule.
     a working-memory task; timing pressure and motion consume exactly the resources the exercise
     trains. Notation levels have no timer and no particles. The silence is the point.
 11. **No emoji. No clipart.** Every icon is a custom in-house SVG.
-    *Enforcement, rebuilt 2026-07-10 [observed: `cd core && npm test`, 469 pass].*
+    *Enforcement, rebuilt 2026-07-10 [observed: `cd core && npm test`, 501 pass].*
     `core/no-emoji.test.js` has three tests. **STRICT** bans emoji and icon/arrow/geometric glyphs.
     **EMOJI-ONLY** bans everything STRICT does except arrows (`U+2190`–`U+21FF`) and geometric shapes
     (`U+25A0`–`U+25FF`), which those files use in prose comments and in one level title
@@ -233,12 +233,18 @@ later with accounts.
 
 ## 8. The finish line for the next release
 
-> **Amended twice by the owner.**
+> **Amended three times by the owner.**
 > **2026-07-09:** the RhythmQuest UI redesign ships **before** the classroom. §4 makes the arcade/UI
 > layer load-bearing rather than garnish — this is a paid consumer subscription, so retention is the
 > business — and the owner has seen the redesign run and prefers it.
 > **2026-07-10:** the old teacher tool and projector were archived. A classroom release now means
 > building a **new** teacher interface against the Quest games, not repairing the old one.
+> **2026-07-10 (later):** the classroom's **back-end foundation** is authorized to be built **in
+> parallel** with the UI finish. The owner is completing the RhythmQuest UI separately (with Codex);
+> concurrently the live room's pure, no-network core is started — `core/room.js`, this section's room
+> schema made meter-aware, teacher-`uid`-bearing, and roster/answer-preserving. This does **not**
+> re-order what *ships*: the UI redesign is still the next release and the live room's own release
+> still follows it. What changed is only that foundation work is authorized now, not deferred.
 
 **The next release is the RhythmQuest UI.** It is done when items 1–5 are **[observed]** — by a
 person, in a browser, on the hardware in item 4.
@@ -393,7 +399,10 @@ in `archive/` **[source]**, moved 2026-07-10 at the owner's instruction: *"we wi
 interface to link to our current games."* It hard-coded 4/4 while the curriculum spans ten meters
 **[source]**. This repo contains no student client for its `rhythm-rooms/*` schema **[source]**; that
 none ever existed, and that the loop never ran, are **[inferred]** — no record shows either way.
-Nothing in the live tree speaks any room protocol **[source]**.
+The pure room state model — `core/room.js` (room schema, message reducer, per-onset reveal-unlock,
+TTL; no DOM/network/clock) — was added 2026-07-10 as the classroom foundation authorized by §8. But
+no transport, wire protocol, or student/teacher client speaks it yet: it is state logic, not a live
+room **[source]**.
 
 **Also true [source].** `solo-mode.js` has no renderer dispatch — mode is a binary `S.mode` branch;
 `GUIDE.playable()` (`:394`) silently skips any level with zero figures. `RHYTHM_FIGURES`

@@ -4,9 +4,14 @@
 > Where they disagree about a *fact*, `VISION.md` wins. Where they disagree about *what to do next*,
 > this file wins. Sections here that predate `VISION.md` may carry claims corrected since.
 >
-> **CURRENT STEP: 2 — the RhythmQuest UI.** `VISION.md` §8 was amended (owner, 2026-07-09) so the
-> redesign ships before the classroom; §8 now carries the five observable criteria. Step 1c (archive
-> everything that is not a Quest game) landed as `d2f926e`; its record is `archive/README.md`.
+> **CURRENT STEP: 2 — the RhythmQuest UI, AND (owner, 2026-07-10) the live-room foundation in
+> parallel.** `VISION.md` §8 was amended (owner, 2026-07-09) so the redesign ships before the
+> classroom; §8 now carries the five observable criteria, and a third amendment (2026-07-10) authorizes
+> the classroom's back-end **foundation** to be built in parallel with the UI finish. The owner is
+> completing the UI separately (with Codex); concurrently the live room begins with the pure,
+> no-network `core/room.js`. The live room's *release* still follows the UI's — only its foundation is
+> in scope now. Step 1c (archive everything that is not a Quest game) landed as `d2f926e`; its record
+> is `archive/README.md`.
 >
 > Bring the UI to the engine, never the engine to the UI. The prototype has no engine. The owner
 > keeps his five themes: the redesign is the LAYOUT, and mpc/manuscript/arcade/brutalist/kids re-skin
@@ -28,6 +33,8 @@
 > identifier, like `window.BeatQuestSolo`.
 >
 > Any change that does not serve the current step is scope creep and should be rejected in review.
+> The current step now spans the UI finish (owner, handled separately) **and** the live-room
+> foundation (owner, 2026-07-10) — pure `core/room.js` and the classroom back-end that follows.
 
 ## Context
 
