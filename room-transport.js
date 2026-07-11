@@ -14,14 +14,15 @@
  * to that student's own roster/answer rows, so the assembled Room is that student's OWN view,
  * not the whole class: the class-level derivations (readyBeats/beatCorrectCounts) are only
  * meaningful on the teacher's read. There is no optimistic local copy to reconcile: you see a
- * write once it lands and you re-read. The live change-feed (Realtime subscription) that
- * triggers the re-read is a SEPARATE, later step.
+ * write once it lands and you re-read. The live change-feed that triggers the re-read is
+ * `subscribeRoom` (a Realtime subscription, below).
  *
  * SCOPE OF THIS MODULE (today): the "DB is truth" read (`fetchRoom` + the pure `assembleRoom`),
  * the TEACHER's round lifecycle — `createRoom`, `assignRhythm` (start/replace a round),
  * `heartbeat` (TTL liveness), `closeRoom`, `reveal` / `revealAll` — and students `joinRoom` /
- * `leaveRoom` / `submitAnswer`. That is the full message set; what remains is the live change-feed
- * (a Realtime subscription that re-runs `fetchRoom`) and the student/teacher/projector UIs.
+ * `leaveRoom` / `submitAnswer` — the full message set — plus `subscribeRoom`, the live change-feed
+ * (a Realtime subscription that re-reads via `fetchRoom` as the room changes, coalescing bursts).
+ * What remains is only the student/teacher/projector UIs.
  *
  * HOW A MUTATION IS MADE SAFE. Responsibilities are split by what the mutation carries. A
  * mutation with DOMAIN content — `assignRhythm` — is validated in the shell by folding it
@@ -294,6 +295,80 @@ export function createRoomTransport(supabase, deps) {
       }
       const { error } = await supabase.rpc('reveal_all', { p_code: code });
       failIf(error, `revealAll ${code}`);
+    },
+
+    /**
+     * Live view: subscribe to the room and call `onRoomChange(room)` with a freshly-assembled
+     * core/room.js Room as the room changes — the "DB is truth" read, re-run in response to changes.
+     * It fires once on connect with the current state (so the caller need not fetch first), then
+     * again as the room changes — delivering the resulting state, not necessarily one callback per
+     * change: rapid bursts (e.g. a new round clearing many answers) are COALESCED — a change arriving
+     * mid-read schedules exactly one more read (the latest state), never a fetch storm.
+     * RLS scopes what each client's subscription delivers, exactly as `fetchRoom` does — a student
+     * sees its own participation + room state, the teacher (the only full-visibility role — a
+     * projector client would read as the teacher) sees the whole class.
+     *
+     * A read that fails (network, RLS, transport) is passed to `opts.onError(err)` — it is NOT
+     * swallowed; it defaults to console.error, so a failed connect-time read is visible. A failed
+     * subscription status (CHANNEL_ERROR / TIMED_OUT / an unexpected CLOSED) also calls onError, so
+     * a feed that never connects does not hang the caller silently. (A bug in your own `onRoomChange`
+     * that throws is a different thing — it is swallowed to keep the feed alive, not sent to onError;
+     * `onRoomChange` should not throw.) Returns an async unsubscribe
+     * function; once it resolves, nothing more happens — late change events and status callbacks are
+     * ignored (they do not even fetch), and any read already in flight suppresses its delivery.
+     *
+     * Realtime takes a moment to register the change feed after connect, and a change in that window
+     * can be missed; `opts.catchUpMs` (default 1500, 0 to disable) schedules a catch-up re-read that
+     * long after each SUBSCRIBED (replacing any prior one on reconnect), RE-READING THE CURRENT STATE
+     * — it surfaces a change that landed during registration and is still in effect, reconciling to
+     * current (it does not recover a transient value already reversed by then).
+     */
+    subscribeRoom(code, onRoomChange, opts = {}) {
+      const onError = opts.onError || ((e) => console.error('room-transport: subscribeRoom read failed —', e));
+      const catchUpMs = opts.catchUpMs != null ? opts.catchUpMs : 1500;
+      let closed = false, reading = false, again = false, catchup = null;
+      const refresh = async () => {
+        if (reading) { again = true; return; } // coalesce: fold this change into the in-flight read
+        reading = true;
+        try {
+          do {
+            again = false;
+            let room;
+            try {
+              room = await fetchRoom(code);
+            } catch (e) {
+              if (!closed) onError(e); // a READ failure is reported, not swallowed...
+              continue;                // ...and a change queued during it still re-reads
+            }
+            // A throwing onRoomChange is a CALLER bug: swallow it here so it neither reaches onError
+            // (which is for read failures) nor aborts the loop — a change queued mid-read still re-reads.
+            if (!closed) { try { onRoomChange(room); } catch { /* caller bug — keep the feed alive */ } }
+          } while (again && !closed);
+        } finally {
+          reading = false;
+        }
+      };
+      const onChange = () => { if (!closed) refresh().catch(() => {}); }; // ignore events after unsubscribe
+      const channel = supabase
+        .channel(`room:${code}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `code=eq.${code}` }, onChange)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'room_students', filter: `room_code=eq.${code}` }, onChange)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'room_answers', filter: `room_code=eq.${code}` }, onChange)
+        .subscribe((status, err) => {
+          if (closed) return;                                       // ignore any status callback after unsubscribe
+          if (status === 'SUBSCRIBED') {
+            onChange();                                             // deliver the current state now that we are live
+            if (catchup) clearTimeout(catchup);                     // a reconnect replaces any prior catch-up timer
+            if (catchUpMs > 0) catchup = setTimeout(onChange, catchUpMs); // catch a change made during registration
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            onError(err || new Error(`room-transport: room ${code} subscription ${status}`)); // never hang the caller
+          }
+        });
+      return async () => {
+        closed = true;
+        if (catchup) clearTimeout(catchup);
+        await supabase.removeChannel(channel);
+      };
     },
   };
 }

@@ -427,9 +427,19 @@ closed rooms ROW is terminal (no UPDATE may change it, which also blocks a revea
 into a closed room is rejected, and an ANSWER is accepted only while the round is ACTIVE (so no answering
 after a reveal) **[source]**. That is the full message set (VISION §8). Its automated checks against the
 real Supabase project live in `supabase/room-transport.integration.mjs`, `supabase/room-student.integration.mjs`,
-`supabase/room-answer.integration.mjs`, and `supabase/room-reveal.integration.mjs`. Still missing: the live
-change-feed (a Realtime subscription) and any student/teacher/projector client — it is not yet a live room
-**[source]**.
+`supabase/room-answer.integration.mjs`, and `supabase/room-reveal.integration.mjs`. The live change-feed
+also exists: `subscribeRoom` (a Realtime `postgres_changes` subscription on the three tables, filtered by
+room code) re-reads via `fetchRoom` as the room changes and calls back with the assembled Room — coalescing bursts,
+surfacing read failures via `onError`, and doing a catch-up re-read to cover the brief window while the
+feed registers. A subscription re-reads through `fetchRoom`, so RLS scopes it exactly as the read path.
+`supabase/room-realtime.integration.mjs` exercises a full live round on the teacher's subscription against
+the real project, asserting the live feed's delivered view reflects the room's state after each step
+end-to-end; the
+event-triggers-a-read mechanism and the catch-up, read-failure, subscription-status (all three),
+coalescing, throwing-callback, and timer-cancellation paths are covered by
+`room-transport.subscribe.test.mjs` (a mock client, no network; the catch-up/timer cases use short
+real timers) **[source]**. Still missing: any student/teacher/projector client — it is not yet a *usable*
+live room **[source]**.
 
 **Also true [source].** `solo-mode.js` has no renderer dispatch — mode is a binary `S.mode` branch;
 `GUIDE.playable()` (`:394`) silently skips any level with zero figures. `RHYTHM_FIGURES`
