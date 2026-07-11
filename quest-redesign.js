@@ -1605,6 +1605,11 @@
           event.dataTransfer.effectAllowed = "copy";
           event.dataTransfer.setData("text/plain", pattern.id);
           const dragImage = buildDragImage(tile, pattern);
+          // Safari will not snapshot an off-screen element for setDragImage (buildDragImage parks the
+          // clone at translate3d(-999px,-999px) for the touch path). Bring it on-screen for the
+          // synchronous snapshot — the snapshot + the (52,35) offset position the real ghost, so the
+          // clone's actual spot doesn't matter — then remove it on the next tick.
+          dragImage.style.transform = "translate3d(0, 0, 0)";
           event.dataTransfer.setDragImage(dragImage, 52, 35);
           setTimeout(() => dragImage.remove(), 0);
         }

@@ -2537,7 +2537,6 @@ body.quest-redesign.is-touch-dragging .beat-drop-zone.is-blocked {
   pointer-events: none;
   opacity: 0.96;
   will-change: transform;
-  contain: layout paint;
 }
 
 .drag-beat {
