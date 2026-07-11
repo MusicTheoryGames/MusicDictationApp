@@ -408,9 +408,16 @@ interface to link to our current games."* It hard-coded 4/4 while the curriculum
 **[source]**. This repo contains no student client for its `rhythm-rooms/*` schema **[source]**; that
 none ever existed, and that the loop never ran, are **[inferred]** — no record shows either way.
 The pure room state model — `core/room.js` (room schema, message reducer, per-onset reveal-unlock,
-TTL; no DOM/network/clock) — was added 2026-07-10 as the classroom foundation authorized by §8. But
-no transport, wire protocol, or student/teacher client speaks it yet: it is state logic, not a live
-room **[source]**.
+TTL; no DOM/network/clock) — was added 2026-07-10 as the classroom foundation authorized by §8, and a
+Supabase backend now sits under it: anonymous-auth connectivity (`supabase-*.js`), the room schema +
+row-level security (`supabase/migrations/0001_live_room.sql`, checked by the automated
+`supabase/rls-check.mjs`), and the teacher-side transport read path — `room-transport.js`
+(`createRoom` and `fetchRoom`, reading through the `get_room` single-snapshot function, plus the pure
+`assembleRoom` that folds rows into a core Room). The automated `supabase/room-transport.integration.mjs`
+checks create, the teacher's full-visibility read (whole roster + all answers), and that a student's
+read is RLS-scoped to its own participation **[source]**. But the INTERACTIVE state machine over the
+wire — students joining/leaving, assigning a rhythm, answering, revealing — and any student/teacher
+client do not exist yet: it is not yet a live room **[source]**.
 
 **Also true [source].** `solo-mode.js` has no renderer dispatch — mode is a binary `S.mode` branch;
 `GUIDE.playable()` (`:394`) silently skips any level with zero figures. `RHYTHM_FIGURES`

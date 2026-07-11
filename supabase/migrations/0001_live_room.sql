@@ -71,6 +71,23 @@ create or replace function public.is_room_teacher(p_room text)
                    where r.code = p_room and r.teacher_uid = auth.uid());
 $$;
 
+-- ---- consistent-snapshot read -------------------------------------------
+-- Returns a room with its roster and answers gathered in ONE statement, so all three are a
+-- single snapshot (three separate client SELECTs could straddle a concurrent round change).
+-- SECURITY INVOKER (the default): RLS below still decides visibility, so an outsider gets
+-- NULL and a student sees only its own roster/answer rows. NULL when no visible room.
+create or replace function public.get_room(p_code text)
+  returns jsonb language sql stable
+  set search_path = public as $$
+    select jsonb_build_object(
+      'room', to_jsonb(r),
+      'students', coalesce((select jsonb_agg(to_jsonb(s)) from public.room_students s where s.room_code = r.code), '[]'::jsonb),
+      'answers',  coalesce((select jsonb_agg(to_jsonb(a)) from public.room_answers  a where a.room_code = r.code), '[]'::jsonb)
+    )
+    from public.rooms r
+    where r.code = p_code;
+$$;
+
 -- ---- RLS ----------------------------------------------------------------
 alter table public.rooms         enable row level security;
 alter table public.room_students enable row level security;
@@ -118,6 +135,11 @@ drop policy if exists answers_update on public.room_answers;
 create policy answers_update on public.room_answers for update
   using (uid = auth.uid() and public.is_room_member(room_code))
   with check (uid = auth.uid() and public.is_room_member(room_code));
+-- No DELETE policy on room_answers: answer deletion (a student clearing its own, the teacher
+-- clearing the board for a new round) is a state-machine mutation and ships WITH the round
+-- state machine, guarded, not here. Actively drop any answers_delete a superseded run
+-- installed, so re-running converges on this delete-denied schema.
+drop policy if exists answers_delete on public.room_answers;
 
 -- ---- key columns are immutable on UPDATE ----
 -- room_code + uid identify a roster/answer row; they must never change on UPDATE, so a
