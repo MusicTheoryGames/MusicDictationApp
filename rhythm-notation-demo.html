@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shared rhythm renderer — every figure</title>
+<link rel="stylesheet" href="shared/rhythm-notation/renderer.css">
+<style>
+  /* demo chrome only — NOT part of the shared renderer */
+  body { margin: 0; padding: 24px; font: 14px/1.5 system-ui, sans-serif; background: #e7ecdd; color: #1a1f18; }
+  h1 { font-size: 18px; margin: 0 0 2px; }
+  p.note { color: #55603f; max-width: 70ch; margin: 0 0 20px; }
+  h2 { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #3f5a3f;
+       margin: 22px 0 8px; border-bottom: 1px solid rgba(40,54,40,.18); padding-bottom: 4px; }
+  h2 .n { color: #7a8a6a; font-weight: 600; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .cell {
+    position: relative; height: 68px;
+    background: linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,.12)), #dbe9c4;
+    border: 1px solid rgba(40,54,40,.18); border-radius: 6px;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.5);
+  }
+  .cell.png { outline: 1px dashed rgba(150,90,40,.5); outline-offset: -1px; } /* PNG fallback marker */
+  .cap { position:absolute; bottom:2px; left:0; right:0; text-align:center; z-index:3;
+         font: 600 8px/1.1 ui-monospace, monospace; color:#55603f; }
+</style>
+</head>
+<body>
+  <h1>Shared rhythm renderer — <span id="total"></span></h1>
+  <p class="note">Every figure in <code>window.RhythmNotation.catalog</code>, drawn by the shared module
+  (a byte-for-byte copy of the game's renderer). VexFlow figures render live; figures flagged
+  <code>renderAssetOnly</code> (compound <code>cd-*</code>) fall back to their PNG, shown with a dashed
+  outline — exactly as the game does. Compare any figure to RhythmQuest; the notation should match.</p>
+
+  <div id="groups"></div>
+
+  <script src="vendor/vexflow.js"></script>
+  <script src="shared/rhythm-notation/renderer.js"></script>
+  <script>
+    var R = window.RhythmNotation, SLOT = 96;
+    var catalog = R.catalog;
+    var FAMILIES = [
+      ['Simple', function (id) { return !/^(cd|hb|dh|eb|de|tpl)-/.test(id); }],
+      ['Compound (cd-)', function (id) { return /^cd-/.test(id); }],
+      ['Half-beat (hb-)', function (id) { return /^hb-/.test(id); }],
+      ['Dotted-half (dh-)', function (id) { return /^dh-/.test(id); }],
+      ['Eighth-beat (eb-)', function (id) { return /^eb-/.test(id); }],
+      ['Dotted-eighth (de-)', function (id) { return /^de-/.test(id); }],
+      ['Tuplet (tpl-)', function (id) { return /^tpl-/.test(id); }]
+    ];
+
+    var ids = Object.keys(catalog);
+    document.getElementById('total').textContent = ids.length + ' figures';
+
+    function makeCell(row, id) {
+      var spec = catalog[id];
+      var beats = Math.max(1, spec.beats || 1);
+      var cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.style.width = (SLOT * beats) + 'px';
+      var host = document.createElement('div');
+      host.className = 'placed-vex-host';
+      cell.appendChild(host);
+      var cap = document.createElement('span');
+      cap.className = 'cap'; cap.textContent = id;
+      cell.appendChild(cap);
+      row.appendChild(cell);
+
+      if (spec.renderAssetOnly) {
+        cell.classList.add('png');
+        var img = document.createElement('img');
+        img.className = 'placed-bank-glyph';
+        img.src = R.rhythmAsset(id); img.alt = '';
+        host.appendChild(img);
+        host.classList.add('is-rendered');
+      } else {
+        requestAnimationFrame(function () {
+          R.renderPlacedVex(host, { id: id, beats: beats, start: 0 });
+        });
+      }
+    }
+
+    var groups = document.getElementById('groups');
+    FAMILIES.forEach(function (fam) {
+      var members = ids.filter(fam[1]);
+      if (!members.length) return;
+      var h = document.createElement('h2');
+      h.innerHTML = fam[0] + ' <span class="n">' + members.length + '</span>';
+      groups.appendChild(h);
+      var row = document.createElement('div');
+      row.className = 'row';
+      groups.appendChild(row);
+      members.forEach(function (id) { makeCell(row, id); });
+    });
+  </script>
+</body>
+</html>

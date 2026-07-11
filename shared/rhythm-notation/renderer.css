@@ -1,0 +1,54 @@
+/* shared/rhythm-notation/renderer.css — styles the renderer's OUTPUT host.
+ *
+ * Ported verbatim from the game's quest-redesign.css (.placed-vex-host rules). The renderer draws a
+ * VexFlow <svg> into a `.placed-vex-host` and adds `.is-rendered` when done; these rules position and
+ * ink it. Any surface that uses window.RhythmNotation loads this so a glyph looks identical to the
+ * game. The host must be positioned (its parent `position: relative`, the host fills it).
+ */
+
+.placed-vex-host {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: visible;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.placed-vex-host.is-rendered {
+  opacity: 1;
+}
+
+.placed-vex-host svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.placed-vex-host svg path,
+.placed-vex-host svg text {
+  fill: rgba(20, 25, 19, 0.94);
+  stroke: rgba(20, 25, 19, 0.94);
+}
+
+.placed-vex-host svg path[fill="none"] {
+  fill: none;
+}
+
+.placed-vex-host svg .custom-triplet-bracket path {
+  fill: none !important;
+  stroke: rgba(20, 25, 19, 0.9) !important;
+  stroke-width: 1.35;
+}
+
+/* PNG fallback the renderer inserts when VexFlow can't draw a figure (compound cd-* etc.). */
+.placed-vex-host .placed-bank-glyph,
+.placed-bank-glyph {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
