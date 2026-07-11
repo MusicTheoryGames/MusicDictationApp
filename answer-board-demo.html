@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shared answer board — teacher answer key on the game's renderer</title>
+<link rel="stylesheet" href="shared/rhythm-notation/answer-board.css">
+<style>
+  /* demo chrome only — NOT part of the shared answer board */
+  body { margin: 0; padding: 28px; font: 14px/1.5 system-ui, sans-serif; background: #e7ecdd; color: #1a1f18; }
+  h1 { font-size: 19px; margin: 0 0 2px; }
+  p.note { color: #55603f; max-width: 78ch; margin: 0 0 22px; }
+  p.note code { background: rgba(40,54,40,.1); padding: 0 3px; border-radius: 3px; }
+  section { margin: 0 0 26px; }
+  h2 { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #3f5a3f;
+       margin: 0 0 4px; }
+  .desc { color: #6a7658; font-size: 12px; margin: 0 0 10px; }
+  /* The answer board renders onto whatever surface hosts it; here we drop it on a plain card so
+     the ported white measure panels + barlines are the only decoration you see. */
+  .stage { display: inline-block; padding: 16px 18px; background: #cbd9b2; border-radius: 10px;
+           box-shadow: inset 0 0 0 1px rgba(255,255,255,.4), 0 1px 4px rgba(0,0,0,.08); }
+  .stage.dark { background: #10140f; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+</style>
+</head>
+<body>
+  <h1>Shared answer board</h1>
+  <p class="note">The teacher answer key, rendered by the SAME shared renderer the game uses
+  (<code>window.RhythmNotation</code>) via <code>RhythmAnswerBoard.renderAnswer</code>. Each board is
+  the game's grouped-measures DOM (<code>.measure-group</code> white panels + barlines) with every beat
+  drawn by <code>schedulePlacedVexRender</code> — the exact call RhythmQuest makes. The CSS is the
+  game's <code>quest-redesign.css</code> rules, ported verbatim. Compare any figure to RhythmQuest; the
+  notation should match. (Rendering is not visually verified here — the owner compares in Safari.)</p>
+
+  <section>
+    <h2>2/4 — one bar</h2>
+    <p class="desc">quarter · two-eighths</p>
+    <div class="stage"><div id="b1"></div></div>
+  </section>
+
+  <section>
+    <h2>3/4 — one bar</h2>
+    <p class="desc">quarter · two-eighths · four-sixteenths</p>
+    <div class="stage"><div id="b2"></div></div>
+  </section>
+
+  <section>
+    <h2>4/4 — one bar (half note spans beats 2–3)</h2>
+    <p class="desc">quarter · half · quarter — proves a multi-beat figure's span head + continuation cell</p>
+    <div class="stage"><div id="b3"></div></div>
+  </section>
+
+  <section>
+    <h2>4/4 — two bars (barline between measures)</h2>
+    <p class="desc">quarter · two-eighths · four-sixteenths · quarter-rest ‖ half · two-eighths · quarter</p>
+    <div class="stage"><div id="b4"></div></div>
+  </section>
+
+  <section>
+    <h2>3/4 — two bars, teacher reveal tint (first 2 beats live, rest is grey key)</h2>
+    <p class="desc">the same board with <code>opts.revealed = {0, 1}</code> — grey key / green live, like the mockup</p>
+    <div class="stage dark"><div id="b5"></div></div>
+  </section>
+
+  <section>
+    <h2>Mixed families — 4/4 (dotted figure, triplet, sixteenths)</h2>
+    <p class="desc">dotted-quarter-eighth (spans 2) · triplet-eighths · four-sixteenths — exercises beaming + tuplet bracket</p>
+    <div class="stage"><div id="b6"></div></div>
+  </section>
+
+  <section>
+    <h2>6/8 — compound (time-signature fix)</h2>
+    <p class="desc">meter carries <code>timeSignature: "6/8"</code> — must render <b>6/8</b>, NOT "2/4". Two dotted-quarter beats.</p>
+    <div class="stage"><div id="b7"></div></div>
+  </section>
+
+  <script src="vendor/vexflow.js"></script>
+  <script src="shared/rhythm-notation/renderer.js"></script>
+  <script src="shared/rhythm-notation/answer-board.js"></script>
+  <script>
+    var A = window.RhythmAnswerBoard;
+
+    function fig(id, beats) { return { figureId: id, beats: beats }; }
+
+    A.renderAnswer(document.getElementById("b1"),
+      [fig("quarter"), fig("two-eighths")],
+      { beatsPerMeasure: 2, beatUnit: 4 });
+
+    A.renderAnswer(document.getElementById("b2"),
+      [fig("quarter"), fig("two-eighths"), fig("four-sixteenths")],
+      { beatsPerMeasure: 3, beatUnit: 4 });
+
+    A.renderAnswer(document.getElementById("b3"),
+      [fig("quarter"), fig("half"), fig("quarter")],
+      { beatsPerMeasure: 4, beatUnit: 4 });
+
+    A.renderAnswer(document.getElementById("b4"),
+      [fig("quarter"), fig("two-eighths"), fig("four-sixteenths"), fig("quarter-rest"),
+       fig("half"), fig("two-eighths"), fig("quarter")],
+      { beatsPerMeasure: 4, beatUnit: 4 });
+
+    A.renderAnswer(document.getElementById("b5"),
+      [fig("two-eighths"), fig("quarter"), fig("two-eighths"),
+       fig("four-sixteenths"), fig("quarter"), fig("quarter")],
+      { beatsPerMeasure: 3, beatUnit: 4 },
+      { revealed: new Set([0, 1]) });
+
+    A.renderAnswer(document.getElementById("b6"),
+      [fig("dotted-quarter-eighth"), fig("triplet-eighths"), fig("four-sixteenths")],
+      { beatsPerMeasure: 4, beatUnit: 4 });
+
+    // 6/8 — carries its real timeSignature; must render "6/8", not "2/4". Also exercises compound
+    // (cd-*) figures through the shared VexFlow renderer.
+    A.renderAnswer(document.getElementById("b7"),
+      [fig("cd-dotted-quarter"), fig("cd-three-eighths")],
+      { timeSignature: "6/8", beatsPerMeasure: 2, beatUnit: "dotted-quarter" });
+  </script>
+</body>
+</html>
