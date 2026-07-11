@@ -35,7 +35,6 @@ const UI_FILES = [
   'core-bridge.js',
   'singquest.html',
   'singquest-renderers.js',
-  'rhythm-student.html',
   'index.html',
   'home.html',
   'beatquest.html',
@@ -155,7 +154,7 @@ test('no-emoji: no emoji in the classroom and rhythm pages (music glyphs and pro
 // adds a page and forgets the list. It does not catch a page hidden behind a dynamic import.
 const ENTRY_POINTS = [
   'index.html', 'home.html', 'beatquest.html', 'beatquest-casual.html',
-  'rhythm-student.html', 'tapping.html', 'melodic-game.html', 'singquest.html',
+  'tapping.html', 'melodic-game.html', 'singquest.html',
 ];
 // Files with no UI text of their own. Data, vendor code, and the arcade drawer's iframe hosts are
 // covered explicitly in the lists above; these carry no glyphs a designer would ever type.
@@ -166,6 +165,13 @@ const NOT_UI = new Set([
   'vendor/vexflow.js',                          // third-party bundle, not ours to edit
   'rhythm-assets/glyphs/note-glyphs.js',        // generated SVG path data, no text
   'rhythm-assets/compound/compound-assets.js',  // generated filename map, no text
+  // The redesign RhythmQuest game, imported verbatim 2026-07-11 and wired as the RhythmQuest entry.
+  // This is NOT a "no UI text" exemption: it DOES carry UI text and glyph-icons and violates rule 11
+  // today. It is a DELIBERATE, TEMPORARY hold (owner-directed) — the glyph/emoji cleanup is a tracked
+  // follow-up before the redesign is held to rule 11. Remove these three once that cleanup lands.
+  'beatquest-redesign.html',
+  'quest-redesign.js',
+  'quest-redesign.css',
 ]);
 
 function reachable() {
