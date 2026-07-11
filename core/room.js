@@ -5,14 +5,15 @@
  * No effects: no DOM, no network, no clock, no randomness. `now` (a timestamp)
  * and entropy (bytes) are injected. A separate imperative shell — the Supabase
  * transport in `room-transport.js` — owns all effects. Its read path (`assembleRoom` +
- * `fetchRoom`) and the teacher's round lifecycle exist: ASSIGN is wired (`assignRhythm`,
- * validated here and persisted atomically), plus heartbeat/close; ANSWER and REVEAL over
- * the wire are next. The shell (JS) calls `reduce()` to validate each DOMAIN transition
- * (ASSIGN, ANSWER, REVEAL); pure lifecycle pings (heartbeat/close) carry no domain content
- * and skip it. *Authorization* (only the teacher assigns/reveals; a student writes only
- * their own answers) is enforced by row-level security keyed on `teacherUid` and the
- * answering `uid`; closed-is-terminal by a database trigger. This module enforces *state
- * validity* only.
+ * `fetchRoom`), the teacher's round lifecycle (ASSIGN via `assignRhythm`, validated here and
+ * persisted atomically, plus heartbeat/close), and students JOIN/LEAVE exist; ANSWER and REVEAL
+ * over the wire are next. The shell (JS) calls `reduce()` to validate a DOMAIN transition it can
+ * read first (ASSIGN; later ANSWER/REVEAL). JOIN/LEAVE go through guarded SQL functions instead —
+ * a joining non-member cannot read the room to reduce() it. *Authorization* (only the teacher
+ * assigns/reveals; a student writes only their own row) is enforced by row-level security keyed on
+ * `teacherUid` and the answering `uid` — and, for the SECURITY DEFINER functions that must bypass
+ * RLS (`assign_round`, `join_room`), by their own `auth.uid()` checks; closed-is-terminal by database
+ * triggers. This module enforces *state validity* only.
  *
  * RHYTHM MODEL. A room is created for ONE meter, and carries a `figures`
  * VOCABULARY — a map `{ figureId: beats }` of the figures valid in this room

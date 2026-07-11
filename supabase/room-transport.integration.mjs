@@ -3,8 +3,9 @@
  * Integration test for room-transport.js (the "DB is truth" read + the teacher's round
  * lifecycle) against the REAL Supabase project. A teacher creates a room, assigns rounds,
  * pings liveness, and closes it through the transport; two students and their answers are
- * written with raw client calls (the join/answer verbs are a later step) so we can prove the
- * reads fold correctly and the class derivations work on the teacher's full-visibility read.
+ * written with raw client calls here (this file focuses on the teacher lifecycle — the student
+ * verbs have their own harness, room-student.integration.mjs) so we can prove the reads fold
+ * correctly and the class derivations work on the teacher's full-visibility read.
  *
  * It asserts the observable outcomes of the pieces that plain client writes could not do safely:
  *   - fetchRoom re-assembles a core/room.js Room; readyBeats/beatCorrectCounts are correct on
@@ -17,10 +18,11 @@
  *     ceiling, is covered by the core tests); a non-teacher cannot call assign_round (guard).
  *   - heartbeat advances teacher_last_seen using the DATABASE clock, and is a no-op once closed.
  *   - the closed rooms ROW is terminal — a trigger rejects reopening or editing it, proven here
- *     against a direct reopen and a direct non-state edit. (Refusing post-close student joins/
- *     answers is a later step; not tested here.)
+ *     against a direct reopen and a direct non-state edit. (The closed-room guard for student
+ *     JOINs is proven in room-student.integration.mjs; the answer path is a later step.)
  *
- * Revealing and student join/answer verbs are later steps, not exercised here.
+ * Revealing and student ANSWERING are later steps; the join/leave verbs are covered by
+ * room-student.integration.mjs, not here.
  *
  * IO-tested (real network), not `node --test`. Run AFTER applying
  * supabase/migrations/0001_live_room.sql (including get_room, assign_round, heartbeat):

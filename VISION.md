@@ -411,18 +411,20 @@ The pure room state model — `core/room.js` (room schema, message reducer, per-
 TTL; no DOM/network/clock) — was added 2026-07-10 as the classroom foundation authorized by §8, and a
 Supabase backend now sits under it: anonymous-auth connectivity (`supabase-*.js`), the room schema +
 row-level security (`supabase/migrations/0001_live_room.sql`, checked by the automated
-`supabase/rls-check.mjs`), and the teacher's transport lifecycle in `room-transport.js` — `createRoom`,
-`assignRhythm` (start/replace a round), `heartbeat`, `closeRoom`, and the `fetchRoom` read (through the
-`get_room` single-snapshot function) plus the pure `assembleRoom` that folds rows into a core Room.
-`assignRhythm` is validated in the shell via `reduce()` and persisted atomically by `assign_round`
-(which locks the room row, re-checks teacher ownership, and clears the old answers while setting the new
-rhythm in ONE transaction); `heartbeat` refreshes the TTL with the database clock; `closeRoom` sets the
-terminal state. A trigger makes the closed rooms ROW terminal — once closed it cannot be reopened or
-edited by any UPDATE (a direct edit or a race, not only via `reduce()`); refusing post-close student
-joins/answers ships later with the student state machine **[source]**. Its automated checks against the
-real Supabase project live in `supabase/room-transport.integration.mjs`. Still missing: students
-joining/leaving/answering, revealing, and any student/teacher client — it is not yet a live room
-**[source]**.
+`supabase/rls-check.mjs`), and much of the transport in `room-transport.js` — the teacher's lifecycle
+(`createRoom`, `assignRhythm`, `heartbeat`, `closeRoom`), students `joinRoom`/`leaveRoom`, and the
+`fetchRoom` read (through the `get_room` single-snapshot function) plus the pure `assembleRoom` that
+folds rows into a core Room. `assignRhythm` is validated in the shell via `reduce()` and persisted
+atomically by `assign_round` (which locks the room row, re-checks teacher ownership, and clears the old
+answers while setting the new rhythm in ONE transaction); `heartbeat` refreshes the TTL with the
+database clock; `closeRoom` sets the terminal state; `joinRoom`/`leaveRoom` go through guarded SQL
+functions (`join_room` rejects a missing/closed room, `leave_room` is a no-op on a closed room). A
+trigger makes the closed rooms ROW terminal (no UPDATE may change it — a direct edit or a race, not only
+via `reduce()`), and a second trigger locks the room row and rejects a JOIN into a closed room —
+race-safe against a concurrent close, and covering a direct write, not only `join_room` **[source]**. Its
+automated checks against the real Supabase project live in `supabase/room-transport.integration.mjs` and
+`supabase/room-student.integration.mjs`. Still missing: students ANSWERING, revealing, and any
+student/teacher client — it is not yet a live room **[source]**.
 
 **Also true [source].** `solo-mode.js` has no renderer dispatch — mode is a binary `S.mode` branch;
 `GUIDE.playable()` (`:394`) silently skips any level with zero figures. `RHYTHM_FIGURES`

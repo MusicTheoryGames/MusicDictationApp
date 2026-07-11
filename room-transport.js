@@ -17,10 +17,10 @@
  * write once it lands and you re-read. The live change-feed (Realtime subscription) that
  * triggers the re-read is a SEPARATE, later step.
  *
- * SCOPE OF THIS MODULE (today): the "DB is truth" read (`fetchRoom` + the pure `assembleRoom`)
- * and the TEACHER's round lifecycle — `createRoom`, `assignRhythm` (start/replace a round),
- * `heartbeat` (TTL liveness), `closeRoom`. Still deliberately NOT here: revealing, and students
- * joining / leaving / answering — the next steps.
+ * SCOPE OF THIS MODULE (today): the "DB is truth" read (`fetchRoom` + the pure `assembleRoom`),
+ * the TEACHER's round lifecycle — `createRoom`, `assignRhythm` (start/replace a round),
+ * `heartbeat` (TTL liveness), `closeRoom` — and students `joinRoom` / `leaveRoom`. Still
+ * deliberately NOT here: revealing, and students ANSWERING — the next steps.
  *
  * HOW A MUTATION IS MADE SAFE. Responsibilities are split by what the mutation carries. A
  * mutation with DOMAIN content — `assignRhythm` — is validated in the shell by folding it
@@ -31,8 +31,9 @@
  * check), ATOMICITY (`assign_round`'s answer-clear + rhythm-set are one transaction), and a
  * TERMINAL CLOSED ROUND (a trigger rejects any change to the closed rooms ROW, so the teacher
  * cannot reopen or re-run a closed round — by a direct write or a race, not only via reduce();
- * a DELETE teardown is still allowed). Refusing post-close STUDENT writes (a late join/answer)
- * is NOT enforced yet and ships with the student state machine. What the database does NOT
+ * a DELETE teardown is still allowed). Post-close student JOINs are also blocked structurally — a
+ * trigger on room_students that LOCKS the room row, so a join racing a close is serialized (race-safe
+ * like assign_round); the answer path and its post-close guard are the next step. What the database does NOT
  * re-derive is a round's DOMAIN shape (rhythm tiling, tempo sign) on a DIRECT write that bypasses
  * the transport — those rules live only in core, and a teacher bypassing their own room's
  * transport is the honest-actor boundary, not guarded here. The reduce() pre-check for
@@ -95,16 +96,19 @@ export function assembleRoom(roomRow, studentRows = [], answerRows = []) {
 const codeFrom = (randomBytes) => codeFromBytes(randomBytes(6));
 
 /**
- * Build the live-room transport (the "DB is truth" read + the teacher's round lifecycle).
+ * Build the live-room transport (the "DB is truth" read, the teacher's round lifecycle, and the
+ * student join/leave verbs).
  *   supabase — a configured supabase-js client (already able to sign in anonymously).
  *   deps.randomBytes(n) — returns n integers in 0..255 (crypto.getRandomValues in the
  *     browser, node:crypto.randomBytes in the harness); used for room codes.
  *   deps.now() — current time in ms (Date.now); used only to satisfy core/room.js's timestamp
  *     validation (`emptyRoom`, `reduce`). Persisted timestamps come from the database clock
  *     (`assign_round`, `heartbeat` in the migration), not from here.
- * The mutating verbs (createRoom / assignRhythm / heartbeat / closeRoom) need an authenticated
- * teacher session; `fetchRoom` is a read gated by RLS (it returns null for a room this client
- * may not see), so it does not require one itself.
+ * Every mutating verb needs an authenticated session and acts as that caller: the teacher verbs
+ * (createRoom / assignRhythm / heartbeat / closeRoom) require the room's teacher (enforced by RLS
+ * and the SQL guards), and the student verbs (joinRoom / leaveRoom) act on the caller's own roster
+ * row. `fetchRoom` is a read gated by RLS (it returns null for a room this client may not see), so
+ * it does not require a session itself.
  */
 export function createRoomTransport(supabase, deps) {
   const { randomBytes, now } = deps;
@@ -207,6 +211,26 @@ export function createRoomTransport(supabase, deps) {
     async closeRoom(code) {
       const { error } = await supabase.from('rooms').update({ state: ROOM_STATES.CLOSED }).eq('code', code);
       failIf(error, `closeRoom ${code}`);
+    },
+
+    /**
+     * Student joins a room, or refreshes its display name on rejoin. Calls `join_room`, which
+     * validates the name, rejects a missing or CLOSED room, and inserts the caller's OWN roster
+     * row (auth.uid()). A student cannot read a room before joining, so this cannot fetch-then-
+     * reduce; `join_room` — plus the room_students closed-write trigger — is the validator/guard.
+     */
+    async joinRoom(code, name) {
+      const { error } = await supabase.rpc('join_room', { p_code: code, p_name: name });
+      failIf(error, `joinRoom ${code}`);
+    },
+
+    /**
+     * Student leaves — removes only its own roster row (`leave_room`); a no-op if the room is
+     * already closed, matching core's LEAVE-after-CLOSE.
+     */
+    async leaveRoom(code) {
+      const { error } = await supabase.rpc('leave_room', { p_code: code });
+      failIf(error, `leaveRoom ${code}`);
     },
   };
 }

@@ -166,10 +166,10 @@ create trigger room_answers_pin_keys before update on public.room_answers
 -- atomicity (the whole function is one transaction), and a TERMINAL CLOSED ROUND — once closed,
 -- the rooms row itself cannot be changed (the trigger below), so a teacher cannot reopen or
 -- re-run a closed round by any UPDATE path. SCOPE of that guarantee: it is the rooms ROW only.
--- Refusing post-close STUDENT writes (a late join or answer into a closed room) is not enforced
--- yet — room_students/room_answers do not check the parent room's state — and ships WITH the
--- student state machine, where those writes get their closed-guard. Room teardown via DELETE is
--- intentionally allowed (TTL cleanup). What the database does NOT re-derive is the DOMAIN shape
+-- Post-close STUDENT JOINs are blocked too, structurally, by the room_students trigger further
+-- below; the post-close guard for the ANSWER path ships with the answer step (room_answers does
+-- not yet check the parent room's state). Room teardown via DELETE is intentionally allowed (TTL
+-- cleanup). What the database does NOT re-derive is the DOMAIN shape
 -- of a round (that the rhythm tiles the meter with the room's figures, that tempo is a positive
 -- integer): those rules live only in core/room.js and are enforced in the shell via reduce()
 -- before assign_round is called — a teacher writing a malformed rhythm by BYPASSING the transport
@@ -227,6 +227,73 @@ create or replace function public.heartbeat(p_code text)
     update public.rooms set teacher_last_seen = now()
      where code = p_code and teacher_uid = auth.uid() and state <> 'closed';
 $$;
+
+-- ---- student roster mutations (guarded) ----------------------------------
+-- Students join/leave through these so the closed-terminal rule reaches roster writes too (RLS
+-- alone does not check the parent room's state). CLOSED blocks a JOIN structurally: a trigger
+-- rejects any INSERT/UPDATE of a room_students row whose room is closed, covering a direct client
+-- write, not only join_room. It LOCKS the parent room row (FOR SHARE) before checking, so a
+-- concurrent closeRoom cannot commit between the check and the insert — the insert either lands
+-- while the room is still open, or waits and then sees it closed and is rejected. DELETE is
+-- intentionally NOT trigger-guarded: a BEFORE DELETE guard would also fire during the FK cascade
+-- of room teardown (breaking cleanup), and a student removing its own row is benign — leave_room's
+-- own predicate makes leaving a no-op on a closed room. The trigger is SECURITY DEFINER so it can
+-- read the room's state even for a JOINING non-member, whom RLS would otherwise show no room.
+create or replace function public.forbid_closed_student_write()
+  returns trigger language plpgsql security definer
+  set search_path = public as $$
+declare v_state text;
+begin
+  select state into v_state from public.rooms where code = new.room_code for share;
+  if v_state = 'closed' then
+    raise exception 'room is closed' using errcode = 'check_violation';   -- 23514
+  end if;
+  return new;
+end $$;
+drop trigger if exists room_students_forbid_closed on public.room_students;
+create trigger room_students_forbid_closed before insert or update on public.room_students
+  for each row execute function public.forbid_closed_student_write();
+
+-- Join (or refresh display name on rejoin). SECURITY DEFINER so it can read the room to reject a
+-- missing or closed one before inserting (a non-member cannot read rooms under RLS). Inserts the
+-- caller's OWN row via auth.uid(), never a client-supplied uid, so a caller only joins as itself.
+-- The trigger above is the structural backstop against a direct write; this gives the clean error.
+create or replace function public.join_room(p_code text, p_name text)
+  returns void language plpgsql security definer
+  set search_path = public as $$
+declare v_state text;
+begin
+  if p_name is null or length(p_name) = 0 then
+    raise exception 'name required' using errcode = 'check_violation';        -- 23514
+  end if;
+  select state into v_state from public.rooms where code = p_code;
+  if v_state is null then
+    raise exception 'room % not found', p_code;                              -- P0001
+  end if;
+  if v_state = 'closed' then
+    raise exception 'room is closed' using errcode = 'check_violation';       -- 23514
+  end if;
+  insert into public.room_students (room_code, uid, name, last_seen)
+  values (p_code, auth.uid(), p_name, now());
+exception
+  when unique_violation then   -- already joined: refresh the display name + last-seen
+    update public.room_students
+       set name = p_name, last_seen = now()
+     where room_code = p_code and uid = auth.uid();
+end $$;
+
+-- Leave — delete the caller's OWN roster row; a no-op if the room is already closed (matching
+-- core, where LEAVE after CLOSE is a no-op). SECURITY INVOKER (the default): RLS restricts the
+-- delete to the caller's own row, and the caller (a member) can read the room for the state
+-- guard. A leave racing a close may still remove the row — benign, it is the student's own row.
+create or replace function public.leave_room(p_code text)
+  returns void language plpgsql
+  set search_path = public as $$
+begin
+  delete from public.room_students
+   where room_code = p_code and uid = auth.uid()
+     and exists (select 1 from public.rooms r where r.code = p_code and r.state <> 'closed');
+end $$;
 
 -- ---- Realtime: broadcast row changes (RLS still filters what each client sees) ----
 do $$
