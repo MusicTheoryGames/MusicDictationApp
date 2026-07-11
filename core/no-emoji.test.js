@@ -169,7 +169,7 @@ const NOT_UI = new Set([
   // This is NOT a "no UI text" exemption: it DOES carry UI text and glyph-icons and violates rule 11
   // today. It is a DELIBERATE, TEMPORARY hold (owner-directed) — the glyph/emoji cleanup is a tracked
   // follow-up before the redesign is held to rule 11. Remove these three once that cleanup lands.
-  'beatquest-redesign.html',
+  'rhythmquest.html',
   'quest-redesign.js',
   'quest-redesign.css',
 ]);
