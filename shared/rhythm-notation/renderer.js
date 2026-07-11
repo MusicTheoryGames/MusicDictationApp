@@ -787,6 +787,7 @@
 
 
   window.RhythmNotation = {
+    getVexFlow: getVexFlow,
     renderPlacedVex: renderPlacedVex,
     refreshPlacedVex: refreshPlacedVex,
     schedulePlacedVexRender: schedulePlacedVexRender,
@@ -795,6 +796,7 @@
     catalog: beatVexPatterns,
     rhythmAsset: rhythmAsset,
     usesBeatUnitCustomBeaming: usesBeatUnitCustomBeaming,
+    rendererFamilyForPattern: rendererFamilyForPattern,
     durationToBeats: durationToBeats,
     isRestDuration: isRestDuration
   };
