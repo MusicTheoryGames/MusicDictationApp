@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>BeatQuest Redesign</title>
+  <link rel="stylesheet" href="quest-redesign.css?v=playtest-gameplay-117">
+</head>
+<body class="quest-redesign" data-app="beatquest">
+  <main class="quest-shell stage">
+    <section class="quest-device shell beat-device" aria-label="BeatQuest redesign prototype">
+      <span class="screw tl s1"></span>
+      <span class="screw tr s2"></span>
+      <span class="screw bl s3"></span>
+      <span class="screw br s4"></span>
+
+      <header class="quest-topbar chrome">
+        <div class="brand-lockup brand">
+          <img class="app-mark" src="assets/beatquest-mark.svg" alt="BeatQuest">
+          <div class="brand-copy">
+            <small class="brand-sub">Guided dictation deck</small>
+            <h1 class="brand-title">BeatQuest</h1>
+          </div>
+        </div>
+        <div class="readouts tabs" aria-label="BeatQuest status">
+          <span class="lcd-chip">Guided</span>
+          <span class="lcd-chip">Level 01</span>
+        </div>
+      </header>
+
+      <section class="thin-rail" aria-label="BeatQuest transport">
+        <div class="guided-strip">
+          <span class="sr-only" id="beatReadout"></span>
+          <button class="hardware-button go" id="beatPlay" type="button" aria-label="Play rhythm">
+            <span class="play-icon" aria-hidden="true"></span>
+            <span>Play</span>
+          </button>
+          <div class="speed-control" aria-label="Playback speed">
+            <button type="button" data-speed="slow">Slow</button>
+            <button class="is-active" type="button" data-speed="medium">Medium</button>
+            <button type="button" data-speed="fast">Fast</button>
+          </div>
+          <div class="guided-tools" aria-label="Guided tools">
+            <button class="tool-button is-active" id="beatMetro" type="button" aria-pressed="true">
+              <span>Metro</span>
+            </button>
+            <button class="tool-button is-active" id="beatGuide" type="button" aria-pressed="true">
+              <span>Guide</span>
+            </button>
+            <div class="hint-menu">
+              <button class="tool-button hint-toggle" id="beatHintsToggle" type="button" aria-expanded="false" aria-haspopup="true">
+                <span>Hints</span>
+              </button>
+              <div class="hint-popover" id="beatHintsMenu" role="menu" aria-label="BeatQuest hints">
+                <button class="hint-menu-item" id="beatHintNarrow" type="button" role="menuitem" aria-pressed="false">
+                  <span>Narrow options</span>
+                  <b class="hint-cost">-10</b>
+                </button>
+                <button class="hint-menu-item" id="beatHintCount" type="button" role="menuitem" aria-pressed="false">
+                  <span>Count sounds</span>
+                  <b class="hint-cost">Free x1</b>
+                </button>
+                <button class="hint-menu-item" id="beatHintHear" type="button" role="menuitem" aria-pressed="false">
+                  <span>Hear a beat</span>
+                  <b class="hint-cost">-6</b>
+                </button>
+                <button class="hint-menu-item" id="beatHintMistakes" type="button" role="menuitem">
+                  <span>Find mistakes</span>
+                  <b class="hint-cost">-8</b>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="quest-workframe display" id="beatFrame" aria-label="Rhythm answer display">
+        <div class="display-label">Your answer / 2 measures</div>
+        <div class="frame-tab frame-level">Level <b>01</b></div>
+        <div class="frame-tab frame-points">
+          <svg viewBox="0 0 20 20" class="hud-ic points-ic" aria-hidden="true">
+            <circle cx="10" cy="10" r="7.4"></circle>
+            <path d="M11 3.8 6.5 10.5h3.1L8.7 16.2l4.8-7h-3.2z"></path>
+          </svg>
+          <span class="sr-only">Points</span><b id="beatPoints">0</b>
+          <svg viewBox="0 0 20 20" class="hud-ic flame-ic" aria-hidden="true">
+            <path d="M10 2c1.1 3 4 4.2 4 8a4 4 0 1 1-8 0c0-2.2 1.1-3.2 2-4.2.2 1.2 1 2 2 2.2.3-2.4-2-3.6-2-8z"></path>
+          </svg>
+          <span class="sr-only">Streak</span><b id="beatStreak">0</b>
+        </div>
+        <div class="groove-badge">
+          <svg viewBox="0 0 20 20" class="ic" aria-hidden="true">
+            <circle cx="10" cy="10" r="7.6"></circle>
+            <circle cx="10" cy="10" r="2"></circle>
+          </svg>
+          <span>Groove</span><b id="beatGroove">100%</b>
+        </div>
+        <span class="sr-only" id="beatFilled">0 of 4 beats</span>
+
+        <div class="rhythm-stage screen slots-screen">
+          <div class="rhythm-board slot-row" id="rhythmBoard" aria-label="Rhythm answer slots"></div>
+        </div>
+
+        <div class="frame-actions">
+          <div class="frame-message" id="beatMessage">Drag a rhythm pad onto any open beat.</div>
+          <div class="action-cluster">
+            <button class="hardware-button danger" id="beatSubmit" type="button" disabled>Submit</button>
+            <button class="hardware-button bonus" id="beatTapBack" type="button" aria-label="Tap back bonus" hidden>
+              <span>Tap it back</span>
+              <b class="tb-badge">+25/bar</b>
+            </button>
+            <button class="hardware-button go" id="beatNext" type="button" hidden>Next</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="rhythm-bank-panel input-strip" aria-label="Rhythm bank">
+        <div class="bank-title">
+          <span>Expanded pad bank</span>
+          <span id="beatBankCount">3 options / no scroll</span>
+        </div>
+        <div class="rhythm-bank-grid pads" id="rhythmBank"></div>
+        <section class="tapback-panel" id="beatTapOverlay" aria-label="Tap it back bonus" hidden>
+          <div class="tb-zones" id="beatTapZones">
+            <button class="tb-zone tb-beat" id="beatTapBeat" type="button">
+              <span class="tb-zlabel">Beat</span>
+              <span class="tb-zhint">left hand</span>
+            </button>
+            <button class="tb-zone tb-rhythm" id="beatTapRhythm" type="button">
+              <span class="tb-zlabel">Rhythm</span>
+              <span class="tb-zhint">right hand</span>
+            </button>
+          </div>
+          <div class="tb-instruct" id="beatTapInstruct" hidden></div>
+          <div class="tb-meta" id="beatTapMeta" hidden>+25/bar</div>
+          <button class="tb-start" id="beatTapStart" type="button" hidden>Start metronome</button>
+          <button class="tb-close" id="beatTapClose" type="button" hidden>Exit</button>
+          <div class="tb-countoff" id="beatTapCountoff" aria-hidden="true"></div>
+          <div class="tb-results" id="beatTapResults" hidden></div>
+          <div class="tb-staff" id="beatTapStaff" hidden></div>
+        </section>
+      </section>
+
+      <aside class="dev-jumper is-collapsed" id="beatDevJumper" aria-label="BeatQuest developer level jumper" hidden>
+        <button class="dev-drawer-tab" id="beatDevDrawerToggle" type="button" aria-expanded="false" aria-controls="beatDevDrawerBody">
+          <span>Dev</span>
+          <b id="beatDevDrawerLevel">01</b>
+        </button>
+        <div class="dev-drawer-body" id="beatDevDrawerBody">
+          <strong>Dev</strong>
+          <div class="dev-level-scroll" id="beatDevLevelScroll" aria-label="Quick level jump"></div>
+          <label>
+            <span>Level</span>
+            <select id="beatDevLevel"></select>
+          </label>
+          <label>
+            <span>Bars</span>
+            <select id="beatDevBars">
+              <option value="2">2</option>
+              <option value="4">4</option>
+              <option value="8">8</option>
+              <option value="16">16</option>
+            </select>
+          </label>
+          <label>
+            <span>Meter</span>
+            <select id="beatDevMeter">
+              <option value="">Auto</option>
+            </select>
+          </label>
+          <label>
+            <span>Render</span>
+            <select id="beatDevRenderer">
+              <option value="hybrid">Hybrid</option>
+              <option value="all">Live all</option>
+              <option value="png">PNG fallback</option>
+            </select>
+          </label>
+        </div>
+      </aside>
+    </section>
+  </main>
+  <script src="vendor/vexflow.js"></script>
+  <script src="quest-redesign.js?v=playtest-gameplay-156"></script>
+</body>
+</html>
