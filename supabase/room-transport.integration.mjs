@@ -18,11 +18,11 @@
  *     ceiling, is covered by the core tests); a non-teacher cannot call assign_round (guard).
  *   - heartbeat advances teacher_last_seen using the DATABASE clock, and is a no-op once closed.
  *   - the closed rooms ROW is terminal — a trigger rejects reopening or editing it, proven here
- *     against a direct reopen and a direct non-state edit. (The closed-room guard for student
- *     JOINs is proven in room-student.integration.mjs; the answer path is a later step.)
+ *     against a direct reopen and a direct non-state edit. (The student JOIN and ANSWER guards are
+ *     proven in room-student.integration.mjs and room-answer.integration.mjs.)
  *
- * Revealing and student ANSWERING are later steps; the join/leave verbs are covered by
- * room-student.integration.mjs, not here.
+ * Revealing is a later step; the student join/leave/answer verbs are covered by
+ * room-student.integration.mjs and room-answer.integration.mjs, not here.
  *
  * IO-tested (real network), not `node --test`. Run AFTER applying
  * supabase/migrations/0001_live_room.sql (including get_room, assign_round, heartbeat):
@@ -95,7 +95,8 @@ try {
   check('assignRhythm sets the round ACTIVE with R1, no answers, no reveals',
     room.state === ROOM_STATES.ACTIVE && eq(cells(room.rhythm), cells(R1)) && eq(room.answers, {}) && eq(room.revealed, []));
 
-  // --- seed a roster + answers with raw writes (join/answer verbs are a later step) ---
+  // --- seed a roster + answers with raw writes (this teacher-focused harness does not use the
+  //     join/answer verbs — those have their own harnesses; here raw rows exercise assembleRoom) ---
   const seed = async (promise, what) => {
     const { error } = await promise;
     if (error) throw new Error(`seed ${what} failed: ${error.message}`);

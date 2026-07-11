@@ -167,9 +167,9 @@ create trigger room_answers_pin_keys before update on public.room_answers
 -- the rooms row itself cannot be changed (the trigger below), so a teacher cannot reopen or
 -- re-run a closed round by any UPDATE path. SCOPE of that guarantee: it is the rooms ROW only.
 -- Post-close STUDENT JOINs are blocked too, structurally, by the room_students trigger further
--- below; the post-close guard for the ANSWER path ships with the answer step (room_answers does
--- not yet check the parent room's state). Room teardown via DELETE is intentionally allowed (TTL
--- cleanup). What the database does NOT re-derive is the DOMAIN shape
+-- below; ANSWERs are accepted only while the round is ACTIVE (the room_answers trigger further
+-- below), which also blocks any post-close/post-reveal answer. Room teardown via DELETE is
+-- intentionally allowed (TTL cleanup). What the database does NOT re-derive is the DOMAIN shape
 -- of a round (that the rhythm tiles the meter with the room's figures, that tempo is a positive
 -- integer): those rules live only in core/room.js and are enforced in the shell via reduce()
 -- before assign_round is called — a teacher writing a malformed rhythm by BYPASSING the transport
@@ -294,6 +294,31 @@ begin
    where room_code = p_code and uid = auth.uid()
      and exists (select 1 from public.rooms r where r.code = p_code and r.state <> 'closed');
 end $$;
+
+-- ---- answers are accepted only while the round is ACTIVE ------------------
+-- core/room.js accepts an ANSWER only in the ACTIVE state — never in the lobby, never once a
+-- reveal has begun (no copying the shown answer), never after close. A trigger enforces that phase
+-- structurally for every write path, taking a FOR SHARE lock on the room so an answer racing a
+-- reveal/close is serialized (the answer lands while ACTIVE, or waits and is then rejected). It
+-- does NOT re-derive the DOMAIN rules (the beat is a real figure onset, the figure is in the
+-- room's vocabulary) — those live only in core/room.js and are checked in the shell via reduce();
+-- a student writing a bogus beat/figure into its OWN answer by bypassing the transport only harms
+-- its own grading (the honest-actor boundary). SECURITY DEFINER so the check reads the room state
+-- under RLS-free visibility. DELETE is not guarded (assign_round's board-clear + FK cascade).
+create or replace function public.forbid_inactive_answer()
+  returns trigger language plpgsql security definer
+  set search_path = public as $$
+declare v_state text;
+begin
+  select state into v_state from public.rooms where code = new.room_code for share;
+  if v_state is distinct from 'active' then
+    raise exception 'room is not accepting answers' using errcode = 'check_violation';   -- 23514
+  end if;
+  return new;
+end $$;
+drop trigger if exists room_answers_active_only on public.room_answers;
+create trigger room_answers_active_only before insert or update on public.room_answers
+  for each row execute function public.forbid_inactive_answer();
 
 -- ---- Realtime: broadcast row changes (RLS still filters what each client sees) ----
 do $$

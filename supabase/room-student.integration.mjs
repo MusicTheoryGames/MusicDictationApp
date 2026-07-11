@@ -16,7 +16,7 @@
  *     room; the trigger's FOR SHARE lock is what makes a join racing a close safe (an implementation
  *     property, like assign_round's lock — not raced here).
  *
- * Student ANSWERING (and its post-close guard) is a later step, not exercised here.
+ * Student ANSWERING has its own harness (room-answer.integration.mjs); it is not exercised here.
  *
  * IO-tested (real network), not `node --test`. Run AFTER applying
  * supabase/migrations/0001_live_room.sql (including join_room, leave_room, and the

@@ -63,6 +63,11 @@ try {
   check('student B can join CODE', !(await B.c.from('room_students').insert({ room_code: CODE, uid: B.uid, name: 'B' })).error);
   check('student B can also join CODE2', !(await B.c.from('room_students').insert({ room_code: CODE2, uid: B.uid, name: 'B' })).error);
   check('student C can join CODE', !(await C.c.from('room_students').insert({ room_code: CODE, uid: C.uid, name: 'C' })).error);
+  // Activate CODE2 too, so the answer-move test below is blocked by the key-immutability trigger
+  // (the room_answers active-only trigger would otherwise reject a move into a non-active room first).
+  const THREE_Q = [{ figureId: 'quarter', onset: 0, beats: 1 }, { figureId: 'quarter', onset: 1, beats: 1 }, { figureId: 'quarter', onset: 2, beats: 1 }];
+  check('teacher can activate CODE2',
+    !(await teacher.c.from('rooms').update({ rhythm: THREE_Q, state: 'active' }).eq('code', CODE2)).error);
 
   // --- guarantee 3: cannot read an un-joined room ---
   check('outsider D cannot READ an un-joined room', rows(await D.c.from('rooms').select('code').eq('code', CODE)) === 0);
@@ -89,7 +94,8 @@ try {
   const forgeUpd = await B.c.from('room_answers').update({ figure_id: 'HACKED' }).eq('room_code', CODE).eq('uid', C.uid).select();
   check("B cannot UPDATE C's answer", rows(forgeUpd) === 0 && (await cVal()).data.figure_id === 'quarter');
 
-  // Move own answer CODE -> CODE2, a room B HAS joined. RLS would permit both; only the trigger blocks.
+  // Move own answer CODE -> CODE2, a room B HAS joined and that is ACTIVE (so the active-only trigger
+  // allows it). RLS would permit both; the key-immutability trigger blocks the room_code change.
   const moveAns = await B.c.from('room_answers').update({ room_code: CODE2 }).eq('room_code', CODE).eq('uid', B.uid).eq('beat', 0);
   check('B cannot MOVE its answer between two joined rooms (key trigger)', moveAns.error?.code === KEY_LOCK, moveAns.error?.code);
   check('  …answer stayed in CODE, none created in CODE2',

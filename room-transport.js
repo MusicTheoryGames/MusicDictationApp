@@ -19,8 +19,8 @@
  *
  * SCOPE OF THIS MODULE (today): the "DB is truth" read (`fetchRoom` + the pure `assembleRoom`),
  * the TEACHER's round lifecycle — `createRoom`, `assignRhythm` (start/replace a round),
- * `heartbeat` (TTL liveness), `closeRoom` — and students `joinRoom` / `leaveRoom`. Still
- * deliberately NOT here: revealing, and students ANSWERING — the next steps.
+ * `heartbeat` (TTL liveness), `closeRoom` — and students `joinRoom` / `leaveRoom` / `submitAnswer`.
+ * Still deliberately NOT here: revealing — the next step.
  *
  * HOW A MUTATION IS MADE SAFE. Responsibilities are split by what the mutation carries. A
  * mutation with DOMAIN content — `assignRhythm` — is validated in the shell by folding it
@@ -33,7 +33,8 @@
  * cannot reopen or re-run a closed round — by a direct write or a race, not only via reduce();
  * a DELETE teardown is still allowed). Post-close student JOINs are also blocked structurally — a
  * trigger on room_students that LOCKS the room row, so a join racing a close is serialized (race-safe
- * like assign_round); the answer path and its post-close guard are the next step. What the database does NOT
+ * like assign_round), and student ANSWERs are accepted only while the round is ACTIVE (a second such
+ * locking trigger on room_answers, so there is no answering after a reveal, race-safe). What the database does NOT
  * re-derive is a round's DOMAIN shape (rhythm tiling, tempo sign) on a DIRECT write that bypasses
  * the transport — those rules live only in core, and a teacher bypassing their own room's
  * transport is the honest-actor boundary, not guarded here. The reduce() pre-check for
@@ -97,7 +98,7 @@ const codeFrom = (randomBytes) => codeFromBytes(randomBytes(6));
 
 /**
  * Build the live-room transport (the "DB is truth" read, the teacher's round lifecycle, and the
- * student join/leave verbs).
+ * student join/leave/answer verbs).
  *   supabase — a configured supabase-js client (already able to sign in anonymously).
  *   deps.randomBytes(n) — returns n integers in 0..255 (crypto.getRandomValues in the
  *     browser, node:crypto.randomBytes in the harness); used for room codes.
@@ -106,9 +107,9 @@ const codeFrom = (randomBytes) => codeFromBytes(randomBytes(6));
  *     (`assign_round`, `heartbeat` in the migration), not from here.
  * Every mutating verb needs an authenticated session and acts as that caller: the teacher verbs
  * (createRoom / assignRhythm / heartbeat / closeRoom) require the room's teacher (enforced by RLS
- * and the SQL guards), and the student verbs (joinRoom / leaveRoom) act on the caller's own roster
- * row. `fetchRoom` is a read gated by RLS (it returns null for a room this client may not see), so
- * it does not require a session itself.
+ * and the SQL guards), and the student verbs (joinRoom / leaveRoom act on the caller's own roster
+ * row; submitAnswer upserts the caller's own answer). `fetchRoom` is a read gated by RLS (it
+ * returns null for a room this client may not see), so it does not require a session itself.
  */
 export function createRoomTransport(supabase, deps) {
   const { randomBytes, now } = deps;
@@ -231,6 +232,31 @@ export function createRoomTransport(supabase, deps) {
     async leaveRoom(code) {
       const { error } = await supabase.rpc('leave_room', { p_code: code });
       failIf(error, `leaveRoom ${code}`);
+    },
+
+    /**
+     * Student records one figure at a beat. Re-reads the room and folds an ANSWER through
+     * `reduce()`, which rejects it unless the room is ACTIVE, the caller has joined, the figure is
+     * in the room's vocabulary, and the beat is a real figure onset — throwing before any write.
+     * Then upserts the caller's OWN answer row (RLS restricts it to `uid = auth.uid()`). The
+     * `room_answers` active-only trigger is the hard, race-safe backstop on the ACTIVE phase (so a
+     * reveal landing between the read and the write still blocks the answer); onset/vocabulary are
+     * core domain rules, checked here in the shell, not re-derived in SQL.
+     */
+    async submitAnswer(code, beat, figureId) {
+      const room = await fetchRoom(code);
+      if (!room) throw new Error(`room-transport: submitAnswer — room ${code} not found`);
+      const id = await uid();
+      if (reduce(room, { type: 'ANSWER', uid: id, beat, figureId }, now()) === room) {
+        throw new Error(
+          `room-transport: submitAnswer rejected — the room must be ACTIVE, you must have joined, ` +
+          `'${figureId}' must be a figure in the room, and beat ${beat} must be a figure onset`,
+        );
+      }
+      const { error } = await supabase
+        .from('room_answers')
+        .upsert({ room_code: code, uid: id, beat, figure_id: figureId }, { onConflict: 'room_code,uid,beat' });
+      failIf(error, `submitAnswer ${code}`);
     },
   };
 }
