@@ -160,6 +160,74 @@ drop trigger if exists room_answers_pin_keys on public.room_answers;
 create trigger room_answers_pin_keys before update on public.room_answers
   for each row execute function public.forbid_key_change();
 
+-- ---- teacher round mutations (atomic + guarded) --------------------------
+-- These own the multi-step / clock-stamped teacher actions that a plain client write cannot
+-- do safely. DB-BOUNDARY GUARANTEES: authorization (RLS + the DEFINER teacher check),
+-- atomicity (the whole function is one transaction), and a TERMINAL CLOSED ROUND — once closed,
+-- the rooms row itself cannot be changed (the trigger below), so a teacher cannot reopen or
+-- re-run a closed round by any UPDATE path. SCOPE of that guarantee: it is the rooms ROW only.
+-- Refusing post-close STUDENT writes (a late join or answer into a closed room) is not enforced
+-- yet — room_students/room_answers do not check the parent room's state — and ships WITH the
+-- student state machine, where those writes get their closed-guard. Room teardown via DELETE is
+-- intentionally allowed (TTL cleanup). What the database does NOT re-derive is the DOMAIN shape
+-- of a round (that the rhythm tiles the meter with the room's figures, that tempo is a positive
+-- integer): those rules live only in core/room.js and are enforced in the shell via reduce()
+-- before assign_round is called — a teacher writing a malformed rhythm by BYPASSING the transport
+-- is the honest-actor boundary, and duplicating the tiling rule in SQL would fork the source of truth.
+
+-- TERMINAL CLOSED ROUND: once a room is closed, no update may CHANGE its rooms row. A row-identical
+-- update (e.g. a redundant close) is allowed so closeRoom stays idempotent; any actual change is
+-- rejected. This makes the rooms row terminal independent of the UPDATE path (a direct edit to
+-- reopen or to change rhythm/tempo/reveals, or an assign_round that raced a concurrent close).
+drop trigger if exists rooms_forbid_reopen on public.rooms; -- superseded name (a prior run installed it)
+drop function if exists public.forbid_reopen();
+create or replace function public.forbid_closed_mutation()
+  returns trigger language plpgsql as $$
+begin
+  if old.state = 'closed' and new is distinct from old then
+    raise exception 'room is closed (terminal)' using errcode = 'check_violation';     -- 23514
+  end if;
+  return new;
+end $$;
+drop trigger if exists rooms_forbid_closed_mutation on public.rooms;
+create trigger rooms_forbid_closed_mutation before update on public.rooms
+  for each row execute function public.forbid_closed_mutation();
+
+-- Start a new round: clear the previous answers and set the new rhythm ACTIVE, in one
+-- transaction so a reader never sees a new round carrying old answers. SECURITY DEFINER
+-- because clearing answers needs to bypass the (deliberately absent) answer-delete policy;
+-- it therefore checks teacher ownership itself. It locks the room row (FOR UPDATE) before
+-- reading state so a concurrent closeRoom cannot interleave between the check and the write;
+-- the forbid_closed_mutation trigger is the backstop if one still does.
+create or replace function public.assign_round(p_code text, p_rhythm jsonb, p_tempo integer)
+  returns void language plpgsql security definer
+  set search_path = public as $$
+declare v_state text;
+begin
+  if not public.is_room_teacher(p_code) then
+    raise exception 'not the room teacher' using errcode = 'insufficient_privilege';   -- 42501
+  end if;
+  select state into v_state from public.rooms where code = p_code for update;
+  if v_state = 'closed' then
+    raise exception 'room is closed' using errcode = 'check_violation';                -- 23514
+  end if;
+  delete from public.room_answers where room_code = p_code;
+  update public.rooms
+     set rhythm = p_rhythm, tempo = coalesce(p_tempo, tempo), revealed = '{}', state = 'active'
+   where code = p_code;
+end $$;
+
+-- Teacher liveness ping — the TTL basis (VISION §8), stamped by the DATABASE clock (not a
+-- client clock). SECURITY INVOKER: the rooms UPDATE policy already restricts it to the
+-- teacher; the extra predicates make it a no-op on a room this caller does not own or that is
+-- closed.
+create or replace function public.heartbeat(p_code text)
+  returns void language sql security invoker
+  set search_path = public as $$
+    update public.rooms set teacher_last_seen = now()
+     where code = p_code and teacher_uid = auth.uid() and state <> 'closed';
+$$;
+
 -- ---- Realtime: broadcast row changes (RLS still filters what each client sees) ----
 do $$
 declare t text;

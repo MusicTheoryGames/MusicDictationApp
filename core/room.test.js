@@ -157,6 +157,10 @@ test('emptyRoom: shape + beatUnit + figures; throws on invalid inputs', () => {
   assert.throws(() => emptyRoom('7QK4P2', 't1', { beatsPerMeasure: [3] }, 1, 100, 1000, SIMPLE), /beatUnit/);
   assert.throws(() => emptyRoom('7QK4P2', 't1', { beatsPerMeasure: [3], beatUnit: 'quarter' }, 1, 100, 1000, SIMPLE), /timeSignature/);
   assert.throws(() => emptyRoom('7QK4P2', 't1', METER, 1, 0, 1000, SIMPLE), /tempo/);
+  assert.throws(() => emptyRoom('7QK4P2', 't1', METER, 1, 120.5, 1000, SIMPLE), /tempo/); // fractional tempo rejected
+  assert.throws(() => emptyRoom('7QK4P2', 't1', METER, 1, 2147483648, 1000, SIMPLE), /tempo/); // beyond int4 range rejected
+  assert.throws(() => emptyRoom('7QK4P2', 't1', METER, 1, 1001, 1000, SIMPLE), /tempo/);        // above the BPM ceiling rejected
+  assert.equal(emptyRoom('7QK4P2', 't1', METER, 1, 1000, 1000, SIMPLE).tempo, 1000);            // the ceiling itself is accepted
   assert.throws(() => emptyRoom('7QK4P2', 't1', METER, 1, 100, NaN, SIMPLE), /timestamp/);
   assert.throws(() => emptyRoom('7QK4P2', 't1', METER, 1, 100, 1000, {}), /non-empty/);
   assert.throws(() => emptyRoom('7QK4P2', 't1', METER, 1, 100, 1000, { q: 0 }), /positive integer/);
@@ -202,6 +206,10 @@ test('reduce ASSIGN: sets rhythm, clears round, KEEPS students; rejects invalid 
   assert.equal(reduce(r, { type: 'ASSIGN', rhythm: rhy(['quarter', 1], ['quarter', 1]) }, 1040), r, 'under-filling rejected');
   assert.equal(reduce(r, { type: 'ASSIGN', rhythm: rhy(['bogus', 1], ['quarter', 1], ['quarter', 1]) }, 1041), r, 'unknown figure rejected');
   assert.equal(reduce(r, { type: 'ASSIGN', rhythm: THREE_Q, tempo: 0 }, 1042), r, 'bad tempo rejected');
+  assert.equal(reduce(r, { type: 'ASSIGN', rhythm: THREE_Q, tempo: 100.5 }, 1044), r, 'fractional tempo rejected');
+  assert.equal(reduce(r, { type: 'ASSIGN', rhythm: THREE_Q, tempo: 2147483648 }, 1045), r, 'out-of-range tempo rejected');
+  assert.equal(reduce(r, { type: 'ASSIGN', rhythm: THREE_Q, tempo: 1001 }, 1046), r, 'above the BPM ceiling rejected');
+  assert.equal(reduce(r, { type: 'ASSIGN', rhythm: THREE_Q, tempo: 1000 }, 1047).tempo, 1000, 'the ceiling itself is accepted');
   const bumped = reduce(r, { type: 'ASSIGN', rhythm: THREE_Q, tempo: 120 }, 1043);
   assert.equal(bumped.tempo, 120, 'ASSIGN may update tempo');
 });

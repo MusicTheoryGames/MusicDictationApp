@@ -411,13 +411,18 @@ The pure room state model — `core/room.js` (room schema, message reducer, per-
 TTL; no DOM/network/clock) — was added 2026-07-10 as the classroom foundation authorized by §8, and a
 Supabase backend now sits under it: anonymous-auth connectivity (`supabase-*.js`), the room schema +
 row-level security (`supabase/migrations/0001_live_room.sql`, checked by the automated
-`supabase/rls-check.mjs`), and the teacher-side transport read path — `room-transport.js`
-(`createRoom` and `fetchRoom`, reading through the `get_room` single-snapshot function, plus the pure
-`assembleRoom` that folds rows into a core Room). The automated `supabase/room-transport.integration.mjs`
-checks create, the teacher's full-visibility read (whole roster + all answers), and that a student's
-read is RLS-scoped to its own participation **[source]**. But the INTERACTIVE state machine over the
-wire — students joining/leaving, assigning a rhythm, answering, revealing — and any student/teacher
-client do not exist yet: it is not yet a live room **[source]**.
+`supabase/rls-check.mjs`), and the teacher's transport lifecycle in `room-transport.js` — `createRoom`,
+`assignRhythm` (start/replace a round), `heartbeat`, `closeRoom`, and the `fetchRoom` read (through the
+`get_room` single-snapshot function) plus the pure `assembleRoom` that folds rows into a core Room.
+`assignRhythm` is validated in the shell via `reduce()` and persisted atomically by `assign_round`
+(which locks the room row, re-checks teacher ownership, and clears the old answers while setting the new
+rhythm in ONE transaction); `heartbeat` refreshes the TTL with the database clock; `closeRoom` sets the
+terminal state. A trigger makes the closed rooms ROW terminal — once closed it cannot be reopened or
+edited by any UPDATE (a direct edit or a race, not only via `reduce()`); refusing post-close student
+joins/answers ships later with the student state machine **[source]**. Its automated checks against the
+real Supabase project live in `supabase/room-transport.integration.mjs`. Still missing: students
+joining/leaving/answering, revealing, and any student/teacher client — it is not yet a live room
+**[source]**.
 
 **Also true [source].** `solo-mode.js` has no renderer dispatch — mode is a binary `S.mode` branch;
 `GUIDE.playable()` (`:394`) silently skips any level with zero figures. `RHYTHM_FIGURES`

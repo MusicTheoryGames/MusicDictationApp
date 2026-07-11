@@ -4,12 +4,14 @@
  *
  * No effects: no DOM, no network, no clock, no randomness. `now` (a timestamp)
  * and entropy (bytes) are injected. A separate imperative shell — the Supabase
- * transport in `room-transport.js` — owns all effects. Its teacher-side read path
- * (`assembleRoom` + `fetchRoom`) exists; the interactive state machine that folds
- * ASSIGN/ANSWER/REVEAL over the wire is still being built: the shell (JS) will call
- * `reduce()` to validate each transition, while *authorization* (only the teacher
- * assigns/reveals; a student writes only their own answers) is enforced by row-level
- * security keyed on `teacherUid` and the answering `uid`. This module enforces *state
+ * transport in `room-transport.js` — owns all effects. Its read path (`assembleRoom` +
+ * `fetchRoom`) and the teacher's round lifecycle exist: ASSIGN is wired (`assignRhythm`,
+ * validated here and persisted atomically), plus heartbeat/close; ANSWER and REVEAL over
+ * the wire are next. The shell (JS) calls `reduce()` to validate each DOMAIN transition
+ * (ASSIGN, ANSWER, REVEAL); pure lifecycle pings (heartbeat/close) carry no domain content
+ * and skip it. *Authorization* (only the teacher assigns/reveals; a student writes only
+ * their own answers) is enforced by row-level security keyed on `teacherUid` and the
+ * answering `uid`; closed-is-terminal by a database trigger. This module enforces *state
  * validity* only.
  *
  * RHYTHM MODEL. A room is created for ONE meter, and carries a `figures`
@@ -88,6 +90,13 @@ export function beatCount(meter, bars) {
 
 /** Own-property check — never treats inherited keys (toString, __proto__…) as members. */
 const has = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+
+// Tempo is a positive integer BPM. The ceiling is faster than any practical tempo AND keeps
+// the value inside the transport's integer storage range (Postgres int4), so a tempo this
+// module accepts can always be persisted — reducer-valid never fails at the storage boundary.
+// Internal: the rule is enforced through emptyRoom/reduce, not exposed as public API.
+const MAX_TEMPO = 1000;
+const isValidTempo = (t) => Number.isInteger(t) && t > 0 && t <= MAX_TEMPO;
 
 /** Validate + copy a figure vocabulary `{ figureId: beats }` (positive-int spans). */
 function normalizeFigures(figures) {
@@ -170,7 +179,7 @@ export function emptyRoom(code, teacherUid, meter, bars, tempo, now, figures) {
   if (typeof meter.timeSignature !== 'string' || meter.timeSignature.length === 0) {
     throw new Error('emptyRoom: meter.timeSignature must be a non-empty string');
   }
-  if (!(Number.isFinite(tempo) && tempo > 0)) throw new Error('emptyRoom: tempo must be positive');
+  if (!isValidTempo(tempo)) throw new Error(`emptyRoom: tempo must be a positive integer BPM ≤ ${MAX_TEMPO}`);
   if (!Number.isFinite(now)) throw new Error('emptyRoom: now must be a finite timestamp');
   return {
     code,
@@ -241,7 +250,7 @@ export function reduce(room, msg, now) {
     case 'ASSIGN': {
       // New round in the room's fixed meter. The rhythm must tile the beat grid
       // with figures from the room's vocabulary. Optionally update tempo.
-      if (msg.tempo != null && !(Number.isFinite(msg.tempo) && msg.tempo > 0)) return room;
+      if (msg.tempo != null && !isValidTempo(msg.tempo)) return room;
       if (!isValidRhythm(msg.rhythm, beatCount(room.meter, room.bars), room.figures)) return room;
       return {
         ...room,

@@ -17,14 +17,27 @@
  * write once it lands and you re-read. The live change-feed (Realtime subscription) that
  * triggers the re-read is a SEPARATE, later step.
  *
- * SCOPE OF THIS MODULE (today): the teacher-side room lifecycle — `createRoom` and the
- * "DB is truth" read (`fetchRoom` + the pure `assembleRoom`). The INTERACTIVE state machine
- * — students joining/leaving, assigning a rhythm, answering, revealing — is deliberately NOT
- * here yet. Those mutations must honour core/room.js's rules (a closed room is terminal; no
- * answering after a reveal; a new round atomically clears the previous answers), which needs
- * the shell to validate each transition through `reduce()` and then persist it via atomic,
- * RLS-guarded writes (Postgres does not run the JS reducer). They land in the next step; until
- * then this module does not expose them.
+ * SCOPE OF THIS MODULE (today): the "DB is truth" read (`fetchRoom` + the pure `assembleRoom`)
+ * and the TEACHER's round lifecycle — `createRoom`, `assignRhythm` (start/replace a round),
+ * `heartbeat` (TTL liveness), `closeRoom`. Still deliberately NOT here: revealing, and students
+ * joining / leaving / answering — the next steps.
+ *
+ * HOW A MUTATION IS MADE SAFE. Responsibilities are split by what the mutation carries. A
+ * mutation with DOMAIN content — `assignRhythm` — is validated in the shell by folding it
+ * through core/room.js `reduce()` against a fresh read, refusing a rejected transition before
+ * any write (Postgres does not run the JS reducer). Pure LIFECYCLE ops — `heartbeat`,
+ * `closeRoom` — carry no domain content, so they do NOT reduce(); they are plain guarded writes.
+ * The DATABASE enforces, on every write path: AUTHORIZATION (RLS + `assign_round`'s teacher
+ * check), ATOMICITY (`assign_round`'s answer-clear + rhythm-set are one transaction), and a
+ * TERMINAL CLOSED ROUND (a trigger rejects any change to the closed rooms ROW, so the teacher
+ * cannot reopen or re-run a closed round — by a direct write or a race, not only via reduce();
+ * a DELETE teardown is still allowed). Refusing post-close STUDENT writes (a late join/answer)
+ * is NOT enforced yet and ships with the student state machine. What the database does NOT
+ * re-derive is a round's DOMAIN shape (rhythm tiling, tempo sign) on a DIRECT write that bypasses
+ * the transport — those rules live only in core, and a teacher bypassing their own room's
+ * transport is the honest-actor boundary, not guarded here. The reduce() pre-check for
+ * assignRhythm is advisory under concurrency; the trigger and the FOR UPDATE lock in
+ * `assign_round` are the hard backstops.
  *
  * PURITY: core/room.js stays pure; this module owns all I/O. It is injected with the Supabase
  * client, an entropy source, and a clock (`now`) rather than importing them, so the browser
@@ -32,7 +45,7 @@
  * node crypto — the validation logic under test is identical. (Persisted timestamps come from
  * the database clock, not `now()` — see `createRoom`.)
  */
-import { emptyRoom, codeFromBytes } from './core/room.js';
+import { emptyRoom, codeFromBytes, reduce, ROOM_STATES } from './core/room.js';
 
 const UNIQUE_VIOLATION = '23505'; // room-code primary-key collision
 
@@ -82,16 +95,16 @@ export function assembleRoom(roomRow, studentRows = [], answerRows = []) {
 const codeFrom = (randomBytes) => codeFromBytes(randomBytes(6));
 
 /**
- * Build the live-room transport (teacher-side lifecycle: create + read).
+ * Build the live-room transport (the "DB is truth" read + the teacher's round lifecycle).
  *   supabase — a configured supabase-js client (already able to sign in anonymously).
  *   deps.randomBytes(n) — returns n integers in 0..255 (crypto.getRandomValues in the
  *     browser, node:crypto.randomBytes in the harness); used for room codes.
- *   deps.now() — current time in ms (Date.now); used only to satisfy core/room.js
- *     `emptyRoom`'s timestamp validation. The persisted created / teacher_last_seen come from
- *     the database clock (column defaults), which is authoritative and free of client skew.
- * `createRoom` needs an authenticated session (it stamps teacher_uid = auth.uid()).
- * `fetchRoom` is a read gated by RLS (it returns null for a room this client may not see),
- * so it does not require one itself.
+ *   deps.now() — current time in ms (Date.now); used only to satisfy core/room.js's timestamp
+ *     validation (`emptyRoom`, `reduce`). Persisted timestamps come from the database clock
+ *     (`assign_round`, `heartbeat` in the migration), not from here.
+ * The mutating verbs (createRoom / assignRhythm / heartbeat / closeRoom) need an authenticated
+ * teacher session; `fetchRoom` is a read gated by RLS (it returns null for a room this client
+ * may not see), so it does not require one itself.
  */
 export function createRoomTransport(supabase, deps) {
   const { randomBytes, now } = deps;
@@ -104,8 +117,31 @@ export function createRoomTransport(supabase, deps) {
     return id;
   }
 
+  // Reject a Supabase rpc/query error (returned, not thrown, by the client) with a label.
+  const failIf = (error, what) => {
+    if (error) throw new Error(`room-transport: ${what} failed — ${error.message}`);
+  };
+
+  /**
+   * Read the room as it stands — the "DB is truth" read. Calls the `get_room` SQL function
+   * (supabase/migrations/0001_live_room.sql), which returns the room, its roster, and its
+   * answers gathered in ONE statement so the three are a single consistent snapshot (three
+   * separate SELECTs could straddle a concurrent round change). RLS still applies inside it,
+   * so this returns null for a room the client may not see, and a student sees only its own
+   * roster/answer rows (class-level derivations require the teacher's read — see the module
+   * note). Assembles the result into a core/room.js Room. This is what a Realtime change will
+   * re-run — and what the mutating verbs re-read to validate a transition through reduce().
+   */
+  async function fetchRoom(code) {
+    const { data, error } = await supabase.rpc('get_room', { p_code: code });
+    if (error) throw new Error(`room-transport: fetchRoom failed — ${error.message}`);
+    if (!data) return null;
+    return assembleRoom(data.room, data.students, data.answers);
+  }
+
   return {
     assembleRoom,
+    fetchRoom,
 
     /**
      * Teacher creates a room for one meter and figure vocabulary. Validates the whole shape
@@ -136,20 +172,41 @@ export function createRoomTransport(supabase, deps) {
     },
 
     /**
-     * Read the room as it stands — the "DB is truth" read. Calls the `get_room` SQL function
-     * (supabase/migrations/0001_live_room.sql), which returns the room, its roster, and its
-     * answers gathered in ONE statement so the three are a single consistent snapshot (three
-     * separate SELECTs could straddle a concurrent round change). RLS still applies inside
-     * it, so this returns null for a room the client may not see, and a student sees only its
-     * own roster/answer rows (class-level derivations require the teacher's read — see the
-     * module note). Assembles the result into a core/room.js Room. This is what a Realtime
-     * change will re-run.
+     * Teacher starts (or replaces) a round. Re-reads the room and folds an ASSIGN through
+     * `reduce()`, which rejects a rhythm that does not tile the room's fixed meter with its
+     * figure vocabulary, a tempo that is not a positive integer BPM in core's supported range,
+     * or a closed room; a rejected transition throws before any write. Then calls `assign_round`,
+     * which clears the previous
+     * answers and sets the new rhythm ACTIVE in one transaction (and re-checks teacher ownership
+     * + not-closed server-side). `tempo` is optional — omitting it keeps the room's current tempo.
      */
-    async fetchRoom(code) {
-      const { data, error } = await supabase.rpc('get_room', { p_code: code });
-      if (error) throw new Error(`room-transport: fetchRoom failed — ${error.message}`);
-      if (!data) return null;
-      return assembleRoom(data.room, data.students, data.answers);
+    async assignRhythm(code, rhythm, tempo) {
+      const room = await fetchRoom(code);
+      if (!room) throw new Error(`room-transport: assignRhythm — room ${code} not found`);
+      if (reduce(room, { type: 'ASSIGN', rhythm, tempo }, now()) === room) {
+        throw new Error(
+          `room-transport: assignRhythm rejected — the rhythm must tile ${code}'s meter with its ` +
+          "figures, tempo (if given) must be a positive integer BPM in core's supported range, " +
+          'and the room must not be closed',
+        );
+      }
+      const { error } = await supabase.rpc('assign_round', { p_code: code, p_rhythm: rhythm, p_tempo: tempo ?? null });
+      failIf(error, `assignRhythm ${code}`);
+    },
+
+    /**
+     * Teacher liveness ping — refreshes the TTL basis (VISION §8) with the database clock. A
+     * no-op on a room this caller does not own or that is closed (the SQL function's guards).
+     */
+    async heartbeat(code) {
+      const { error } = await supabase.rpc('heartbeat', { p_code: code });
+      failIf(error, `heartbeat ${code}`);
+    },
+
+    /** Teacher closes the room (terminal). Idempotent; RLS restricts the write to the teacher. */
+    async closeRoom(code) {
+      const { error } = await supabase.from('rooms').update({ state: ROOM_STATES.CLOSED }).eq('code', code);
+      failIf(error, `closeRoom ${code}`);
     },
   };
 }
