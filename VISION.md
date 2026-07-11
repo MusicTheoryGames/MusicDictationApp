@@ -427,7 +427,9 @@ closed rooms ROW is terminal (no UPDATE may change it, which also blocks a revea
 into a closed room is rejected, and an ANSWER is accepted only while the round is ACTIVE (so no answering
 after a reveal) **[source]**. That is the full message set (VISION §8). Its automated checks against the
 real Supabase project live in `supabase/room-transport.integration.mjs`, `supabase/room-student.integration.mjs`,
-`supabase/room-answer.integration.mjs`, and `supabase/room-reveal.integration.mjs`. The live change-feed
+`supabase/room-answer.integration.mjs`, and `supabase/room-reveal.integration.mjs` — plus
+`supabase/room-meter-matrix.integration.mjs`, which drives every §8 meter (2/4…12/8 and 5/8 non-preclusion)
+through create→assign→join→answer→reveal. The live change-feed
 also exists: `subscribeRoom` (a Realtime `postgres_changes` subscription on the three tables, filtered by
 room code) re-reads via `fetchRoom` as the room changes and calls back with the assembled Room — coalescing bursts,
 surfacing read failures via `onError`, and doing a catch-up re-read to cover the brief window while the
