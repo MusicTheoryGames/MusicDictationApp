@@ -420,13 +420,16 @@ answers while setting the new rhythm in ONE transaction); `heartbeat` refreshes 
 database clock; `closeRoom` sets the terminal state; `joinRoom`/`leaveRoom` go through guarded SQL
 functions (`join_room` rejects a missing/closed room, `leave_room` is a no-op on a closed room);
 `submitAnswer` is shell-`reduce()`-validated (ACTIVE, joined, onset, in-vocabulary) then upserts the
-caller's own answer. Three triggers, each taking a row lock so it is race-safe against a concurrent
-state change and covers a direct write (not only the transport verb): the closed rooms ROW is terminal
-(no UPDATE may change it), a JOIN into a closed room is rejected, and an ANSWER is accepted only while
-the round is ACTIVE (so no answering after a reveal) **[source]**. Its automated checks against the real
-Supabase project live in `supabase/room-transport.integration.mjs`, `supabase/room-student.integration.mjs`,
-and `supabase/room-answer.integration.mjs`. Still missing: revealing and any student/teacher client — it
-is not yet a live room **[source]**.
+caller's own answer; `reveal`/`revealAll` (0002_reveal.sql: `reveal_beat`/`reveal_all`, SECURITY DEFINER,
+teacher-checked) append onsets and enter REVEALING atomically. Three triggers, each taking a row lock so it
+is race-safe against a concurrent state change and covers a direct write (not only the transport verb): the
+closed rooms ROW is terminal (no UPDATE may change it, which also blocks a reveal on a closed room), a JOIN
+into a closed room is rejected, and an ANSWER is accepted only while the round is ACTIVE (so no answering
+after a reveal) **[source]**. That is the full message set (VISION §8). Its automated checks against the
+real Supabase project live in `supabase/room-transport.integration.mjs`, `supabase/room-student.integration.mjs`,
+`supabase/room-answer.integration.mjs`, and `supabase/room-reveal.integration.mjs`. Still missing: the live
+change-feed (a Realtime subscription) and any student/teacher/projector client — it is not yet a live room
+**[source]**.
 
 **Also true [source].** `solo-mode.js` has no renderer dispatch — mode is a binary `S.mode` branch;
 `GUIDE.playable()` (`:394`) silently skips any level with zero figures. `RHYTHM_FIGURES`

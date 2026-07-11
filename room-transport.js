@@ -19,8 +19,9 @@
  *
  * SCOPE OF THIS MODULE (today): the "DB is truth" read (`fetchRoom` + the pure `assembleRoom`),
  * the TEACHER's round lifecycle — `createRoom`, `assignRhythm` (start/replace a round),
- * `heartbeat` (TTL liveness), `closeRoom` — and students `joinRoom` / `leaveRoom` / `submitAnswer`.
- * Still deliberately NOT here: revealing — the next step.
+ * `heartbeat` (TTL liveness), `closeRoom`, `reveal` / `revealAll` — and students `joinRoom` /
+ * `leaveRoom` / `submitAnswer`. That is the full message set; what remains is the live change-feed
+ * (a Realtime subscription that re-runs `fetchRoom`) and the student/teacher/projector UIs.
  *
  * HOW A MUTATION IS MADE SAFE. Responsibilities are split by what the mutation carries. A
  * mutation with DOMAIN content — `assignRhythm` — is validated in the shell by folding it
@@ -257,6 +258,42 @@ export function createRoomTransport(supabase, deps) {
         .from('room_answers')
         .upsert({ room_code: code, uid: id, beat, figure_id: figureId }, { onConflict: 'room_code,uid,beat' });
       failIf(error, `submitAnswer ${code}`);
+    },
+
+    /**
+     * Teacher reveals one figure onset to the projector. Folds a REVEAL through `reduce()` (which
+     * rejects a closed room via its terminal-state guard, core/room.js:231): an already-revealed
+     * beat is a benign no-op (returns without a write); a non-onset or closed room is rejected.
+     * Otherwise `reveal_beat` locks the room, re-validates the beat against the CURRENT rhythm (so
+     * a concurrent re-assign cannot slip a non-onset through), and appends it (deduped, sorted),
+     * entering REVEALING atomically.
+     */
+    async reveal(code, beat) {
+      const room = await fetchRoom(code);
+      if (!room) throw new Error(`room-transport: reveal — room ${code} not found`);
+      if (reduce(room, { type: 'REVEAL', beat }, now()) === room) {
+        // An already-revealed beat is a benign no-op — but ONLY while the room is open; on a
+        // closed room reduce() also returns unchanged, and that must be reported as rejected.
+        if (room.state !== ROOM_STATES.CLOSED && (room.revealed ?? []).includes(beat)) return;
+        throw new Error(`room-transport: reveal rejected — beat ${beat} must be a figure onset and the room must not be closed`);
+      }
+      const { error } = await supabase.rpc('reveal_beat', { p_code: code, p_beat: beat });
+      failIf(error, `reveal ${code}`);
+    },
+
+    /**
+     * Teacher reveals the whole rhythm. Folds a REVEAL_ALL through `reduce()` (rejects a room with
+     * no assigned rhythm, or a closed room), then `reveal_all` sets every onset revealed and enters
+     * REVEALING.
+     */
+    async revealAll(code) {
+      const room = await fetchRoom(code);
+      if (!room) throw new Error(`room-transport: revealAll — room ${code} not found`);
+      if (reduce(room, { type: 'REVEAL_ALL' }, now()) === room) {
+        throw new Error(`room-transport: revealAll rejected — the room must have an assigned rhythm and must not be closed`);
+      }
+      const { error } = await supabase.rpc('reveal_all', { p_code: code });
+      failIf(error, `revealAll ${code}`);
     },
   };
 }

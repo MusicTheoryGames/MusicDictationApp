@@ -6,11 +6,11 @@
  * and entropy (bytes) are injected. A separate imperative shell — the Supabase
  * transport in `room-transport.js` — owns all effects. Its read path (`assembleRoom` +
  * `fetchRoom`), the teacher's round lifecycle (ASSIGN via `assignRhythm`, validated here and
- * persisted atomically, plus heartbeat/close), and students JOIN/LEAVE/ANSWER exist; REVEAL over
- * the wire is next. The shell (JS) calls `reduce()` to validate a DOMAIN transition it can read
- * first (ASSIGN, ANSWER; later REVEAL) and a database trigger accepts answers only while ACTIVE.
- * JOIN/LEAVE go through guarded SQL functions instead — a joining non-member cannot read the room
- * to reduce() it. *Authorization* (only the teacher
+ * persisted atomically, plus heartbeat/close), students JOIN/LEAVE/ANSWER, and REVEAL/REVEAL_ALL
+ * all exist — the full message set. The shell (JS) calls `reduce()` to validate each DOMAIN
+ * transition it can read first (ASSIGN, ANSWER, REVEAL) and a database trigger accepts answers
+ * only while ACTIVE. JOIN/LEAVE go through guarded SQL functions instead — a joining non-member
+ * cannot read the room to reduce() it. *Authorization* (only the teacher
  * assigns/reveals; a student writes only their own row) is enforced by row-level security keyed on
  * `teacherUid` and the answering `uid` — and, for the SECURITY DEFINER functions that must bypass
  * RLS (`assign_round`, `join_room`), by their own `auth.uid()` checks; closed-is-terminal by database
