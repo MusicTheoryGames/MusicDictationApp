@@ -999,18 +999,20 @@ class RhythmStudent {
            SVGs. `hasFigure()` then decides the rest. Any miss falls through to the art below;
            renderFigure() returns false rather than throwing. */
           /* THE ANSWER AREA IS VexFlow. The goal (owner): all-VexFlow answer, all-PNG bank.
-             VexFlow draws every figure it has a spec for; PNG is the fallback for figures whose
-             VexFlow was never finished AND for any figure renderFigure() declines (e.g. vexflow.js
-             not loaded) — today the meter-specific families (`cd- hb- dh- de- tpl-`,
-             filtered by meterFigDir) and whole/dotted-half/half-rest (no spec). The redesign is in
-             the same state: its compound cd-* carry VexFlow specs flagged `renderAssetOnly`, so
-             hybrid renders them PNG; finishing compound flips them to VexFlow, at which point drop
-             the `!meterFigDir` guard for the finished families.
+             On THESE pages the meter-specific families (`cd- hb- dh- de- tpl-`, filtered by
+             meterFigDir) and whole/dotted-half/half-rest still render PNG — a deliberate gate HERE
+             (they use staff-spanning SVGs, and the adapter's hasFigure() declines them), NOT a
+             shared-renderer limitation. RhythmQuest already draws the meter families through the
+             shared renderer as VexFlow (renderAssetOnly, but they hit its custom-beaming/tuplet
+             exceptions — see VISION §8). Routing these pages onto that takes TWO changes, not done
+             yet: widen the adapter's COVERED_IDS to include the meter families (today hasFigure()
+             declines them) AND drop this `!meterFigDir` guard. Dropping the guard alone changes
+             nothing, since hasFigure() would still return false for those ids.
 
              The host is sized like the redesign's .placed-vex-host — it fills the cell box
-             (width = beats * cell) and the CSS + normalizeRenderedSvg place the notation. NOT
-             height:100%, which read the oversized staff panel and blew the glyph to ~180px beside a
-             ~90px PNG. */
+             (width = beats * cell); the SHARED renderer's own layout (renderPlacedVex ->
+             normalizePlacedVex) places the notation. NOT height:100%, which read the oversized staff
+             panel and blew the glyph to ~180px beside a ~90px PNG. */
           const VXF = window.RhythmVexFlow;
           if (VXF && VXF.mode() !== 'png' && !meterFigDir(patternId) && VXF.hasFigure(patternId)) {
               const host = document.createElement('div');

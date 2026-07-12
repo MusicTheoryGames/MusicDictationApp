@@ -43,6 +43,15 @@ const UI_FILES = [
   'rhythm-vexflow-renderer.js',
   'suite-theme.css',                 // CSS `content:` can render a glyph
   'rhythm-assets/rhythm-assets.js',  // its `name` values render as image alt text
+  // The ONE shared rhythm-notation renderer + its answer board, and TapQuest's bridge to it.
+  // renderer.js: loaded by rhythmquest/tapping/casual + both demos. answer-board.js/css: tapping.html
+  // (perform board) + answer-board-demo.html. tapquest-perform-board.css: tapping.html. renderer.css:
+  // only rhythm-notation-demo.html. Strict — notation is SVG, no glyph/emoji characters belong here.
+  'shared/rhythm-notation/renderer.js',
+  'shared/rhythm-notation/renderer.css',
+  'shared/rhythm-notation/answer-board.js',
+  'shared/rhythm-notation/answer-board.css',
+  'tapquest-perform-board.css',
 ];
 
 // EMOJI-ONLY. Bans emoji; does NOT ban arrow/geometric glyphs. A real hole, here on purpose:

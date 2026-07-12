@@ -1,10 +1,17 @@
 /* shared/rhythm-notation/renderer.js — the ONE shared rhythm-notation renderer.
  *
- * EXTRACTED (copied byte-for-byte, not rewritten) from quest-redesign.js — the RhythmQuest redesign
- * game — so every surface that draws rhythm (RhythmQuest, TapQuest, Casual, MelodyQuest, the teacher
- * page, the projector) shares ONE renderer and can never drift. The tuning IS the value; do not
- * "clean up" the numbers. Source ranges (quest-redesign.js): catalog+constants 303-443,
- * rhythmAsset 648-651, family/custom-beaming 676-690, render block 2152-2754.
+ * EXTRACTED from quest-redesign.js — the RhythmQuest redesign game — as the ONE renderer that rhythm
+ * surfaces share INSTEAD of each carrying a drifting copy. Originally copied byte-for-byte (the tuning
+ * IS the value; do not "clean up" the numbers). TWO intentional changes since extraction:
+ *   (a) the triplet bracket legs + number are now styled INLINE (search "custom-triplet-bracket") so the
+ *       engine draws a COMPLETE bracket even on a host whose page CSS lacks the `.custom-triplet-bracket`
+ *       rule — e.g. TapQuest's `.placed-vexflow` tile art, which used to render solid-black blobs;
+ *   (b) getNotationGrid's per-beat `unit` is now (width-anchor)/count, fixing a leftward compression of
+ *       MULTI-beat figures' onsets (see the comment there). Single-beat figures are unaffected.
+ * ON THIS RENDERER TODAY: RhythmQuest, the shared answer board, and — via the rhythm-vexflow-renderer.js
+ * adapter — TapQuest + BeatQuest Casual. STILL MIGRATING onto it (so not yet drift-proof suite-wide):
+ * MelodyQuest and the teacher/projector surfaces. Source ranges (quest-redesign.js): catalog+constants
+ * 303-443, rhythmAsset 648-651, family/custom-beaming 676-690, render block 2152-2754.
  *
  * The render block references only its own helpers + this catalog/constants + VexFlow + the DOM —
  * it never touches game state (verified). Exposes window.RhythmNotation; consumers call
@@ -442,9 +449,15 @@
     const count = Math.max(1, beatCount || 1);
     const beatUnit = width / count;
     const anchor = Math.max(8, Math.round(beatUnit * 0.18 + notationGridNudgePx));
+    // `unit` is the per-beat spacing applyStrictBeatOnsets uses as `anchor + onset*unit`. For the
+    // onsets to span [anchor, width] it must be (width - anchor)/count. The earlier form
+    // `beatUnit - anchor` (= width/count - anchor) subtracted the WHOLE anchor per beat, which is
+    // correct only for count == 1 and compresses multi-beat figures leftward by onset*anchor*(1-1/count)
+    // — the last note of a 2-beat figure landed ~10px early. Fixed 2026-07-11 (owner-verified on-device,
+    // incl. RhythmQuest); single-beat figures are unchanged (count == 1 makes the two forms identical).
     return {
       anchor,
-      unit: beatUnit - anchor
+      unit: (width - anchor) / count
     };
   }
 
@@ -767,11 +780,36 @@
     const right = document.createElementNS(SVG_NS, "path");
     right.setAttribute("d", "M " + (center + gap).toFixed(2) + " " + y.toFixed(2) + " H " + x2.toFixed(2) + " V " + (y + leg).toFixed(2));
 
+    // Style the bracket legs INLINE (the number below gets the same treatment) so the engine draws a
+    // COMPLETE bracket on its own — a thin stroke, not a filled shape. An SVG path with no fill/stroke
+    // defaults to fill:black, stroke:none, so an open "bracket" path fills as a solid black area
+    // (blobs). The values mirror the two host-scoped CSS copies — renderer.css (fill/stroke/width) and
+    // answer-board.css (caps/joins) — so it's a no-op where that CSS also applies (RhythmQuest / the
+    // answer board keep their exact styling, incl. the CSS's !important themed number fill), and the
+    // fix for any host the CSS does NOT reach, e.g. TapQuest's `.placed-vexflow` tile art, which now
+    // gets a correct, complete bracket instead of black-blob legs and a default-font number.
+    [left, right].forEach((legPath) => {
+      legPath.setAttribute("fill", "none");
+      legPath.setAttribute("stroke", "rgba(20, 25, 19, 0.9)");
+      legPath.setAttribute("stroke-width", "1.35");
+      legPath.setAttribute("stroke-linecap", "square");
+      legPath.setAttribute("stroke-linejoin", "miter");
+    });
+
     const number = document.createElementNS(SVG_NS, "text");
     number.textContent = String(tupletNumber);
     number.setAttribute("x", center.toFixed(2));
     number.setAttribute("y", (y + 4.4).toFixed(2));
     number.setAttribute("text-anchor", "middle");
+    // Style the tuplet number INLINE too (same reason as the legs) — the answer-board/RhythmQuest
+    // CSS `.custom-triplet-bracket text` rule does not reach TapQuest's `.placed-vexflow` host, so
+    // without this the "3" falls back to a default sans glyph. On hosts that DO carry that CSS its
+    // `!important` fill wins (keeping the themed --note-ink), so RhythmQuest is unchanged.
+    number.setAttribute("fill", "rgb(20, 25, 19)");
+    number.setAttribute("stroke", "none");
+    number.setAttribute("font-family", 'Georgia, "Times New Roman", serif');
+    number.setAttribute("font-size", "13px");
+    number.setAttribute("font-weight", "950");
 
     bracket.append(left, right, number);
     group.appendChild(bracket);

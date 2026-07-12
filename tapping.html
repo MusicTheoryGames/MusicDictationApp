@@ -1256,8 +1256,12 @@
          when the PARAM is present. NOTE: it is no longer the only path that loads VexFlow — the
          grouped-cell perform board below now injects vendor/vexflow.js on the DEFAULT path too (the
          next <script> only fires when this one did not), so the ~992 KB vendor is paid by default now.
-         Separately, the DEFAULT PATH ALSO PAYS ~18.7 KB for rhythm-vexflow-renderer.js, which loads
-         unconditionally because `bankDir()` in rhythm-student.js reads its `mode()` to choose tile art.
+         Separately, the DEFAULT PATH ALSO PAYS ~8.8 KB for the rhythm-vexflow-renderer.js adapter; the
+         ~45.7 KB shared renderer it depends on (shared/rhythm-notation/renderer.js) is ALSO loaded for
+         the perform board (its <script> is a few lines below, before the adapter's), so the adapter
+         REUSES it rather than adding it. (The old
+         self-contained ported copy was ~18.7 KB; unifying trades that for the shared renderer, which is
+         present here anyway.) It loads unconditionally because `bankDir()` reads `mode()` for tile art.
          document.write is deliberate: it is the one synchronous way to insert a script during parse
          so it is defined before `rhythm-student.js`, a deferred module, runs. Nothing else on these
          pages uses document.write. -->
@@ -1281,11 +1285,13 @@
       }
     </script>
     <!-- SHARED notation renderer (window.RhythmNotation) + grouped-cell answer board
-         (window.RhythmAnswerBoard). Classic scripts; must precede solo-mode.js, which calls
-         RhythmAnswerBoard.renderAnswer for the tapping perform display. -->
-    <script src="shared/rhythm-notation/renderer.js?v=20260711-tapboard"></script>
+         (window.RhythmAnswerBoard). Classic scripts; must precede BOTH solo-mode.js (calls
+         RhythmAnswerBoard.renderAnswer for the perform display) AND rhythm-vexflow-renderer.js
+         (now a thin adapter over window.RhythmNotation for the tile art). renderer.js loads
+         ONCE here — the #2 adapter and this perform board share the one shared renderer. -->
+    <script src="shared/rhythm-notation/renderer.js?v=20260711-onsetfix"></script>
     <script src="shared/rhythm-notation/answer-board.js?v=20260711-tapboard"></script>
-    <script src="rhythm-vexflow-renderer.js?v=20260710-vexflow"></script>
+    <script src="rhythm-vexflow-renderer.js?v=adapter-1"></script>
     <script type="module" src="rhythm-student.js?v=20260710-vexflow"></script>
     <script src="suite-theme.js?v=20260701-kidsmode"></script>
     <!-- Guided-level ENGINE bridge: loads core/ (curriculum, ladder, mastery,

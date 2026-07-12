@@ -1,330 +1,140 @@
-/* RhythmQuest — VexFlow ANSWER renderer. (The bank is always PNG; this file never draws a
-   chooser tile — see rhythm-student.js renderTileNotation.)
+/* TapQuest / BeatQuest-Casual — VexFlow tile/answer renderer (adapter over the shared renderer).
  *
- * PORTED, NOT REWRITTEN, from the redesign's renderer lab
- * (`experiments/quest-redesign/beatquest-vexflow-renderer-lab.js`, `renderVex()` and its helpers).
- * That file is outside this repo and outside Codex's sandbox, which is why nothing here should be
- * "improved" from memory: the numbers below are tuned, and the tuning is the whole value.
+ * THIN ADAPTER (2026-07-11). This file used to carry its own PORTED copy of the redesign's answer
+ * renderer (~350 lines: FIGURES table, strictOnsetProfiles, getNotationGrid, applyStrictOnsets, …).
+ * That copy was a hand-port of the SAME renderer that now lives, canonical, in
+ * `shared/rhythm-notation/renderer.js` as `window.RhythmNotation`. Two copies of one renderer is
+ * exactly the drift the suite is trying to kill: fix a beam in one and the other silently disagrees.
  *
- * I learned that the hard way. On 2026-07-10 I wrote a renderer from scratch instead of porting
- * this one and got: a five-line staff (the lab never calls `stave.draw()`), stems up (they must be
- * down), and notes that ignored the beat grid. The owner: "don't reinvent the wheel. we already
- * figured this stuff out."
+ * So this file no longer draws anything itself. It keeps the `window.RhythmVexFlow` surface that
+ * `rhythm-student.js` (the old TapQuest / Casual / MelodyQuest engine) already calls —
+ * `renderFigure(host, id)`, `hasFigure(id)`, `mode()`, `figureIds` — and routes the actual drawing to
+ * `window.RhythmNotation.renderPlacedVex(host, {id, beats, start})`. The ported duplicate renderer is
+ * DELETED — one renderer implementation, not two. (Coverage is a separate axis: a page reaches the
+ * shared renderer only where it LOADS this adapter — tapping.html + beatquest-casual.html — and only
+ * for the 18 COVERED_IDS; MelodyQuest / meter families stay PNG, see the notes below. "No duplicate
+ * to drift" is about the code, not about every surface using it yet.)
  *
- * WHAT THE LAB SOLVED, and what each piece is for:
+ * WHY AN ADAPTER, not a call-site migration: `rhythm-student.js` calls this in two spots — the
+ * `renderFigure` draw site (rhythm-student.js:1015) and a `mode()` read inside `bankDir()`
+ * (rhythm-student.js:44) that picks the BANK art. Keeping the `RhythmVexFlow` name means both keep
+ * working unchanged; only the DRAWING is unified. Migrating the call sites would touch far more
+ * surface for no behavioural gain.
  *
- *   No `stave.draw()`      The single beat line is drawn by CSS in the cell, not by VexFlow. Calling
- *                          draw() gives you a five-line staff floating behind the figure.
- *   `answerRenderScale`    0.82 — glyphs are drawn at full size, then scaled into the cell.
- *   `notationGridNudgePx`  -6 — the anchor sits slightly left of the mathematical beat position,
- *                          because a notehead's ink centre is right of its origin.
- *   `strictOnsetProfiles`  Where each note must LAND, in beats. VexFlow's Formatter spaces notes
- *                          for engraving, not for a grid; the answer area is a grid. After drawing,
- *                          each notehead is nudged to its true onset and the beams are stretched to
- *                          follow (`applyStrictOnsets`, `stretchContinuousGroups`).
- *   `opticalLayoutProfiles` `quarter-rest` is centred in the beat rather than left-aligned, because
- *                          a rest glyph has no stem to anchor the eye.
- *   SOFT voice mode        The figures are one beat long but a Voice wants a full bar. Strict mode
- *                          throws.
+ * WHERE THIS FILE IS ACTUALLY LOADED: tapping.html and beatquest-casual.html (verified — grep). NOTE:
+ * `rhythm-student.js` is ALSO loaded by melodic-game.html, but that page does NOT load this renderer or
+ * the shared one, so `window.RhythmVexFlow` is undefined there and MelodyQuest's rhythm falls back to
+ * PNG. Wiring MelodyQuest onto the shared renderer is a KNOWN, separate follow-up — not done here.
  *
- * COVERAGE — EIGHTEEN figures. This is EXACTLY the redesign's `beatVexPatterns` minus its
- * `renderAssetOnly` (compound cd-*) entries. Do not add or drop figures to match a memory of what is
- * "ready" — match the redesign. It renders the ANSWER area with VexFlow for every one of these; the
- * BANK is always PNG and never calls this file.
+ * WHAT STAYS THE SAME (contract with rhythm-student.js renderPatternArt):
+ *   - `renderFigure(host, id)` returns TRUE if it drew, FALSE if the caller must fall back to its own
+ *     PNG art. The shared renderer has no boolean return AND does its own PNG fallback (with a
+ *     DIFFERENT asset path — `assets/rhythm-assets/bank/…` vs TapQuest's `./rhythm-assets/bank/…`), so
+ *     this adapter DETECTS that fallback and converts it back to a clean `return false`, preserving the
+ *     old fallback CONTRACT (caller inserts the correct-path PNG). "Contract", not pixels: a figure the
+ *     shared renderer DOES draw may look slightly different from the old ported copy (see KNOWN VISUAL
+ *     DIFFERENCES below).
+ *   - `hasFigure(id)` answers TRUE only for the SAME 18 ids the old ported table covered (see
+ *     COVERED_IDS). The shared catalog is a superset (adds whole, dotted-half, measure-rest-*, and the
+ *     meter families cd-/hb-/de-/tpl-). Restricting to the old 18 keeps the SAME SPLIT of which figures
+ *     are VexFlow vs PNG: whole / dotted-half / measure-rests stay PNG in TapQuest & Casual, as today.
+ *   - `mode()` is unchanged: reads `?renderer=png|hybrid|vexflow`, default png.
  *
- * NOT here, and each stays PNG in the answer, exactly as the redesign does it:
- *   cd-* (compound)                 the redesign marks these renderAssetOnly -> PNG in hybrid.
- *   whole, dotted-half, half-rest   not in the redesign's beatVexPatterns at all -> PNG.
- *
- * `?renderer=`: png = all PNG; hybrid = VexFlow answer except compound; vexflow = same as hybrid
- * until compound lands (the redesign's "all" would also draw compound).
- *
- * I got this list wrong TWICE — first "fifteen" when it was eighteen, then dropped `half` on a stale
- * VISION note. Read the redesign's table, count it, do not remember it.
+ * FIGURES THAT RENDER DIFFERENTLY vs the old ported copy (the shared renderer is the FULLER original).
+ * OWNER-VERIFIED IN SAFARI on-device, 2026-07-11 — all three look correct:
+ *   - `quarter-rest`: old profile was { xMode: 'center-beat' }; shared is { xMode: 'onset', xOffset: 8 }.
+ *     The shared behaviour is CORRECT for the answer area: the rest lines up with the first of the beat
+ *     (its onset), not centred in the cell (owner confirmed — centred is the BANK tile, not the answer).
+ *   - `eighth-two-sixteenths`: shared has a beamTrim profile the old copy lacked; the beam looks normal.
+ *   - triplet-eighths / triplet-quarters: shared draws a thin bracket (the fix in renderer.js makes it
+ *     self-styled); renders as a clean bracket, not the solid blob the missing CSS used to leave.
+ * The other ~13 covered figures now draw through the SAME shared renderer (there is no longer a second
+ * copy to compare against) — same stem/vertical/onset machinery as the verified ones and as RhythmQuest,
+ * which is what makes them match RhythmQuest. They were not each separately eyeballed on TapQuest.
  */
 (function () {
   'use strict';
 
-  // ---- tuned constants. Ported verbatim. Do not "clean up".
-  var answerRenderScale = 0.82;
-  var notationGridNudgePx = -6;
+  /* The EXACT 18 figure ids the old ported FIGURES table covered. Kept as an explicit allow-list so
+     `hasFigure` covers the same 18 ids as the old table even though the shared catalog is larger.
+     It ALSO now requires the shared catalog to carry the spec (see the `R.catalog[id]` check below),
+     so it is not literally byte-identical to the old table-membership test — but for all 18 ids the
+     catalog does carry the spec, so the answer matches in practice. Do not widen this to
+     `Object.keys(RhythmNotation.catalog)` — that would newly VexFlow-render whole / dotted-half /
+     measure-rest-* which have always been PNG on these pages. */
+  var COVERED_IDS = [
+    'quarter',
+    'two-eighths',
+    'four-sixteenths',
+    'eighth-two-sixteenths',
+    'two-sixteenths-eighth',
+    'sixteenth-eighth-sixteenth',
+    'dotted-eighth-sixteenth',
+    'sixteenth-dotted-eighth',
+    'eighth-rest-eighth',
+    'eighth-eighth-rest',
+    'eighth-rest-two-sixteenths',
+    'sixteenth-rest-three-sixteenths',
+    'quarter-rest',
+    'triplet-eighths',
+    'half',
+    'dotted-quarter-eighth',
+    'eighth-quarter-eighth',
+    'triplet-quarters'
+  ];
+  var COVERED = COVERED_IDS.reduce(function (set, id) { set[id] = true; return set; }, {});
 
-  var opticalLayoutProfiles = {
-    'quarter-rest': { xMode: 'center-beat', scale: 0.82 }
-  };
+  function shared() { return window.RhythmNotation || null; }
 
-  // Where each note must land, in beats from the start of the figure. Derived from the durations,
-  // but stated explicitly because a triplet's onsets are thirds and floating point is not kind.
-  var strictOnsetProfiles = {
-    'two-eighths': [0, 0.5],
-    'four-sixteenths': [0, 0.25, 0.5, 0.75],
-    'eighth-two-sixteenths': [0, 0.5, 0.75],
-    'two-sixteenths-eighth': [0, 0.25, 0.5],
-    'sixteenth-eighth-sixteenth': [0, 0.25, 0.75],
-    'dotted-eighth-sixteenth': [0, 0.75],
-    'sixteenth-dotted-eighth': [0, 0.25],
-    'eighth-rest-eighth': [0, 0.5],
-    'eighth-eighth-rest': [0, 0.5],
-    'eighth-rest-two-sixteenths': [0, 0.5, 0.75],
-    'sixteenth-rest-three-sixteenths': [0, 0.25, 0.5, 0.75],
-    'triplet-eighths': [0, 1 / 3, 2 / 3],
-    'dotted-quarter-eighth': [0, 1.5],
-    'eighth-quarter-eighth': [0, 0.5, 1.5],
-    'triplet-quarters': [0, 2 / 3, 4 / 3]
-  };
-
-  // ---- the figure table, ported verbatim from the lab. `b/4` is the middle line; on a percussion
-  // clef that is where a one-line rhythm staff wants its noteheads.
-  var FIGURES = {
-    'quarter':                        { beats: 1, vexflow: [{ duration: 'q' }] },
-    'two-eighths':                    { beats: 1, vexflow: [{ duration: '8' }, { duration: '8' }] },
-    'four-sixteenths':                { beats: 1, vexflow: [{ duration: '16' }, { duration: '16' }, { duration: '16' }, { duration: '16' }] },
-    'eighth-two-sixteenths':          { beats: 1, vexflow: [{ duration: '8' }, { duration: '16' }, { duration: '16' }] },
-    'two-sixteenths-eighth':          { beats: 1, vexflow: [{ duration: '16' }, { duration: '16' }, { duration: '8' }] },
-    'sixteenth-eighth-sixteenth':     { beats: 1, vexflow: [{ duration: '16' }, { duration: '8' }, { duration: '16' }] },
-    'dotted-eighth-sixteenth':        { beats: 1, vexflow: [{ duration: '8', dots: 1 }, { duration: '16' }] },
-    'sixteenth-dotted-eighth':        { beats: 1, vexflow: [{ duration: '16' }, { duration: '8', dots: 1 }] },
-    'eighth-rest-eighth':             { beats: 1, vexflow: [{ duration: '8r' }, { duration: '8' }] },
-    'eighth-eighth-rest':             { beats: 1, vexflow: [{ duration: '8' }, { duration: '8r' }] },
-    'eighth-rest-two-sixteenths':     { beats: 1, vexflow: [{ duration: '8r' }, { duration: '16' }, { duration: '16' }] },
-    'sixteenth-rest-three-sixteenths':{ beats: 1, vexflow: [{ duration: '16r' }, { duration: '16' }, { duration: '16' }, { duration: '16' }] },
-    'quarter-rest':                   { beats: 1, vexflow: [{ duration: 'qr' }] },
-    'triplet-eighths':                { beats: 1, triplet: true, vexflow: [{ duration: '8' }, { duration: '8' }, { duration: '8' }] },
-    'half':                           { beats: 2, vexflow: [{ duration: 'h' }] },
-    'dotted-quarter-eighth':          { beats: 2, vexflow: [{ duration: 'q', dots: 1 }, { duration: '8' }] },
-    'eighth-quarter-eighth':          { beats: 2, vexflow: [{ duration: '8' }, { duration: 'q' }, { duration: '8' }] },
-    'triplet-quarters':               { beats: 2, triplet: true, vexflow: [{ duration: 'q' }, { duration: 'q' }, { duration: 'q' }] }
-  };
-
-  function hasFigure(id) { return Object.prototype.hasOwnProperty.call(FIGURES, id); }
-
-  // ---- helpers, ported.
-  function setSoftVoiceMode(VF, voice) {
-    if (!voice || typeof voice.setMode !== 'function') return;
-    if (VF.VoiceMode && VF.VoiceMode.SOFT !== undefined) voice.setMode(VF.VoiceMode.SOFT);
-    else if (VF.Voice && VF.Voice.Mode && VF.Voice.Mode.SOFT !== undefined) voice.setMode(VF.Voice.Mode.SOFT);
+  function hasFigure(id) {
+    if (!Object.prototype.hasOwnProperty.call(COVERED, id)) return false;
+    var R = shared();
+    // Also require the shared catalog to actually carry the spec, so a catalog change can't leave
+    // hasFigure lying about a figure the renderer can't draw.
+    return !!(R && R.catalog && R.catalog[id]);
   }
 
-  function applyMusicFont(VF) {
-    if (typeof VF.setMusicFont !== 'function') return;
-    VF.setMusicFont('Bravura', 'Gonville', 'Custom');
-  }
-
-  function durationToBeats(noteData) {
-    var duration = String(noteData.duration || '').replace(/r/g, '');
-    var baseMap = { w: 4, h: 2, q: 1, '8': 0.5, '16': 0.25, '32': 0.125 };
-    var base = baseMap[duration] || 0;
-    var dots = Math.max(0, Number(noteData.dots || 0));
-    var total = base, add = base / 2;
-    for (var i = 0; i < dots; i++) { total += add; add /= 2; }
-    return total;
-  }
-
-  function getStrictOnsets(id, fig) {
-    if (strictOnsetProfiles[id]) return strictOnsetProfiles[id];
-    if (!fig || !fig.vexflow || !fig.vexflow.length) return null;
-    if (fig.triplet) {
-      var step = (fig.beats || 1) / fig.vexflow.length;
-      return fig.vexflow.map(function (_, i) { return i * step; });
-    }
-    var cursor = 0;
-    return fig.vexflow.map(function (n) { var o = cursor; cursor += durationToBeats(n); return o; });
-  }
-
-  /* The usable span starts at `anchor` and ends at `width`. One beat is therefore
-     `(width - anchor) / beatCount`, NOT `width / beatCount - anchor`.
-
-     The lab has the second form. It is identical for a one-beat figure — `width - anchor` either
-     way — and that is every figure the lab's own board renders in its own beat-span, so the bug
-     never showed. Here, three covered figures span two beats (dotted-quarter-eighth,
-     eighth-quarter-eighth, triplet-quarters), and the error is `onset * anchor`, growing with the
-     onset: at width 400 and anchor 12, the eighth of a dotted-quarter-eighth landed 9px early.
-     Ported faithfully, then fixed. Codex found it; the arithmetic is checkable on paper. */
-  function getNotationGrid(width, beatCount) {
-    var count = Math.max(1, beatCount || 1);
-    var anchor = Math.max(8, Math.round((width / count) * 0.18 + notationGridNudgePx));
-    return { anchor: anchor, unit: (width - anchor) / count };
-  }
-
-  /* VexFlow's Formatter spaces notes for engraving. The answer area is a GRID: a sixteenth must sit
-     at exactly 0.25 of the beat or the student cannot read the alignment. So after drawing, shove
-     each notehead to `anchor + onset * unit`, where `unit` is one beat of the usable span. Exact for
-     one- and two-beat figures alike — see getNotationGrid for why that took two tries. */
-  function applyStrictOnsets(group, id, fig, sourceXs, metrics) {
-    var profile = opticalLayoutProfiles[id] || {};
-    if (profile.xMode === 'center-beat') return;
-
-    var onsets = getStrictOnsets(id, fig);
-    if (!onsets || onsets.length !== sourceXs.length) return;
-
-    var noteGroups = Array.prototype.slice.call(group.querySelectorAll('.vf-stavenote'));
-    if (noteGroups.length < onsets.length) return;
-
-    var beatUnit = metrics.gridUnit || (metrics.width / metrics.beatCount);
-    onsets.forEach(function (onset, i) {
-      var desiredScreenX = metrics.anchor + onset * beatUnit;
-      var currentScreenX = metrics.shiftX + sourceXs[i] * metrics.scale;
-      var delta = (desiredScreenX - currentScreenX) / metrics.scale;
-      if (!isFinite(delta) || Math.abs(delta) < 0.01) return;
-      noteGroups[i].setAttribute('transform', 'translate(' + delta.toFixed(2) + ' 0)');
-    });
-
-    // Beams and tuplet brackets were drawn against the ORIGINAL note positions. Stretch them to
-    // span the new first/last onsets, or they detach from their noteheads.
-    stretchContinuousGroups(group, sourceXs, onsets, metrics, beatUnit);
-  }
-
-  function stretchContinuousGroups(group, noteXs, onsets, metrics, beatUnit) {
-    if (noteXs.length < 2 || onsets.length < 2) return;
-    var firstLocal = noteXs[0], lastLocal = noteXs[noteXs.length - 1];
-    var originalSpan = lastLocal - firstLocal;
-    if (!isFinite(originalSpan) || Math.abs(originalSpan) < 0.01) return;
-
-    var desiredFirstLocal = (metrics.anchor + onsets[0] * beatUnit - metrics.shiftX) / metrics.scale;
-    var desiredLastLocal = (metrics.anchor + onsets[onsets.length - 1] * beatUnit - metrics.shiftX) / metrics.scale;
-    var scaleX = (desiredLastLocal - desiredFirstLocal) / originalSpan;
-    if (!isFinite(scaleX) || scaleX <= 0) return;
-
-    var transform = 'translate(' + desiredFirstLocal.toFixed(2) + ' 0) scale(' + scaleX.toFixed(4) +
-                    ' 1) translate(' + (-firstLocal).toFixed(2) + ' 0)';
-    Array.prototype.slice.call(group.querySelectorAll('.vf-beam, .vf-tuplet')).forEach(function (n) {
-      n.setAttribute('transform', transform);
-    });
-  }
-
-  /* Put the NOTEHEAD on the staff line, not the glyph's bounding box. Centering the bbox floats the
-     notehead ABOVE centre, because the box includes the downward stem — which is exactly what the
-     owner saw ("can we get the render actually on the staff line?"). Instead, find the vertical
-     centre of the noteheads and land THAT at the host's vertical centre (the host is centred on the
-     line by CSS). Rests have no notehead, so fall back to bbox-centring for them. */
-  function noteheadCenteredShiftY(group, box, height, scale) {
-    var heads = group.querySelectorAll('.vf-notehead');
-    if (heads.length && typeof heads[0].getBBox === 'function') {
-      var top = Infinity, bot = -Infinity;
-      for (var i = 0; i < heads.length; i++) {
-        var hb = heads[i].getBBox();
-        if (!hb || !isFinite(hb.y)) continue;
-        top = Math.min(top, hb.y); bot = Math.max(bot, hb.y + hb.height);
-      }
-      if (isFinite(top) && isFinite(bot)) {
-        var centreY = (top + bot) / 2;
-        return Math.round(height / 2 - centreY * scale);
-      }
-    }
-    return Math.round((height - box.height * scale) / 2 - box.y * scale);
-  }
-
-  function normalizeRenderedSvg(host, width, height, id, fig, firstNoteX, noteXs) {
-    var svg = host.querySelector('svg');
-    if (!svg) return;
-
-    svg.setAttribute('width', String(width));
-    svg.setAttribute('height', String(height));
-    svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
-    svg.style.width = '100%';
-    svg.style.height = '100%';
-
-    var children = Array.prototype.slice.call(svg.childNodes);
-    if (!children.length || typeof svg.getBBox !== 'function') return;
-
-    var group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    children.forEach(function (c) { group.appendChild(c); });
-    svg.appendChild(group);
-
-    requestAnimationFrame(function () {
-      try {
-        var box = group.getBBox();
-        if (!box || !isFinite(box.x)) return;
-        var profile = opticalLayoutProfiles[id] || {};
-        var beatCount = Math.max(1, fig.beats || 1);
-        var scale = isFinite(profile.scale) ? profile.scale : answerRenderScale;
-        var grid = getNotationGrid(width, beatCount);
-        var sourceX = isFinite(firstNoteX) ? firstNoteX : box.x;
-        var shiftX = profile.xMode === 'center-beat'
-          ? Math.round((width - box.width * scale) / 2 - box.x * scale)
-          : Math.round(grid.anchor - sourceX * scale);
-        var shiftY = noteheadCenteredShiftY(group, box, height, scale);
-        group.setAttribute('transform', 'translate(' + shiftX + ' ' + shiftY + ') scale(' + scale + ')');
-        applyStrictOnsets(group, id, fig, noteXs || [], {
-          anchor: grid.anchor, beatCount: beatCount, scale: scale,
-          shiftX: shiftX, width: width, gridUnit: grid.unit
-        });
-      } catch (e) {
-        group.removeAttribute('transform');
-      }
-    });
-  }
-
-  /* Draw one figure into `host`. Returns true if it drew, false if the caller must fall back to PNG.
-     NEVER throws: a renderer that throws inside a drag-and-drop handler strands the tile. */
+  /* Draw one figure into `host` via the ONE shared renderer. Returns true if it drew, false if the
+     caller must fall back to PNG. NEVER throws: a renderer that throws inside a drag-and-drop handler
+     strands the tile. */
   function renderFigure(host, id) {
-    // EVERYTHING that touches `host` is inside the try. An earlier version cleared it and read
-    // clientWidth before entering, so a null or detached host threw straight through the
-    // "never throws" contract three lines below. Codex caught it.
     try {
-      var fig = FIGURES[id];
-      if (!fig || !host) return false;
+      if (!host || !hasFigure(id)) return false;
 
+      var R = shared();
       var VF = window.Vex && window.Vex.Flow;
-      if (!VF || !VF.Renderer || !VF.StaveNote) return false;
-
-      host.textContent = '';
-      var width = Math.max(64, Math.round(host.clientWidth || 104 * fig.beats));
-      var height = Math.max(44, Math.round(host.clientHeight || 70));
-
-      applyMusicFont(VF);
-      var renderer = new VF.Renderer(host, VF.Renderer.Backends.SVG);
-      renderer.resize(width, height);
-      var context = renderer.getContext();
-
-      // setContext, NOT draw(). The beat line belongs to the cell's CSS; drawing the stave here
-      // paints a five-line staff behind the figure.
-      var stave = new VF.Stave(0, -31, width + 8);
-      stave.setContext(context);
-
-      var notes = fig.vexflow.map(function (n) {
-        var note = new VF.StaveNote({ clef: 'percussion', keys: ['b/4'], duration: n.duration });
-        if (n.dots) for (var i = 0; i < n.dots; i++) note.addModifier(new VF.Dot(), 0);
-        // STEMS DOWN, always. A one-line rhythm staff reads with the stems below the line; letting
-        // VexFlow choose gives stems up for a notehead on the middle line. Beams override this, so
-        // it is re-asserted after beaming too.
-        var DOWN0 = (VF.Stem && VF.Stem.DOWN) || -1;
-        if (typeof note.setStemDirection === 'function') note.setStemDirection(DOWN0);
-        return note;
-      });
-
-      var beams = [];
-      var tuplet = null;
-
-      /* BEAMS RESET STEM DIRECTION. `Beam.generateBeams()` and `new Beam()` both recompute the
-         stem for every note in the group from the note average, which threw away the STEM_DOWN set
-         above — measured: 3 of 17 tiles came out stems-down. Pass the direction into the beam, and
-         re-assert it afterwards for the notes no beam touched. */
-      var DOWN = (VF.Stem && VF.Stem.DOWN) || -1;
-      if (fig.triplet && notes.length === 3) {
-        var canBeam = notes.every(function (n) { return n.getDuration() === '8' || n.getDuration() === '16'; });
-        if (canBeam) beams = [new VF.Beam(notes, false)];   // auto_stem=false: keep ours
-        tuplet = new VF.Tuplet(notes, { num_notes: 3, notes_occupied: 2, bracketed: true, location: 1, y_offset: 15 });
-      } else {
-        beams = VF.Beam.generateBeams(notes, { stem_direction: DOWN });
+      // vexflow.js is only injected when ?renderer=hybrid|vexflow is present. If it is not loaded,
+      // decline so the caller draws its PNG — same as the old ported renderer's `!VF` guard.
+      if (!R || typeof R.renderPlacedVex !== 'function' || !VF || !VF.Renderer || !VF.StaveNote) {
+        return false;
       }
-      notes.forEach(function (n) {
-        if (typeof n.setStemDirection === 'function') n.setStemDirection(DOWN);
-      });
 
-      var voice = new VF.Voice({ num_beats: fig.beats, beat_value: 4 });
-      setSoftVoiceMode(VF, voice);
-      voice.addTickables(notes);
-      new VF.Formatter().joinVoices([voice]).format([voice], Math.max(24, width - 24));
-      voice.draw(context, stave);
-      beams.forEach(function (b) { b.setContext(context).draw(); });
-      if (tuplet) tuplet.setContext(context).draw();
+      var spec = R.catalog[id];
+      // Beats come from the SHARED catalog now, not a private table — deliberate: the catalog is the
+      // one source of truth for how many beats a figure spans. For the 18 covered ids this equals the
+      // old ported table; if a future catalog edit changed a covered figure's beats, the tile art
+      // would follow it (that is the point of unifying, not a regression).
+      var beats = (spec && spec.beats) || 1;
 
-      var noteXs = notes
-        .map(function (n) { return typeof n.getAbsoluteX === 'function' ? Math.round(n.getAbsoluteX()) : null; })
-        .filter(function (x) { return x !== null; });
+      // The shared renderer keys everything off placement.id and placement.beats; placement.start is
+      // used only by RhythmQuest's board layout, never by the draw path (verified), so 0 is safe.
+      R.renderPlacedVex(host, { id: id, beats: beats, start: 0 });
 
-      normalizeRenderedSvg(host, width, height, id, fig, noteXs.length ? noteXs[0] : null, noteXs);
+      // renderPlacedVex has no boolean return and does its OWN PNG fallback on failure, inserting an
+      // <img class="placed-bank-glyph"> with the shared asset path — which is WRONG for these pages.
+      // Detect that and convert it back to the old contract: clear the host and return false so the
+      // caller inserts the correct-path PNG. (The fallback is inserted synchronously in its catch, so
+      // it is observable here.)
+      if (host.querySelector('img.placed-bank-glyph')) {
+        host.textContent = '';
+        return false;
+      }
+
+      // renderPlacedVex early-returns (drawing nothing) if the host is not yet connected to the DOM.
+      // If no <svg> was produced, treat it as a decline so the caller falls back to PNG rather than
+      // leaving an empty cell.
+      if (!host.querySelector('svg')) return false;
+
       return true;
     } catch (e) {
       try { if (host) host.textContent = ''; } catch (e2) {}
@@ -332,8 +142,10 @@
     }
   }
 
-  /* `?renderer=` — png (today's art), vexflow (draw everything we can), hybrid (VexFlow where the
-     lab covers the figure, PNG otherwise). Default is png: this is opt-in until it is A/B'd. */
+  /* `?renderer=` — png (today's art), vexflow / hybrid (VexFlow for the figures THIS adapter covers,
+     i.e. the 18 COVERED_IDS that hasFigure() allows — NOT the whole shared catalog — PNG otherwise).
+     Default is png: opt-in until it is A/B'd. Unchanged behaviour — rhythm-student.js `bankDir()`
+     reads this to pick tile art. */
   function mode() {
     try {
       var m = new URLSearchParams(window.location.search).get('renderer');
@@ -345,6 +157,6 @@
     renderFigure: renderFigure,
     hasFigure: hasFigure,
     mode: mode,
-    figureIds: Object.keys(FIGURES)
+    figureIds: COVERED_IDS.slice()
   };
 })();

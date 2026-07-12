@@ -1622,10 +1622,13 @@ body.casual-skin .answer-area{ margin-top:16px!important; }
         })();
     </script>
         <!-- VexFlow answer renderer — OPT-IN, via `?renderer=hybrid|vexflow`.
-         The DEFAULT PATH STILL PAYS ~18.7 KB: rhythm-vexflow-renderer.js loads unconditionally, because
-         `bankDir()` in rhythm-student.js reads its `mode()` to choose the tile art, and a page that
-         had not loaded it would be blind to the switch. What the default path does NOT pay is
-         vendor/vexflow.js, 992 KB, injected only when the param is present.
+         The DEFAULT PATH PAYS ~54.5 KB of rhythm-rendering JS: the ~8.8 KB adapter
+         (rhythm-vexflow-renderer.js) PLUS the ~45.7 KB shared renderer it now depends on
+         (shared/rhythm-notation/renderer.js). Both load unconditionally because `bankDir()` in
+         rhythm-student.js reads `mode()` to choose the tile art, and a page that had not loaded them
+         would be blind to the switch. That is UP from the old self-contained ~18.7 KB ported copy —
+         the deliberate cost of ONE renderer instead of a second, drifting copy. What the default path
+         does NOT pay is vendor/vexflow.js, 992 KB, injected only when the param is present.
          document.write is deliberate: it is the one synchronous way to insert a script during parse
          so it is defined before `rhythm-student.js`, a deferred module, runs. Nothing else on these
          pages uses document.write. -->
@@ -1634,7 +1637,8 @@ body.casual-skin .answer-area{ margin-top:16px!important; }
         document.write('<scr' + 'ipt src="vendor/vexflow.js"><\/scr' + 'ipt>');
       }
     </script>
-    <script src="rhythm-vexflow-renderer.js?v=20260710-vexflow"></script>
+    <script src="shared/rhythm-notation/renderer.js?v=20260711-onsetfix"></script>
+    <script src="rhythm-vexflow-renderer.js?v=adapter-1"></script>
     <script type="module" src="rhythm-student.js?v=20260710-vexflow"></script>
     <script src="suite-theme.js?v=20260701-kidsmode"></script>
     <!-- Guided-level ENGINE bridge: loads core/ (curriculum, ladder, mastery,
