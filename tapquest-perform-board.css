@@ -1,0 +1,54 @@
+/* tapquest-perform-board.css — bridges the SHARED grouped-cell answer board
+   (shared/rhythm-notation/answer-board.*) into TapQuest's tapping.html, which was built
+   for the OLD continuous staff. Everything here is scoped to `.perform-board` (the board
+   host solo-mode.js builds in buildPerformBoard) so the dictation staff and nothing else
+   on the page is touched. Loaded AFTER answer-board.css.
+
+   Two jobs:
+     1. Neutralise the page's bare `.beat-drop-zone` rules (written for the continuous
+        staff) that would otherwise leak onto the board's grouped cells.
+     2. Let a long rhythm scroll horizontally (the board is a single grouped lane; the old
+        staff wrapped into stacked rows). */
+
+/* The board host carries THREE classes on the SAME element — `.answer-staff` (so the
+   engine's overlay selectors resolve), `.answer-board` (added by renderAnswer) and
+   `.perform-board` (this file's hook): i.e. `.answer-staff.answer-board.perform-board`,
+   not a descendant chain. Keep the white framing panel from `.answer-staff`, but let it
+   scroll horizontally when the rhythm overflows.
+
+   The host is the scroll container. `justify-content: safe center` keeps a short rhythm
+   centered but anchors a long one to the LEFT edge — without `safe`, a centered lane wider
+   than the host clips its first beats where scroll can't reach them (the classic
+   centered-overflow trap). enterPerformLayout()'s auto-scroll drives `scrollLeft` on this
+   same element (TB.scrollLane = the `.answer-staff`), so the active beat stays in view. */
+.answer-staff.perform-board {
+  display: flex;
+  justify-content: safe center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+/* The shared board builds ONE non-wrapping row and clamps it to `max-width: 100%` (it never
+   wraps to a second line the way RhythmQuest's own staff does). Under that clamp the fixed
+   `--slot-w` cells have nowhere to go on a narrow phone, so they compress/clip instead of
+   scrolling. Release the clamp so the row keeps its natural width and the host scrolls. */
+.answer-staff.perform-board > .staff-row {
+  max-width: none;
+  flex: 0 0 auto;
+}
+
+/* solo-mode stamps a within-measure, 1-based data-beat on every cell, so EVERY measure's
+   first cell matches the page rule `.beat-drop-zone[data-beat="1"]{padding-left:14px}`
+   (and its notation / beat-number offsets). That downbeat inset belongs to the continuous
+   staff, not the grouped board (which draws its own barlines + spacing) — reset it. */
+.perform-board .beat-drop-zone[data-beat="1"] { padding-left: 0; }
+.perform-board .beat-drop-zone[data-beat="1"] .beat-notation { inset: 0; left: 0; right: 0; width: 100%; }
+.perform-board .beat-drop-zone[data-beat="1"]::before { left: 50%; }
+
+/* The page's bare `.beat-drop-zone{display:flex;flex:1}` (a continuous-staff flex row cell)
+   would turn the board's GRID cells into flex containers. The board positions its glyph,
+   beat number and span/continuation panels absolutely inside a plain relative box, so force
+   that box back. */
+.perform-board .beat-drop-zone { display: block; flex: initial; }

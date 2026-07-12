@@ -259,24 +259,30 @@ person, in a browser, on the hardware in item 4.
 
 1. The redesign's visual language is on the live engine: layout viewport-locked on both axes, Submit
    and Check in reserved action rows, bank tiles and answer cells sharing sizing variables.
-2. **The bank is always PNG; the answer is VexFlow.** That is the redesign's split — `renderBeatBank`
-   never draws VexFlow, `shouldRenderPlacedVex` gates only the answer. `?renderer=png|hybrid|vexflow`,
-   default `png`, controls TWO things and neither is a VexFlow bank: it switches the ANSWER renderer
-   (PNG vs VexFlow), and `bankDir()` reads it to pick the bank's PNG ART (`bank/` vs `bank-tight/`).
-   The bank is PNG in every mode.
-   **In place (owner confirming on-device): the answer renders VexFlow for eighteen figures** —
-   modelled on the redesign's
-   non-asset `beatVexPatterns` set, `half` included — in RhythmQuest and BeatQuest Casual (they share
-   `renderPatternArt`), stems down, no five-line staff, noteheads centred on their beat onsets.
-   *Evidence:* verified by driving both pages in a headless browser (place a figure, read the
-   notehead's y against the staff line, confirm the bank stays PNG). The owner is confirming final
-   notehead placement on-device; that is the remaining [observed] step. There is no automated
-   regression test for SVG positioning yet — a known gap, not a claim of coverage.
-   **Not delivered: compound meter.** Compound `cd-*` and the other meter families (`hb dh de tpl`) and
-   whole/dotted-half/half-rest stay PNG in the answer, matching the redesign's `renderAssetOnly`.
-   Compound VexFlow is being finished by the owner + Codex in a redesign-visible session; the
-   `!meterFigDir` guard in `renderPatternArt` is the single point where it flips on. Compound needs a
-   dotted-quarter beat unit and its own onset table.
+2. **The bank is always PNG; the answer is VexFlow, drawn by the ONE shared renderer.** That is the
+   redesign's split — the bank art is PNG in every mode (`renderBeatBank` never draws VexFlow, and
+   `bankDir()` only chooses `bank/` vs `bank-tight/` PNG art), while the ANSWER is drawn by the shared
+   `shared/rhythm-notation/*` renderer (extracted verbatim from the migrated redesign). `?renderer=png|
+   hybrid|vexflow` switches the ANSWER renderer only — never a VexFlow bank; the migrated redesign's
+   default is `hybrid` [source: quest-redesign.js normalizeBeatRendererMode].
+   **Standard notation flow (migrated redesign): the answer renders VexFlow for EVERY figure family**,
+   the meter families (compound `cd-*`, and `hb dh de tpl`) INCLUDED — stems down, no five-line staff,
+   noteheads centred on their beat onsets. RhythmQuest routes every family to VexFlow in hybrid mode:
+   `shouldRenderPlacedVex` marks the meter families `renderAssetOnly`, but they all reach VexFlow via
+   its custom-beaming exception (`usesBeatUnitCustomBeaming`) and tuplets via the tuplet exception
+   [source: quest-redesign.js shouldRenderPlacedVex + renderer.js usesBeatUnitCustomBeaming].
+   *Evidence:* the shared answer board draws all these families — a 6/8 compound example included — and
+   the owner confirmed it on-device (2026-07-11); TapQuest's perform target, which reuses the same
+   shared board, is owner-verified on iPad/iPhone Safari [observed]. Whether the LIVE RhythmQuest page
+   itself paints compound VexFlow has not been separately watched in a browser — that routing is
+   [inferred] from the shared code path. There is no automated regression test for SVG positioning yet
+   — a known gap, not a claim of coverage.
+   **Migration status (the shared flow is not yet universal).** RhythmQuest (the migrated redesign) is
+   on this shared flow. The standalone TapQuest / BeatQuest Casual student path (`rhythm-student.js`
+   `renderPatternArt`, gated by `!meterFigDir` at `rhythm-student.js:1015`) STILL keeps the meter
+   families PNG; those games are being moved onto the shared renderer / answer board so their notation
+   matches RhythmQuest exactly — TapQuest's perform target is the FIRST surface moved [observed]. Until a
+   given game/surface is moved, its meter families stay PNG on that surface.
 3. Tap-back is re-skinned, and **its behaviour is unchanged**: the `TB` state machine
    (`idle → ready → metro → countoff → capture → done`), the lock-in phase, per-bar results, "Try
    again", and the BL/BR hand-swap forced at the capstone. The prototype's tap-back is a demo — its

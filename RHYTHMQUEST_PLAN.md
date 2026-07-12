@@ -35,8 +35,21 @@
 > `beatquest-theme`, which were never going to be renamed. A localStorage key is an internal
 > identifier, like `window.BeatQuestSolo`.
 >
+> **Amendment (owner, 2026-07-11): the shared rhythm-notation renderer is suite-wide, and wiring a
+> sibling Quest game onto it is IN scope for this step.** The owner's rule: anytime rhythm is notated
+> anywhere in the suite — RhythmQuest, TapQuest, BeatQuest Casual, and the teacher/projector surfaces —
+> it draws through the ONE shared renderer (`shared/rhythm-notation/*`), so notation can never drift
+> between apps. That is the "one renderer" half of the RhythmQuest UI finish, not a new product. So:
+> replacing TapQuest's "Perform this rhythm" target with the shared grouped-cell answer board is on-step
+> (TapQuest is intended as RhythmQuest's curriculum sibling — owner's design, not asserted here as a
+> verified code fact). Bounds: this changes the notation RENDERING path only (the `buildPerformBoard()`
+> vs `revealCorrect()` control flow that picks which display draws) — the shared renderer, RhythmQuest,
+> and each game's own generation/scoring/curriculum data stay untouched, and no new product surface is
+> added.
+>
 > Any change that does not serve the current step is scope creep and should be rejected in review.
-> The current step now spans the UI finish (owner, handled separately) **and** the live-room
+> The current step now spans the UI finish (owner, handled separately), the suite-wide shared-notation
+> unification across the Quest games (owner, 2026-07-11), **and** the live-room
 > foundation (owner, 2026-07-10) — pure `core/room.js` and the classroom back-end that follows.
 
 ## Context

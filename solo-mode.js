@@ -2736,8 +2736,11 @@
 
   function newTappingRound() {
     S.tapOrient = pickTapOrient();   // choose this round's hand orientation before mounting the panel
-    // Pre-fill the staff with the generated rhythm (same note glyphs as dictation).
-    revealCorrect();
+    // Show the rhythm to perform. Preferred path = the SHARED grouped-cell answer board
+    // (RhythmQuest look); it rebuilds #measureContainer from S.target and keeps every
+    // overlay hook intact. Falls back to the old continuous-staff pre-fill when the board
+    // can't run (changing meter, or the shared board not loaded).
+    if (!buildPerformBoard()) revealCorrect();
     // S.solved=true so the shared perform path (openTapBack) is allowed to run. It is
     // gated behind S.solved by construction; the tapping game's whole point is that
     // the rhythm is already revealed, so that gate is satisfied immediately.
@@ -2882,6 +2885,7 @@
   }
 
   function revealCorrect() {
+    stopPerformBoardWatchers();   // this rebuilds the staff; drop any prior board's centre-pass timers
     if (rs.clearAnswers) rs.clearAnswers();
     S.target.forEach(function (meas, mi) {
       meas.forEach(function (it) {
@@ -2889,6 +2893,178 @@
         if (z && rs.placeTile) { try { rs.placeTile(z, it.patternId, mi + 1, it.startBeat); } catch (e) {} }
       });
     });
+  }
+
+  /* GROUPED-CELL PERFORM BOARD — renders the "Perform this rhythm" display with the
+     SHARED RhythmQuest answer board (shared/rhythm-notation/answer-board.js) instead of
+     the old continuous staff, so TapQuest's notation matches what RhythmQuest draws in its
+     default (hybrid) renderer. That default runs EVERY figure family through the shared
+     VexFlow renderer: quest-redesign.js shouldRenderPlacedVex marks the beat-unit families
+     (compound/half-beat/dotted-half/eighth-beat/dotted-eighth) renderAssetOnly, but they all
+     hit its custom-beaming exception (usesBeatUnitCustomBeaming) and tuplets hit the tuplet
+     exception, so hybrid returns true for all of them — verified against every assetRenderedSpec
+     id in renderer.js. It does NOT mirror RhythmQuest's ?renderer=png dev mode, and — like
+     RhythmQuest, which drops to PNG when VexFlow is absent — it needs VexFlow; the getVexFlow +
+     spec guards below reject the two KNOWN blank causes (VexFlow not loaded, or a target figure
+     with no VexFlow spec) BEFORE committing, returning false so the caller keeps the old staff.
+     They cannot promise a connected host with valid specs never blanks in the deferred render
+     (renderPlacedVex is async), but they remove the causes we can see up front. It is
+     a drop-in for revealCorrect() in the tapping game: it rebuilds #measureContainer from
+     S.target and re-stamps the board's beat cells with the SAME hooks every overlay
+     already queries — the host gets class `answer-staff` (so `#measureContainer
+     .answer-staff …` resolves) and each `.beat-drop-zone` gets a within-measure, 1-based
+     data-beat + its data-measure + a running data-absolute-beat. Because that DOM contract
+     is preserved, the tap-back cell index (TB.cells), the beat-guide `.solo-beat-on`
+     highlight, the tap-along dots and the count-off overlay keep working WITHOUT touching
+     their code. Horizontal scroll works differently than for the old staff: the compact-scroll's
+     `.staff-container` ROW-FLATTENING loop (enterPerformLayout, solo-mode.js:~1721) is a no-op
+     because the grouped board emits `.staff-row`/`.measure-group`, not `.staff-container` — but
+     enterPerformLayout STILL runs (compactScrollEligible accepts the board via its scrollWidth
+     check, solo-mode.js:~1705) and sets TB.scrollLane to the board, so the auto-scroll-to-active-
+     cell keeps working; the horizontal scrolling itself is provided by tapquest-perform-board.css.
+     (That CSS also neutralises the continuous-staff `.beat-drop-zone` rules that would otherwise
+     leak onto the grouped cells.)
+
+     Returns true when it rendered the board (caller then SKIPS revealCorrect); false to
+     fall back to the old continuous-staff pre-fill. GATED to the tapping game, simple
+     (non-changing) meter, and the shared board actually being loaded — so the dictation
+     staff and BeatQuest Casual (dictation) are never affected, and changing-meter rounds
+     (which need per-measure inline time signatures the board does not draw) stay on the
+     old renderer. */
+  // Holds the running centre-pass poll + ResizeObserver for the CURRENT perform board so a
+  // new round (or a fall-through to revealCorrect) can stop them — otherwise they keep firing
+  // against the detached old host until their own timeouts expire (Codex finding).
+  var performBoardCleanup = null;
+  function stopPerformBoardWatchers() {
+    if (performBoardCleanup) { try { performBoardCleanup(); } catch (e) {} performBoardCleanup = null; }
+  }
+  function buildPerformBoard() {
+    stopPerformBoardWatchers();
+    if (S.mode !== 'tapping' || S.changing) return false;
+    if (!window.RhythmAnswerBoard || !window.RhythmNotation) return false;
+    // The board renders EVERY figure through the shared VexFlow renderer, which no-ops
+    // (leaving cells blank) when VexFlow is not on the page. renderAnswer still builds the
+    // cells, so a `.beat-drop-zone` count is NOT proof the notation drew. Gate on VexFlow
+    // up front — exactly what RhythmQuest checks (shouldRenderPlacedVex: `if (!getVexFlow())
+    // return false`) before it falls back — so a missing/failed vendor script drops us to
+    // revealCorrect() (the old staff) instead of committing a blank perform board.
+    if (typeof window.RhythmNotation.getVexFlow !== 'function' || !window.RhythmNotation.getVexFlow()) return false;
+    var container = document.getElementById('measureContainer');
+    if (!container || !S.target) return false;
+
+    // S.target (measures of { patternId, startBeat, beats }) -> the board's flat
+    // [{ figureId, beats }] in play order. Each item is one meter beat-cell head; the
+    // board expands multi-beat figures (half, dotted-half, …) into span + continuation
+    // cells itself.
+    var rhythm = [];
+    S.target.forEach(function (meas) {
+      meas.forEach(function (it) {
+        if (it && it.patternId) rhythm.push({ figureId: it.patternId, beats: Math.max(1, Number(it.beats) || 1) });
+      });
+    });
+    if (!rhythm.length) return false;
+
+    // Every cell draws through renderPlacedVex, which SILENTLY returns (no PNG fallback) for a
+    // figure id it has no spec for (renderer.js: `if (!spec ...) return`), leaving that one cell
+    // blank while the board still reports success. So require a VexFlow spec for EVERY figure up
+    // front; if any is unknown, bail to revealCorrect() rather than commit a partially-blank
+    // board. RhythmNotation.catalog is beatVexPatterns (the exact map renderPlacedVex reads).
+    var vexCatalog = window.RhythmNotation.catalog || {};
+    if (!rhythm.every(function (f) { return f.figureId && vexCatalog[f.figureId]; })) return false;
+
+    // Pass the REAL time-signature string so compound (6/8, 9/8, 12/8), half-note and
+    // dotted-half meters draw the correct signature; beatsPerMeasure is the beat COUNT
+    // per bar (dotted-quarter beats in compound), which the board uses for grouping.
+    var meter = { timeSignature: S.ts, beatsPerMeasure: bpm() };
+
+    // Build the board OFF-DOM first; only swap #measureContainer once it succeeds, so a
+    // failure leaves the already-built continuous staff intact for the revealCorrect
+    // fallback.
+    var host = document.createElement('div');
+    host.className = 'answer-staff perform-board';
+    try {
+      window.RhythmAnswerBoard.renderAnswer(host, rhythm, meter, { showTimeSignature: true });
+    } catch (e) { return false; }
+    if (!host.querySelector('.beat-drop-zone')) return false;
+
+    // Overlay-compat stamping: every engine overlay indexes cells by (data-measure,
+    // within-measure 1-based data-beat). The board emits one `.beat-drop-zone` per beat
+    // (span heads + continuations) in order, grouped under `.measure-group[data-measure]`.
+    var abs = 0;
+    var groups = host.querySelectorAll('.measure-group');
+    for (var g = 0; g < groups.length; g++) {
+      var m = parseInt(groups[g].dataset.measure, 10) || (g + 1);
+      var zones = groups[g].querySelectorAll('.beat-drop-zone');
+      for (var b = 0; b < zones.length; b++) {
+        abs += 1;
+        zones[b].dataset.measure = String(m);
+        zones[b].dataset.beat = String(b + 1);
+        zones[b].dataset.absoluteBeat = String(abs);
+      }
+    }
+
+    var label = document.createElement('div');
+    label.className = 'answer-staff-label';
+    label.textContent = 'Perform this rhythm (' + S.measures + ' bar' + (S.measures === 1 ? '' : 's') + ')';
+
+    var mc = document.createElement('div');
+    mc.className = 'measure-container';
+    mc.appendChild(label);
+    mc.appendChild(host);
+
+    container.innerHTML = '';
+    container.appendChild(mc);
+
+    // The shared VexFlow renderer centers each glyph by measuring it with getBBox() and
+    // computing a vertical translate. Diagnostics proved that in Safari, inside this board's
+    // fixed/scrolling landscape layout, getBBox returns a TRANSIENT wrong y at render time
+    // (~ -20) that later settles (~ +24) — but the transform is locked from the transient
+    // value, so every note sits low. Re-rendering only re-hits the same bad measurement.
+    // getBoundingClientRect, by contrast, is reliable here (svgTop==cellTop in both engines).
+    // So: leave the renderer's output alone, then re-center each glyph in screen space by
+    // nudging its existing transform's translateY — but ONLY when it is measurably off (the
+    // `Math.abs(deltaPx) < 1` early-return below). Where the renderer already placed the glyph
+    // correctly the delta rounds to ~0 and nothing changes: measured in headless Chrome, this
+    // board reads -11px before and after (no movement); the equivalent no-move is INFERRED for
+    // the demo / live RhythmQuest since they share the renderer but were not separately watched.
+    // Run it across a few post-paint passes + on resize so it converges whenever Safari settles.
+    var centerGlyphs = function () {
+      if (!host.isConnected) return;   // board was replaced; nothing to re-center
+      host.querySelectorAll('.placed-vex-host > svg').forEach(function (svg) {
+        var g = svg.querySelector('g'); if (!g) return;
+        var box = svg.parentNode; // .placed-vex-host, fills the beat cell
+        var gr = g.getBoundingClientRect(), br = box.getBoundingClientRect();
+        var vb = svg.viewBox && svg.viewBox.baseVal, svgH = svg.getBoundingClientRect().height;
+        if (!gr.height || !br.height || !vb || !svgH) return;
+        var deltaPx = (br.top + br.height / 2) - (gr.top + gr.height / 2); // + => move glyph DOWN
+        if (Math.abs(deltaPx) < 1) return;
+        var m = /translate\(\s*(-?[\d.]+)[ ,]+(-?[\d.]+)\s*\)\s*scale\(\s*([\d.]+)/.exec(g.getAttribute('transform') || '');
+        if (!m) return;
+        var deltaUnits = deltaPx * (vb.height / svgH); // px -> viewBox units (pre-scale translate space)
+        g.setAttribute('transform', 'translate(' + m[1] + ' ' + (parseFloat(m[2]) + deltaUnits) + ') scale(' + m[3] + ')');
+      });
+    };
+    // Poll briefly so it converges whenever Safari's layout settles, then stop. Every timer,
+    // frame and observer started here is captured on performBoardCleanup so the next round (or
+    // revealCorrect) cancels it; and centerGlyphs itself early-returns once the host is detached,
+    // so a callback that still slips through is a no-op.
+    var raf1 = 0, raf2 = 0, cgN = 0;
+    raf1 = requestAnimationFrame(function () { raf2 = requestAnimationFrame(centerGlyphs); });
+    var cgTimer = setInterval(function () { centerGlyphs(); if (++cgN >= 12) stopPerformBoardWatchers(); }, 120);
+    var ro = (typeof ResizeObserver === 'function') ? new ResizeObserver(function () { centerGlyphs(); }) : null;
+    if (ro) ro.observe(host);
+    var roStop = setTimeout(function () { if (ro) ro.disconnect(); }, 2500);
+    performBoardCleanup = function () {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      clearInterval(cgTimer);
+      clearTimeout(roStop);
+      if (ro) ro.disconnect();
+    };
+
+    // The board renders glyphs itself (shared VexFlow renderer); the userAnswer grid is
+    // unused in the tapping game (scoring reads targetOnsets(), not rs.userAnswer).
+    return true;
   }
   // Groove hit 0 -> the run is over. A real Game Over screen (Retry this level / Menu)
   // replaces the old silent restart. Bonus (killer) rounds are groove-safe, so this is

@@ -1132,6 +1132,10 @@
     </style>
     <!-- Suite theme skins (cosmetic only — does not affect the notation engine) -->
     <link rel="stylesheet" href="suite-theme.css?v=20260701-bricks">
+    <!-- SHARED grouped-cell answer board (RhythmQuest look) for the "Perform this rhythm"
+         display, + the TapQuest bridge that scopes it into this page. Bridge loads AFTER. -->
+    <link rel="stylesheet" href="shared/rhythm-notation/answer-board.css?v=20260711-tapboard">
+    <link rel="stylesheet" href="tapquest-perform-board.css?v=20260711-tapboard">
 </head>
 <body>
     <div class="header">
@@ -1248,11 +1252,12 @@
             window.addEventListener('load', function () { observeHud(); syncBarHeight(); });
         })();
     </script>
-        <!-- VexFlow answer renderer — OPT-IN, via `?renderer=hybrid|vexflow`.
-         The DEFAULT PATH STILL PAYS ~18.7 KB: rhythm-vexflow-renderer.js loads unconditionally, because
-         `bankDir()` in rhythm-student.js reads its `mode()` to choose the tile art, and a page that
-         had not loaded it would be blind to the switch. What the default path does NOT pay is
-         vendor/vexflow.js, 992 KB, injected only when the param is present.
+        <!-- VexFlow answer renderer — this `?renderer=hybrid|vexflow` block injects vendor/vexflow.js
+         when the PARAM is present. NOTE: it is no longer the only path that loads VexFlow — the
+         grouped-cell perform board below now injects vendor/vexflow.js on the DEFAULT path too (the
+         next <script> only fires when this one did not), so the ~992 KB vendor is paid by default now.
+         Separately, the DEFAULT PATH ALSO PAYS ~18.7 KB for rhythm-vexflow-renderer.js, which loads
+         unconditionally because `bankDir()` in rhythm-student.js reads its `mode()` to choose tile art.
          document.write is deliberate: it is the one synchronous way to insert a script during parse
          so it is defined before `rhythm-student.js`, a deferred module, runs. Nothing else on these
          pages uses document.write. -->
@@ -1261,6 +1266,25 @@
         document.write('<scr' + 'ipt src="vendor/vexflow.js"><\/scr' + 'ipt>');
       }
     </script>
+    <!-- The grouped-cell perform board (RhythmQuest look) draws its glyphs through the
+         SHARED VexFlow renderer, which renders BLANK cells when window.Vex is absent
+         (renderPlacedVex early-returns with no PNG fallback). So ensure VexFlow is present
+         when the renderer=vexflow param did NOT already inject it. If this fetch still fails
+         (offline, etc.), buildPerformBoard's getVexFlow guard returns false and the game
+         falls back to the old continuous staff instead of a blank grouped board. This adds
+         ~992 KB to the default tapping load; it does NOT flip rhythm-student's own tile art
+         (that reads the URL param, not window.Vex), so the count-off / bank / main-staff PNG
+         art is unchanged. -->
+    <script>
+      if (!/[?&]renderer=(hybrid|vexflow)(&|$)/.test(window.location.search)) {
+        document.write('<scr' + 'ipt src="vendor/vexflow.js"><\/scr' + 'ipt>');
+      }
+    </script>
+    <!-- SHARED notation renderer (window.RhythmNotation) + grouped-cell answer board
+         (window.RhythmAnswerBoard). Classic scripts; must precede solo-mode.js, which calls
+         RhythmAnswerBoard.renderAnswer for the tapping perform display. -->
+    <script src="shared/rhythm-notation/renderer.js?v=20260711-tapboard"></script>
+    <script src="shared/rhythm-notation/answer-board.js?v=20260711-tapboard"></script>
     <script src="rhythm-vexflow-renderer.js?v=20260710-vexflow"></script>
     <script type="module" src="rhythm-student.js?v=20260710-vexflow"></script>
     <script src="suite-theme.js?v=20260701-kidsmode"></script>
@@ -1271,7 +1295,7 @@
     <!-- TEACH content (window.TEACH_CONTENT): per-level intro copy the teach
          screens read. DATA only; classic global, must precede solo-mode.js. -->
     <script src="teach-content.js?v=20260629-teach"></script>
-    <script src="solo-mode.js?v=20260710-vexflow"></script>
+    <script src="solo-mode.js?v=20260711-tapfix3"></script>
     <!-- TAPPING boot: this page is always the tapping game. The shared solo-mode.js
          auto-boots when the URL carries ?mode=tapping; for a clean bare URL we also
          wire the Start button to BeatQuestSolo.startTapping() directly. The button's
