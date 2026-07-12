@@ -412,6 +412,16 @@
 
     requestAnimationFrame(() => {
       try {
+        // !!! SAFARI CAVEAT -- DO NOT "FIX" IT HERE. On the TapQuest perform board (a fixed/scrolling
+        // landscape layout) the owner observed group.getBBox() below mis-measure in his iPhone/iPad
+        // Safari: it can return a TRANSIENT wrong y that settles late, so the vertical shift locks the
+        // glyph in LOW. The fix that worked THERE is a getBoundingClientRect re-centre applied by the
+        // CONSUMING surface AFTER paint (solo-mode.js buildPerformBoard `centerGlyphs`). Do NOT add a
+        // re-centre pass in this shared renderer UNLESS it is a perfect no-op: a surface that already has
+        // its own re-centre (the perform board) then gets double-corrected and the notes get pushed out
+        // of place -- adding one here is what regressed the perform board when it was tried (owner-
+        // reported, 2026-07-11). Give each NEW surface its own scoped re-centre instead. (On the perform
+        // board that re-centre measured as a no-op in headless Chrome; the issue showed only in Safari.)
         const box = group.getBBox();
         if (!box || !Number.isFinite(box.x)) {
           markPlacedVexRendered(host);

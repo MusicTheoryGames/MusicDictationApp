@@ -3015,19 +3015,36 @@
     container.innerHTML = '';
     container.appendChild(mc);
 
-    // The shared VexFlow renderer centers each glyph by measuring it with getBBox() and
-    // computing a vertical translate. Diagnostics proved that in Safari, inside this board's
-    // fixed/scrolling landscape layout, getBBox returns a TRANSIENT wrong y at render time
-    // (~ -20) that later settles (~ +24) — but the transform is locked from the transient
-    // value, so every note sits low. Re-rendering only re-hits the same bad measurement.
-    // getBoundingClientRect, by contrast, is reliable here (svgTop==cellTop in both engines).
-    // So: leave the renderer's output alone, then re-center each glyph in screen space by
-    // nudging its existing transform's translateY — but ONLY when it is measurably off (the
-    // `Math.abs(deltaPx) < 1` early-return below). Where the renderer already placed the glyph
-    // correctly the delta rounds to ~0 and nothing changes: measured in headless Chrome, this
-    // board reads -11px before and after (no movement); the equivalent no-move is INFERRED for
-    // the demo / live RhythmQuest since they share the renderer but were not separately watched.
-    // Run it across a few post-paint passes + on resize so it converges whenever Safari settles.
+    // ===========================================================================================
+    // !!!!!!!!!  DO NOT REMOVE `centerGlyphs`, AND DO NOT ADD A SECOND RE-CENTER ELSEWHERE.  !!!!!!!!!
+    // ===========================================================================================
+    // THIS IS THE FIX FOR "notes sit too low in the answer area on iPhone/iPad Safari." Per the OWNER,
+    // it was broken and re-fixed twice on 2026-07-11 (he is, rightly, furious about regressing it); the
+    // three rules below are the lessons from those two owner-reported incidents. Read this before you
+    // touch ANY rhythm-rendering code:
+    //
+    //   THE BUG: the SHARED renderer (shared/rhythm-notation/renderer.js normalizePlacedVex) centers
+    //   each glyph by measuring it with getBBox(). In Safari, inside this board's fixed/scrolling
+    //   landscape layout, getBBox returns a TRANSIENT wrong y at render time and settles late, so the
+    //   transform locks in LOW. Re-rendering only re-hits the same bad measurement. getBoundingClientRect
+    //   is reliable, so `centerGlyphs` below re-centers each glyph in screen space AFTER paint.
+    //
+    //   THE RULES:
+    //   1. NEVER "move this fix into the shared renderer" so "every surface gets it." This board ALREADY
+    //      has centerGlyphs; a second re-center in the shared renderer that is not a perfect no-op FIGHTS
+    //      this one and pushes the notes back out of place -- that is exactly what regressed this board
+    //      when it was tried. If another surface (answer-entry, MelodyQuest) needs it, give THAT surface
+    //      its OWN scoped re-center; do NOT add one to the shared renderer.
+    //   2. NEVER delete centerGlyphs thinking the shared renderer now handles it. It does NOT.
+    //   3. You CANNOT verify this in headless Chrome (Chrome's getBBox is fine; measured a no-op there,
+    //      -11px before and after). It has only been OBSERVED in the owner's Safari (his on-device reports).
+    //      ANY change near here MUST be owner-confirmed on-device before you claim it works. See memory:
+    //      safari-stale-js-and-getbbox.
+    // ===========================================================================================
+    // How it works: leave the renderer's output alone, then re-center each glyph in screen space by
+    // nudging its existing transform's translateY, but ONLY when it is measurably off (the
+    // `Math.abs(deltaPx) < 1` early-return below), so it is a no-op wherever the glyph was already right.
+    // Runs across a few post-paint passes + on resize so it converges whenever Safari settles.
     var centerGlyphs = function () {
       if (!host.isConnected) return;   // board was replaced; nothing to re-center
       host.querySelectorAll('.placed-vex-host > svg').forEach(function (svg) {
