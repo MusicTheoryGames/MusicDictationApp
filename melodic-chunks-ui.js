@@ -14,7 +14,7 @@
  */
 
 import { chunksForTier, chunkToMidis } from './core/chunks.js';
-import { makePlayButton } from './melodic-renderers.js';
+import { makePlayButton } from './melodic-renderers.js?v=20260712-mqboard';
 import { SCALE_SEMITONES, tonicMidiFor } from './core/melodic.js';
 import * as mastery from './core/mastery.js';
 

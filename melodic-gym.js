@@ -14,7 +14,7 @@ import * as mastery from './core/mastery.js';
 import {
   createGymFeelRenderer, createGymNameRenderer,
   createGymFindRenderer, createGymUseRenderer, createGymSingRenderer,
-} from './melodic-renderers.js';
+} from './melodic-renderers.js?v=20260712-mqboard';
 
 const GYM_KEY = 'melodic-gym-v1';
 

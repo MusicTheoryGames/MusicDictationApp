@@ -15,7 +15,7 @@
 
 import * as mastery from './core/mastery.js';
 import { classifyDictation } from './core/feedback.js';
-import { wireHearings } from './melodic-renderers.js';
+import { wireHearings } from './melodic-renderers.js?v=20260712-mqboard';
 
 const BOOKEND_KEY = 'melodic-bookend-v1';
 

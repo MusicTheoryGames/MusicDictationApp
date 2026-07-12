@@ -7,6 +7,10 @@
 <script src="vendor/vexflow.js"></script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M10 38h7l4-19 6 30 5-24 4 13h11M52 24v19' stroke='%232563eb' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='47' cy='43' r='6' fill='%232563eb'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="suite-theme.css?v=20260701-bricks">
+<!-- RhythmQuest's answer-board styling (measure groups, white fill/complete panel, span, circle
+     numbers), ported verbatim in answer-board.css. Scoped to .answer-board, so it only affects
+     MelodyQuest's new rhythm-entry board. -->
+<link rel="stylesheet" href="shared/rhythm-notation/answer-board.css?v=20260712-mqboard">
 <style>
   /* Structural layout only — COLORS come from the suite theme (body.theme-*)
      via the shared panel classes below, per the no-universal-colors rule. */
@@ -470,13 +474,11 @@
   .melodic-arcade__actions { display: flex; gap: 10px; justify-content: center; }
 
   /* ============================================================================
-     NATIVE RHYTHM GRID (Level 4) — the ACTUAL RhythmQuest drag-and-drop engine
-     (rhythm-student.js) mounted natively in MelodyQuest: no iframe, no chrome.
-     These are the STRUCTURAL rules lifted verbatim from tapping.html's <style>
-     (sizes, staff layout, bar lines, time-sig, drop zones, placed notes). The
-     per-theme COLOURS already live in suite-theme.css (which this page loads) and
-     layer on top via the same class names — so the grid looks/behaves exactly as
-     it does in RhythmQuest. .mq-rhythm-native is just the MelodyQuest layout host.
+     RHYTHM STAGE (Level 4) — MelodyQuest's rhythm-dictation layout host. `.mq-rhythm-native` wraps the
+     answer board (MqRhythmBoard / mq-rhythm-board.js, styled by the shared answer-board.css so the LOOK
+     matches RhythmQuest) + the PNG tile bank. RhythmStudent (rhythm-student.js) is loaded ONLY for its
+     pattern bank + grading lookups, NOT for this board. The rules below are the MelodyQuest layout
+     (wrapper, bank panel, green screen, tile pads); the board internals come from answer-board.css.
      ============================================================================ */
   .mq-rhythm-native { display: flex; flex-direction: column; gap: 12px; width: 100%; align-items: stretch; }
   .mq-rhythm-native .answer-area { order: 1; }
@@ -498,63 +500,126 @@
   .mq-rhythm-native .rhythm-tile:hover { border-color: rgba(255,255,255,0.4); }
   .mq-rhythm-native .rhythm-tile.dragging { opacity: 0.5; cursor: grabbing; }
 
-  .mq-rhythm-native .answer-area { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);
-    border-radius: 15px; padding: 15px; border: 1px solid rgba(255,255,255,0.18); flex: 0 0 auto; }
-  .mq-rhythm-native .measure-container { display: flex; justify-content: center; margin-bottom: 12px; }
-  .mq-rhythm-native .answer-staff { background: white; border-radius: 8px; padding: 20px 40px 20px 20px;
-    position: relative; width: 100%; max-width: 1100px; }
-  .mq-rhythm-native .answer-staff-label { position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
-    background: rgba(255,255,255,0.9); padding: 4px 12px; border-radius: 4px; font-weight: 600;
-    font-size: 0.85rem; color: #333; }
-  .mq-rhythm-native .staff-container { position: relative; height: clamp(130px, 13vw, 190px); margin-top: 0; }
-  .mq-rhythm-native .staff-container + .staff-container { margin-top: 30px; }
-  .mq-rhythm-native .staff-lines { position: absolute; width: 100%; top: 0; height: 100%; }
-  .mq-rhythm-native .staff-line { position: absolute; width: 100%; height: 2px; background: #333; top: 44%; }
-  .mq-rhythm-native .answer-time-sig { position: absolute; left: 2px; top: 44%; transform: translateY(-50%);
-    display: flex; flex-direction: column; align-items: center; line-height: 0.8; gap: 0.26em;
-    font-family: Georgia, 'Times New Roman', serif; font-variant-numeric: lining-nums tabular-nums;
-    font-feature-settings: "lnum" 1, "tnum" 1; font-weight: 700; font-size: clamp(30px, 4vw, 56px);
-    color: #333; z-index: 5; }
-  .mq-rhythm-native .beat-divisions { position: absolute; left: 0; right: 0; height: 100%; display: flex; }
-  .mq-rhythm-native .beat-drop-zone { flex: 1; position: relative; display: flex; align-items: center;
-    justify-content: center; transition: all 0.3s ease; }
-  .mq-rhythm-native .beat-drop-zone.measure-end:not(.final-cell) { border-right: 3px solid var(--bar-ink, #333); }
-  .mq-rhythm-native .beat-drop-zone.final-cell { border-right: 3px solid transparent; }
-  .mq-rhythm-native .beat-drop-zone.final-cell::after { content: ''; position: absolute; right: 0; top: 0;
-    bottom: 0; width: 7px; background: linear-gradient(90deg, var(--bar-ink, #333) 0 2px, transparent 2px 4px, var(--bar-ink, #333) 4px 7px); }
-  .mq-rhythm-native .beat-drop-zone::before { content: attr(data-beat); position: absolute; bottom: 6px;
-    left: 0; transform: translateX(-50%); font-size: 1.2rem; color: #ddd; font-weight: 300; z-index: 0; }
-  .mq-rhythm-native .beat-drop-zone[data-beat="1"] { padding-left: 14px; }
-  .mq-rhythm-native .beat-drop-zone[data-beat="1"] .beat-notation { left: 14px; right: 0; width: auto; }
-  .mq-rhythm-native .beat-drop-zone[data-beat="1"]::before { left: 14px; }
-  .mq-rhythm-native .beat-drop-zone.drag-over { background: rgba(76,175,80,0.14);
-    box-shadow: inset 0 0 0 2px rgba(76,175,80,0.7); border-radius: 4px; }
-  .mq-rhythm-native .beat-drop-zone.filled { background: rgba(76,175,80,0.1); }
-  .mq-rhythm-native .beat-drop-zone.continuation { background: rgba(76,175,80,0.1); }
-  .mq-rhythm-native .beat-drop-zone.revealed { background: rgba(52,152,219,0.1); }
-  .mq-rhythm-native .beat-notation { position: absolute; width: 100%; height: 100%; display: flex;
-    align-items: center; justify-content: center; }
-  .mq-rhythm-native .placed-note { position: absolute; left: 0; top: 44%; transform: translateY(-66%);
-    height: auto; pointer-events: none; user-select: none; -webkit-user-select: none; z-index: 2; }
-  .mq-rhythm-native .remove-btn { position: absolute; top: -8px; right: -8px; background: #ff4757;
-    color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 10px;
-    cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10; }
+  /* ── The rhythm ANSWER board is MelodyQuest's OWN interactive board (mq-rhythm-board.js), styled by
+     the shared answer-board.css (RhythmQuest's board styling: measure groups, white fill/complete panel,
+     span, circle numbers). Here we add ONLY the surrounding green "screen" and the tile-bank pads; the
+     board's visual internals come from answer-board.css so the LOOK stays aligned with RhythmQuest (the
+     interaction is a separate implementation — see mq-rhythm-board.js). ── */
+  .mq-rhythm-native .answer-area { background: transparent; border: 0; padding: 0; flex: 0 0 auto;
+    display: flex; justify-content: center; }
+  /* the green LCD "screen" the board sits on (matches RhythmQuest's device screen + the old MelodyQuest
+     phosphor answer panel). The board's own --slot-w is fit to this width by mq-rhythm-board.js. */
+  .mq-rhythm-native #measureContainer.answer-board {
+    background: #c9d6b9; border: 2px solid #1c1c1e; border-radius: 10px;
+    padding: 18px 20px; max-width: 100%; overflow-x: auto;
+    box-shadow: inset 0 3px 12px rgba(0,0,0,0.28), inset 0 0 44px rgba(120,140,90,0.34); }
+  /* tile bank: light pads showing the PNG bank art (VISION §8: bank stays PNG). touch-action:none lets
+     our custom touch-drag own the gesture (iOS has no native drag-and-drop). */
+  .mq-rhythm-native .mqb-tile {
+    width: 104px; height: 64px; position: relative; flex: 0 0 auto; cursor: grab;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-appearance: none; appearance: none; font: inherit; color: inherit;
+    background: linear-gradient(180deg, #f5f8ef, #e4ebd7);
+    border: 1px solid rgba(0,0,0,0.28); border-radius: 12px; touch-action: none;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.7); }
+  .mq-rhythm-native .mqb-tile:active { transform: translateY(1px); }
+  .mq-rhythm-native .mqb-tile.is-dragging { opacity: 0.45; }
+  /* selected (click/keyboard) or keyboard-focused tile: a clear green ring so keyboard users see the
+     current pick before clicking an empty cell to place it. */
+  .mq-rhythm-native .mqb-tile.is-selected { border-color: #2a9d5c;
+    box-shadow: 0 0 0 3px rgba(42,157,92,0.45), 0 2px 0 rgba(0,0,0,0.35); }
+  .mq-rhythm-native .mqb-tile:focus-visible { outline: 3px solid #2a9d5c; outline-offset: 2px; }
+  .mq-rhythm-native .mqb-tile .mqb-tile-art { position: relative; width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center; padding: 6px; }
+  .mq-rhythm-native .mqb-tile .placed-bank-glyph { max-width: 100%; max-height: 100%; object-fit: contain;
+    pointer-events: none; -webkit-user-select: none; user-select: none; }
+  /* the answer cells are <button>s (a11y + click-to-remove); reset native chrome since this page has no
+     global button reset (shared answer-board.js uses <div> for the same reason). */
+  .mq-rhythm-native .answer-board .beat-drop-zone {
+    -webkit-appearance: none; appearance: none; font: inherit; color: inherit; }
   @media (max-width: 768px) {
-    .mq-rhythm-native .rhythm-tile { width: 96px; flex: 0 0 96px; min-height: 68px; }
-    .mq-rhythm-native .answer-staff { padding: 12px 22px 12px 12px; }
-    .mq-rhythm-native .beat-drop-zone { min-height: 66px; }
-    .mq-rhythm-native .staff-container { height: clamp(104px, 30vw, 150px); }
-    .mq-rhythm-native .remove-btn { width: 20px; height: 20px; }
-    .mq-rhythm-native .rhythm-tile:active { transform: scale(0.98); }
+    .mq-rhythm-native .mqb-tile { width: 88px; height: 58px; }
   }
-  @media (max-width: 400px) {
-    .mq-rhythm-native .rhythm-tile { width: 78px; flex: 0 0 78px; min-height: 58px; }
-    .mq-rhythm-native .staff-container { height: 96px; }
-    .mq-rhythm-native .beat-drop-zone { min-height: 56px; }
+  /* ROTATE GATE (rhythm dictation is landscape-only, like TapQuest). Rhythm notation is a horizontal,
+     staff-based task: in phone PORTRAIT the beats cram too narrow, so instead of a compromised portrait
+     layout we ask the user to rotate -- exactly what TapQuest does. The gate (#rotateGate, a BODY-LEVEL
+     element below) is SHOWN only when the body has BOTH `.app-portrait` AND `.mq-rhythm-stage`, so it
+     appears ONLY on the rhythm-dictation screen; MelodyQuest's other stages (contour / sing-back /
+     note-entry) stay usable in portrait. `body.app-portrait` is toggled from JS by innerHeight>innerWidth
+     (more reliable than the orientation media feature). The gate is position:fixed and opaque, so it
+     fully covers the portrait staff behind it. `body.mq-rhythm-stage` is toggled by a small observer
+     (below) that watches for `.mq-rhythm-native` in the DOM -- driven entirely from this (always-fresh)
+     HTML rather than the module JS, to avoid stale-module caching. The gate reuses TapQuest's
+     `#rotateGate` markup + CSS (tapping.html); it is shown only on TOUCH devices (pointer:coarse) held in
+     portrait on this rhythm stage -- a narrow/portrait DESKTOP window is NOT blocked, matching TapQuest's
+     own `(pointer: coarse) and (max-width: 1400px)` gate condition. The trigger differs (here:
+     .mq-rhythm-stage; TapQuest: .game-area.active). */
+  #rotateGate { display: none; }
+  @media (pointer: coarse) and (max-width: 1400px) {
+    body.app-portrait.mq-rhythm-stage #rotateGate {
+      display: flex;
+      position: fixed; inset: 0; z-index: 9999;
+      background: linear-gradient(140deg, #2d3436 0%, #16191a 100%);
+      color: #fff;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 28px; }
   }
+  #rotateGate .rotate-inner { max-width: 340px; }
+  #rotateGate svg { width: 78px; height: 78px; stroke: #fff; fill: none; stroke-width: 2.2;
+    stroke-linecap: round; stroke-linejoin: round; margin-bottom: 20px; }
+  #rotateGate .rotate-title { font-size: 1.45rem; font-weight: 700; margin-bottom: 12px; }
+  #rotateGate .rotate-sub { opacity: 0.72; font-size: 0.95rem; line-height: 1.45; }
 </style>
 </head>
 <body>
+<!-- Landscape rotate prompt for the rhythm-dictation stage. Reuses TapQuest's #rotateGate markup + CSS
+     (tapping.html); shown only on TOUCH devices in portrait on the rhythm stage (see the observer +
+     the pointer:coarse gate in the <style> above). -->
+<div id="rotateGate">
+  <div class="rotate-inner">
+    <svg viewBox="0 0 64 64"><rect x="9" y="21" width="46" height="26" rx="4"/><path d="M22 16a14 14 0 0 1 23 2"/><path d="M45 10v8h-8"/></svg>
+    <div class="rotate-title">Turn your device sideways</div>
+    <div class="rotate-sub">Rhythm dictation needs landscape. If it doesn't rotate, switch off your device's rotation lock.</div>
+  </div>
+</div>
+<script>
+/* Rotate-gate driver (same orientation mechanism as tapping.html). Two independent flags on <body>:
+   - app-portrait: innerHeight>innerWidth (more reliable than the orientation media feature, esp. in
+     emulators / iPad split-view).
+   - mq-rhythm-stage: whether the Level-4 rhythm-dictation UI (.mq-rhythm-native) is currently mounted.
+   The gate (#rotateGate) shows only when BOTH are set, so portrait is blocked ONLY on the rhythm
+   screen; MelodyQuest's other stages stay usable in portrait. Driven from this always-fresh HTML (not
+   the module JS) so a stale cached module can't leave the gate un-wired. */
+(function () {
+  function updateOrientation() {
+    document.body.classList.toggle('app-portrait', window.innerHeight > window.innerWidth);
+  }
+  window.addEventListener('resize', updateOrientation);
+  window.addEventListener('orientationchange', updateOrientation);
+  updateOrientation();
+
+  var rafPending = false;
+  function syncRhythmStage() {
+    rafPending = false;
+    document.body.classList.toggle('mq-rhythm-stage', !!document.querySelector('.mq-rhythm-native'));
+  }
+  function scheduleSync() {
+    if (rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(syncRhythmStage);
+  }
+  // The rhythm stage mounts/unmounts as levels change; watch the DOM and re-check on each mutation
+  // (coalesced to one check per frame so tile-drag churn stays cheap).
+  if (typeof MutationObserver !== 'undefined') {
+    new MutationObserver(scheduleSync).observe(document.body, { childList: true, subtree: true });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', syncRhythmStage);
+  } else {
+    syncRhythmStage();
+  }
+})();
+</script>
 <script>
 /* Apply the saved theme BEFORE first paint so the page doesn't flash the default theme
    and then swap (suite-theme.js re-applies on DOMContentLoaded — too late on its own). */
@@ -663,17 +728,32 @@
     </div>
   </aside>
 
-<!-- Off-screen stubs so the REAL rhythm-student.js engine (the RhythmQuest drag-and-drop,
-     reused verbatim on Level 4) constructs without error: its setupEventListeners() queries
-     #joinBtn/#studentName/#roomCode, and showFeedback() queries #feedback. We never call
-     joinSession (no network) — we drive the engine directly via updateGameSettings/placeTile. -->
+<!-- Off-screen stubs so rhythm-student.js constructs without error even though MelodyQuest no longer
+     renders its board: its setupEventListeners() queries #joinBtn/#studentName/#roomCode and
+     showFeedback() queries #feedback. RhythmStudent is loaded ONLY for its pattern bank + grading
+     lookups (the interactive board is MqRhythmBoard); we never call joinSession (no network). -->
 <div id="rs-stubs" aria-hidden="true" style="position:absolute;left:-9999px;top:auto;width:0;height:0;overflow:hidden;">
   <input id="studentName" type="text"><input id="roomCode" type="text"><button id="joinBtn" type="button"></button>
   <div id="feedback"></div>
 </div>
-<!-- The actual RhythmQuest rhythm engine (class RhythmStudent -> window.rhythmStudent). Level 4
-     mounts its bank + staff into MelodyQuest's own containers; no iframe, no RhythmQuest chrome. -->
-<script type="module" src="rhythm-student.js?v=20260704-native"></script>
+<!-- SHARED VexFlow rhythm renderer (window.RhythmNotation). BOTH MelodyQuest's answer board
+     (mq-rhythm-board.js, below) and rhythm-student.js need it. The answer glyphs render through this
+     ONE shared renderer — the same code RhythmQuest draws with, so there is no separate glyph renderer
+     to drift (board layout/interaction IS a separate implementation, see mq-rhythm-board.js). BANK TILES
+     STAY PNG (VISION §8). vendor/vexflow.js is already loaded in <head>. Classic scripts, before
+     rhythm-student.js. -->
+<script src="shared/rhythm-notation/renderer.js?v=20260712-mq"></script>
+<!-- MelodyQuest's interactive rhythm-entry board — RhythmQuest-matching board + drag/touch, answer
+     glyphs rendered through the shared renderer directly (window.RhythmNotation). Self-contained. -->
+<script src="mq-rhythm-board.js?v=20260712-mqboard"></script>
+<!-- The tile/answer adapter (window.RhythmVexFlow). rhythm-student.js references it (guarded with a
+     null-check), but MelodyQuest's ANSWER no longer routes through it — the board above renders
+     directly. Kept so rhythm-student's own code paths never see it undefined. -->
+<script src="rhythm-vexflow-renderer.js?v=20260712-mq"></script>
+<!-- RhythmStudent (class RhythmStudent -> window.rhythmStudent). Loaded ONLY for its pattern bank +
+     grading lookups (rsFindPattern durations, RS.userAnswer). MelodyQuest's rhythm board is
+     MqRhythmBoard (above), NOT RhythmStudent's board — that board is TapQuest's and stays untouched. -->
+<script type="module" src="rhythm-student.js?v=20260712-mq-vexflow"></script>
 <script src="melodic-teach-content.js"></script>
 <script type="module">
 import { labelNote, labelPalette } from './core/melodic.js';
@@ -694,7 +774,7 @@ import {
   createRhythmFirstRenderer, createRhythmIdentityRenderer, createTwoPartRenderer, createTwoPartNotateRenderer,
   createMemorySpanRenderer, createProtonotationRenderer,
   createLiveHomeMinorRenderer, contourMoveIcon,
-} from './melodic-renderers.js';
+} from './melodic-renderers.js?v=20260712-mqboard';
 
 const RENDERERS = {
   recognition: createRecognitionRenderer,

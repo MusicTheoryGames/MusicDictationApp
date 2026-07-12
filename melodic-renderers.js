@@ -2412,9 +2412,10 @@ export function createRhythmIdentityRenderer(host, ctx) {
   const truthFigs = conv ? figureIdSequence(conv) : null;
   if (T) T.rhythmFigTruth = truthFigs; // test seam: the correct figure-tile sequence
 
-  // ---- The REAL RhythmQuest engine (rhythm-student.js -> window.rhythmStudent), reused verbatim.
-  // We mount its bank + staff into MelodyQuest's own containers and drive it via its public API
-  // (updateGameSettings / placeTile / userAnswer / onAnswerChanged) — no iframe, no chrome. ----
+  // ---- RhythmStudent (rhythm-student.js -> window.rhythmStudent) is used here ONLY as a figure +
+  // grading lookup: rsFindPattern reads its rhythmPatterns for the onset grader's durations, and
+  // RS.userAnswer holds the answer the grader reads. The interactive BOARD + tile bank is MqRhythmBoard
+  // (mq-rhythm-board.js), NOT RhythmStudent's board (TapQuest shares that) — see renderNativeGridPhase. ----
   // The engine singleton. Read fresh (it may be constructed a beat after first paint on a cold
   // load), and re-pointed when the wait below resolves — so this NEVER falls back to word buttons.
   let RS = (typeof window !== 'undefined') ? window.rhythmStudent : null;
@@ -2476,8 +2477,12 @@ export function createRhythmIdentityRenderer(host, ctx) {
     return { correct: wrong === 0, accuracy: total ? Math.round(100 * (total - wrong) / total) : 100 };
   }
 
+  let rhythmBoardInstance = null;  // active-round MqRhythmBoard; destroyed on re-render + teardown
   function renderNativeGridPhase() {
     renderSteps();
+    // Tear down the previous board FIRST (it holds window resize/orientation listeners); innerHTML
+    // alone would leak them. renderNativeGridPhase re-runs on the cold-load engine wait.
+    if (rhythmBoardInstance) { rhythmBoardInstance.destroy(); rhythmBoardInstance = null; }
     bodyHost.innerHTML = '';
     // Re-read the engine each render; if it isn't up yet (cold first paint / cache), WAIT for it and
     // re-render — we never show the old word-button palette. (There is no word-button path anymore.)
@@ -2529,41 +2534,53 @@ export function createRhythmIdentityRenderer(host, ctx) {
     const bank = document.createElement('div'); bank.className = 'rhythm-bank';
     const tiles = document.createElement('div'); tiles.id = 'rhythmTiles'; tiles.className = 'rhythm-tiles'; bank.appendChild(tiles);
     wrap.appendChild(bank);
-    // Filtered figure family: the figures actually heard (+ up to 2 plausible decoys), pulled from
-    // the engine's own bank so tiles, placement art and grading all use the real assets.
+    // Filtered figure family: the figures actually heard (+ up to 2 plausible decoys). rsFindPattern
+    // confirms the engine knows each id — its vexflow durations drive the onset grader.
     const heard = [...new Set(truthFigs)];
     const decoyPool = ['four-sixteenths', 'quarter-rest', 'dotted-quarter-eighth', 'half', 'two-eighths'];
     const decoys = decoyPool.filter((id) => !heard.includes(id) && rsFindPattern(id)).slice(0, 2);
-    RS.rhythmPatterns.__mq = [...heard, ...decoys].map((id) => rsFindPattern(id)).filter(Boolean);
-    // Action row (Clear / Next) lives in MelodyQuest chrome, not the engine.
+    const figureIds = [...heard, ...decoys].filter((id) => rsFindPattern(id));
+    RS.rhythmPatterns.__mq = figureIds.map((id) => rsFindPattern(id)).filter(Boolean); // kept for grading-lookup parity
+    // Action row (Clear / Next) lives in MelodyQuest chrome.
     const actionRow = document.createElement('div'); actionRow.className = 'melodic-notation-entry__actions'; wrap.appendChild(actionRow);
     const undoBtn = services.button('', 'choice'); undoBtn.classList.add('melodic-btn--icon');
     undoBtn.appendChild(services.icon('restart')); undoBtn.setAttribute('aria-label', 'Clear');
-    undoBtn.onclick = () => { if (destroyed) return; rhythmHadMistake = true; RS.clearAnswers(); syncDone(); };
     actionRow.appendChild(undoBtn);
     const doneBtn = services.button(identityPhase ? 'Next: notes' : 'Check', 'primary');
     doneBtn.onclick = () => { if (destroyed) return; if (identityPhase) { phase = 'id'; renderIdPhase(); } else grade(); };
     actionRow.appendChild(doneBtn);
+    // The interactive board is MelodyQuest's OWN (matches RhythmQuest's LOOK via the shared
+    // answer-board.css; interaction re-implemented), NOT rhythm-student.js's board (TapQuest shares that
+    // and must stay untouched). It reports its answer as
+    // RhythmStudent-shaped userAnswer rows, so MelodyQuest's onset grader (readAnswerItems -> RS.userAnswer)
+    // is reused unchanged; RhythmStudent stays loaded only for its pattern bank (rsFindPattern durations).
     let lastCells = 0;
-    function syncDone() { doneBtn.disabled = !RS.isComplete(); }
-    // Every placement/removal re-checks completeness; a REMOVAL (fewer filled cells) = a correction.
-    RS.onAnswerChanged = () => {
-      if (destroyed) return;
+    let mqBoard = null;
+    function syncDone() { doneBtn.disabled = !(mqBoard && mqBoard.isComplete()); }
+    function syncFromBoard() {
+      if (destroyed || !mqBoard) return;
+      RS.userAnswer = mqBoard.userAnswerRows();
       const cells = RS.userAnswer.reduce((s, row) => s + row.filter((v) => v && v.indexOf('_continuation') === -1).length, 0);
       if (cells < lastCells) rhythmHadMistake = true;
       lastCells = cells; syncDone();
-    };
-    // Build the empty staff (measures / bar lines / time signature) + the filtered bank — all native.
-    RS.updateGameSettings({ measureCount: conv.measures.length, difficulty: '__mq', tempo: 100,
-      timeSignature: melody.meter, beatsPerMeasure: conv.beatsPerBar });
+    }
+    mqBoard = window.MqRhythmBoard.create({
+      boardHost: measureC, bankHost: tiles,
+      measures: conv.measures.length, beatsPerMeasure: conv.beatsPerBar, timeSignature: melody.meter,
+      figures: figureIds.map((id) => ({ id })), onChange: syncFromBoard,
+      // authoritative beats from RhythmStudent's bank (the same figures grading uses), not the catalog
+      beatsOf: (id) => { const p = rsFindPattern(id); return p ? p.beats : 0; },
+    });
+    rhythmBoardInstance = mqBoard;             // so destroy()/re-render can tear its listeners down
+    RS.userAnswer = mqBoard.userAnswerRows();  // initialise (empty) so the grader can read it
+    undoBtn.onclick = () => { if (destroyed) return; rhythmHadMistake = true; mqBoard.clear(); };
     syncDone();
-    // Test seam: let the headless harness place the correct tiles + read state, like solo-mode's reveal.
+    // Test seam: place the correct tiles + read state (headless harness / reveal).
     if (T) T.rhythmNative = {
-      targetItems, bankTiles: () => tiles.querySelectorAll('.rhythm-tile').length,
-      complete: () => RS.isComplete(), done: doneBtn,
+      targetItems, bankTiles: () => tiles.querySelectorAll('.mqb-tile').length,
+      complete: () => mqBoard.isComplete(), done: doneBtn,
       placeAll: () => targetItems.forEach((it) => {
-        const z = document.querySelector('.beat-drop-zone[data-measure="' + (it.mi + 1) + '"][data-beat="' + it.startBeat + '"]');
-        if (z) RS.placeTile(z, it.patternId, it.mi + 1, it.startBeat);
+        mqBoard.placeFigure(it.patternId, it.mi * conv.beatsPerBar + (it.startBeat - 1));
       }),
     };
   }
@@ -2574,6 +2591,9 @@ export function createRhythmIdentityRenderer(host, ctx) {
 
   function renderIdPhase() {
     renderSteps();
+    // Leaving the rhythm board for the note-naming phase: destroy it so its window resize/orientation
+    // listeners don't outlive its DOM (innerHTML alone would leak them).
+    if (rhythmBoardInstance) { rhythmBoardInstance.destroy(); rhythmBoardInstance = null; }
     bodyHost.innerHTML = '';
     const staffHost = document.createElement('div'); staffHost.className = 'melodic-notation-entry__rhythm'; bodyHost.appendChild(staffHost);
     services.renderRhythmLine(staffHost, melody, {
@@ -2621,6 +2641,7 @@ export function createRhythmIdentityRenderer(host, ctx) {
 
   return { destroy() {
     destroyed = true;
+    if (rhythmBoardInstance) { rhythmBoardInstance.destroy(); rhythmBoardInstance = null; }  // drop its window listeners
     if (RS) { RS.onAnswerChanged = null; }  // unhook the engine from this (now dead) round
     services.stopAudio(); host.innerHTML = '';
   } };

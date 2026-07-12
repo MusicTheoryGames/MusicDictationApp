@@ -41,6 +41,7 @@ const UI_FILES = [
   'tapping.html',
   'suite-theme.js',
   'rhythm-vexflow-renderer.js',
+  'mq-rhythm-board.js',              // MelodyQuest's interactive rhythm-entry board (loaded by melodic-game.html)
   'suite-theme.css',                 // CSS `content:` can render a glyph
   'rhythm-assets/rhythm-assets.js',  // its `name` values render as image alt text
   // The ONE shared rhythm-notation renderer + its answer board, and TapQuest's bridge to it.

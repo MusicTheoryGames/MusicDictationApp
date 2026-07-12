@@ -9,7 +9,14 @@
 > classroom; §8 now carries the five observable criteria, a third amendment (2026-07-10) authorizes
 > the classroom's back-end **foundation** to be built in parallel with the UI finish, and a fourth
 > (2026-07-10) sets the backend to **Supabase — one shared project for the whole suite** (§11's
-> backend question resolved).
+> backend question resolved). A **fifth amendment (owner, 2026-07-12)** authorizes bringing
+> **MelodyQuest's rhythm-dictation ENTRY board** to look and act like RhythmQuest's — a
+> self-contained MelodyQuest board (`mq-rhythm-board.js`) reusing the shared `answer-board.css`
+> structure + shared renderer, WITHOUT restyling `rhythm-student.js` (TapQuest shares its board DOM) —
+> plus a rhythm-stage-only landscape rotate gate reusing TapQuest's `#rotateGate`. This is the suite's
+> "all rhythmic dictation looks and acts the same" goal, so it is IN SCOPE for Step 2's UI work.
+> (TapQuest has no drag-drop entry — it only displays; BeatQuest Casual is leaving for Staff Commander,
+> so this touches MelodyQuest only.)
 > The owner is
 > completing the UI separately (with Codex); concurrently the live room begins with the pure,
 > no-network `core/room.js`. The live room's *release* still follows the UI's — only its foundation is

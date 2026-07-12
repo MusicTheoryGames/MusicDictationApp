@@ -14,7 +14,7 @@
 
 import { buildRound } from './melodic-round.js';
 import { createServices } from './melodic-shell-services.js';
-import { createTonicContourRenderer } from './melodic-renderers.js';
+import { createTonicContourRenderer } from './melodic-renderers.js?v=20260712-mqboard';
 import { labelNote, labelPalette } from './core/melodic.js';
 import { melodicLevel } from './core/melodic-curriculum.js';
 import * as mastery from './core/mastery.js';
