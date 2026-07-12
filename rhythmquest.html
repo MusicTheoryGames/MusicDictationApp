@@ -4,9 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>RhythmQuest</title>
-  <link rel="stylesheet" href="quest-redesign.css?v=extract-3">
+  <link rel="stylesheet" href="quest-redesign.css?v=extract-11css">
 </head>
 <body class="quest-redesign" data-app="beatquest">
+  <script>/* skin preview: rhythmquest.html?skin=neon|candy|mono (no param = default) */
+  (function () { var s = new URLSearchParams(location.search).get("skin");
+    if (s) document.body.classList.add("skin-" + s.replace(/[^a-z0-9-]/gi, "")); })();</script>
   <main class="quest-shell stage">
     <section class="quest-device shell beat-device" aria-label="BeatQuest redesign prototype">
       <span class="screw tl s1"></span>
@@ -181,7 +184,7 @@
     </section>
   </main>
   <script src="vendor/vexflow.js"></script>
-  <script src="shared/rhythm-notation/renderer.js?v=extract-1"></script>
+  <script src="shared/rhythm-notation/renderer.js?v=extract-6"></script>
   <script src="quest-redesign.js?v=extract-2"></script>
 </body>
 </html>

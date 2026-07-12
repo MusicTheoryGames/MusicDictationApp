@@ -4312,3 +4312,153 @@ body[data-app="beatquest"] .beat-device.has-floating-rail .tool-button span {
   }
 
    ============================================================================ */
+
+/* ===== ACTIVE example skins — opt-in via body.skin-x or rhythmquest.html?skin=NAME ===== */
+body.quest-redesign.skin-neon {
+  --metal-1:#26123a; --metal-2:#170a26; --metal-3:#0c0416; --edge:#000000; --line:rgba(255,255,255,0.12);
+  --text:#eafff4; --muted:#8fae9f; --ink-bright:#eafff4; --ink-dark:#04160c;
+  --green:#39ff88; --amber:#ffd35a; --red:#ff5c8a; --blue:#4de1ff;
+  --accent:#39ff88; --accent-bg:#012a12; --accent-ink:#012a12;
+  --lcd:#c9f6d8; --lcd-low:#a4e6bf; --screen-hi:#e6fff1; --lcd-ink:rgba(6,26,15,0.82);
+  --panel:#0b0616; --btn-face:#241247; --tool-face:#170a2e;
+  --btn-shadow:#000000; --note-ink:rgba(6,22,13,0.95); --barline:rgba(6,26,15,0.72);
+}
+body.quest-redesign.skin-candy {
+  --metal-1:#ff9ecb; --metal-2:#ff77b4; --metal-3:#e85aa0; --edge:#c23e83; --line:rgba(255,255,255,0.5);
+  --text:#ffffff; --muted:#ffe3f1; --ink-bright:#ffffff; --ink-dark:#7a3a00;
+  --green:#35c47a; --amber:#ffd23e; --red:#ff5d7d; --blue:#4cc7e6;
+  --accent:#ffd23e; --accent-bg:#7a3a00; --accent-ink:#7a3a00;
+  --lcd:#fffdf5; --lcd-low:#ffe9f4; --screen-hi:#ffffff; --lcd-ink:rgba(122,30,90,0.85);
+  --panel:#d24f93; --btn-face:#ff8fc6; --tool-face:#f56aad;
+  --btn-shadow:#b23578; --note-ink:rgba(90,12,60,0.94); --barline:rgba(194,62,131,0.6);
+  --slot-w:112px; --slot-h:82px; --slot-gap:12px; --measure-gap:12px;
+  --bank-slot-w:112px; --bank-slot-h:80px; --melody-tile-w:76px; --melody-tile-h:70px;
+}
+body.quest-redesign.skin-mono {
+  --metal-1:#2a2b2e; --metal-2:#202124; --metal-3:#171719; --edge:#0a0a0b; --line:rgba(255,255,255,0.1);
+  --text:#f4f4f5; --muted:#9a9a9c; --ink-bright:#f4f4f5; --ink-dark:#141414;
+  --green:#3a3b3e; --amber:#6b6c70; --red:#b23a3a; --blue:#6f7075;
+  --accent:#111214; --accent-bg:#e9e9e6; --accent-ink:#ffffff;
+  --lcd:#f4f4f2; --lcd-low:#e4e4e0; --screen-hi:#ffffff; --lcd-ink:rgba(26,26,28,0.9);
+  --panel:#202124; --btn-face:#26272a; --tool-face:#1c1d20;
+  --btn-shadow:#0a0a0b; --note-ink:rgba(20,20,22,0.96); --barline:rgba(26,26,28,0.8);
+}
+
+/* ===== Candy: BOLD iteration — bubblegum screen + fat bubbly buttons ===== */
+body.quest-redesign.skin-candy {
+  --lcd:#ffe4f2; --lcd-low:#ffcfe8; --screen-hi:#fff6fb;   /* bold pink answer screen (still light for notes) */
+  --lcd-ink:rgba(150,26,104,0.9); --barline:rgba(210,79,147,0.65);
+  --panel:#e85aa0; --btn-face:#8fe1ff; --tool-face:#6fd3f5; --accent:#ffd23e; --accent-ink:#8a3d00;
+}
+/* fat, bubbly, kid-friendly controls */
+body.quest-redesign.skin-candy .hardware-button,
+body.quest-redesign.skin-candy .play,
+body.quest-redesign.skin-candy .tool-button,
+body.quest-redesign.skin-candy .speed-control button,
+body.quest-redesign.skin-candy .lcd-chip { border-radius: 22px; }
+body.quest-redesign.skin-candy .play { border-radius: 50%; }
+body.quest-redesign.skin-candy .rhythm-stage,
+body.quest-redesign.skin-candy .quest-workframe { border-radius: 22px; }
+
+/* ===== Candy: playful answer background (soft dots, not scanlines) + fun tile shape ===== */
+/* replace the LCD scanlines with gentle, non-distracting candy dots (still light, so notes read) */
+body.quest-redesign.skin-candy .rhythm-stage::before {
+  background: radial-gradient(circle at center, rgba(226, 52, 139, 0.13) 2.3px, transparent 2.6px);
+  background-size: 22px 22px;
+  opacity: 1;
+}
+/* fun, bouncy bank-tile shape for little hands (was a flat pill) */
+body.quest-redesign.skin-candy .rhythm-tile {
+  border-radius: 42% 58% 55% 45% / 58% 52% 48% 42%;
+}
+
+/* ===== skin-sunset — warm coral-to-gold, light screen ===== */
+body.quest-redesign.skin-sunset {
+  --metal-1:#ff8a5c; --metal-2:#ef6b57; --metal-3:#c94b52; --edge:#8f2f45; --line:rgba(255,255,255,0.18);
+  --text:#fff5ec; --muted:#ffd9c2; --ink-bright:#fff5ec; --ink-dark:#6b3600;
+  --green:#3fbf72; --amber:#ffcf4d; --red:#ff6a45; --blue:#ff9a62;
+  --accent:#ffcf4d; --accent-bg:#6b3600; --accent-ink:#6b3600;
+  --lcd:#fff3e0; --lcd-low:#ffe0c2; --screen-hi:#fffaf2; --lcd-ink:rgba(120,55,20,0.82);
+  --panel:#c94b52; --btn-face:#ff9a62; --tool-face:#f3714f;
+  --btn-shadow:#8f2f45; --note-ink:rgba(90,40,10,0.95); --barline:rgba(120,55,20,0.6);
+}
+
+/* ===== skin-kids — bright, gender-neutral, playful (sky-blue + sunshine, cream screen) ===== */
+body.quest-redesign.skin-kids {
+  --metal-1:#5cc8ef; --metal-2:#3fb3de; --metal-3:#2f95c2; --edge:#1c6a8c; --line:rgba(255,255,255,0.3);
+  --text:#083140; --muted:#e6f7ff; --ink-bright:#ffffff; --ink-dark:#083140;
+  --green:#3ace6a; --amber:#ffc63e; --red:#ff6a55; --blue:#4cc7e6;
+  --accent:#ffc63e; --accent-bg:#7a4b00; --accent-ink:#7a4b00;
+  --lcd:#fffdf0; --lcd-low:#fff3d6; --screen-hi:#fffef8; --lcd-ink:rgba(30,70,45,0.85);
+  --panel:#2f95c2; --btn-face:#ff8a4c; --tool-face:#ffa05e;
+  --btn-shadow:#1c6a8c; --note-ink:rgba(20,40,26,0.95); --barline:rgba(30,70,45,0.6);
+  /* KID sizing: bigger tiles + slots */
+  --slot-w:112px; --slot-h:82px; --slot-gap:12px; --measure-gap:12px;
+  --bank-slot-w:112px; --bank-slot-h:80px; --melody-tile-w:76px; --melody-tile-h:70px;
+}
+/* fat bubbly controls */
+body.quest-redesign.skin-kids .hardware-button,
+body.quest-redesign.skin-kids .tool-button,
+body.quest-redesign.skin-kids .speed-control button,
+body.quest-redesign.skin-kids .lcd-chip { border-radius: 22px; }
+body.quest-redesign.skin-kids .play { border-radius: 50%; }
+body.quest-redesign.skin-kids .rhythm-stage,
+body.quest-redesign.skin-kids .quest-workframe { border-radius: 22px; }
+/* playful answer background (soft dots, no scanlines) + fun tile shape */
+body.quest-redesign.skin-kids .rhythm-stage::before {
+  background: radial-gradient(circle at center, rgba(47,149,194,0.13) 2.3px, transparent 2.6px);
+  background-size: 22px 22px;
+}
+body.quest-redesign.skin-kids .rhythm-tile { border-radius: 42% 58% 55% 45% / 58% 52% 48% 42%; }
+
+/* ===== skin-grape — rich violet + gold, light lavender screen ===== */
+body.quest-redesign.skin-grape {
+  --metal-1:#8b6fd6; --metal-2:#6b4fc0; --metal-3:#4f37a0; --edge:#301d6b; --line:rgba(255,255,255,0.2);
+  --text:#f3eeff; --muted:#d9ccff; --ink-bright:#f3eeff; --ink-dark:#2e1a5c;
+  --green:#4fce8a; --amber:#ffcf4d; --red:#ff6a80; --blue:#5cc7ff;
+  --accent:#ffcf4d; --accent-bg:#3a2a00; --accent-ink:#3a2a00;
+  --lcd:#f3ecff; --lcd-low:#e6dcff; --screen-hi:#faf6ff; --lcd-ink:rgba(70,45,120,0.85);
+  --panel:#4f37a0; --btn-face:#8b6fd6; --tool-face:#6b4fc0;
+  --btn-shadow:#301d6b; --note-ink:rgba(50,30,90,0.95); --barline:rgba(70,45,120,0.6);
+}
+
+/* ===== skin-calm — soft, muted, low-stimulation (for kids overwhelmed by bright) ===== */
+body.quest-redesign.skin-calm {
+  --metal-1:#8a9a94; --metal-2:#71827c; --metal-3:#5a6b65; --edge:#3f4d47; --line:rgba(255,255,255,0.14);
+  --text:#f0f3f1; --muted:#c4cfca; --ink-bright:#f0f3f1; --ink-dark:#2f3a35;
+  --green:#6faa8b; --amber:#c9a86a; --red:#c98a7a; --blue:#7c9aa8;
+  --accent:#7fa891; --accent-bg:#26332c; --accent-ink:#20302a;
+  --lcd:#f2f0e9; --lcd-low:#e7e4da; --screen-hi:#f8f6f0; --lcd-ink:rgba(55,62,55,0.82);
+  --panel:#5a6b65; --btn-face:#788a83; --tool-face:#647670;
+  --btn-shadow:#3f4d47; --note-ink:rgba(45,55,48,0.92); --barline:rgba(55,62,55,0.5);
+}
+/* calm: drop the busy LCD scanlines for a soft, quiet screen */
+body.quest-redesign.skin-calm .rhythm-stage::before { background: none; }
+
+/* ===== skin-highvis — maximum contrast for low-vision (black / white / yellow, bigger, bold) ===== */
+body.quest-redesign.skin-highvis {
+  --metal-1:#1c1c1c; --metal-2:#0e0e0e; --metal-3:#000000; --edge:#000000; --line:rgba(255,255,255,0.4);
+  --text:#ffffff; --muted:#e6e6e6; --ink-bright:#ffffff; --ink-dark:#000000;
+  --green:#00e05a; --amber:#ffd400; --red:#ff3b30; --blue:#00cfff;
+  --accent:#ffd400; --accent-bg:#000000; --accent-ink:#000000;
+  --lcd:#ffffff; --lcd-low:#f4f4f4; --screen-hi:#ffffff; --lcd-ink:rgba(0,0,0,0.95);
+  --panel:#000000; --btn-face:#1c1c1c; --tool-face:#0e0e0e;
+  --btn-shadow:#000000; --note-ink:#000000; --barline:#000000;
+  --slot-w:108px; --slot-h:78px; --bank-slot-w:108px; --bank-slot-h:76px;
+}
+/* high-vis: no scanlines, and a bold thick barline for clear structure */
+body.quest-redesign.skin-highvis .rhythm-stage::before { background: none; }
+body.quest-redesign.skin-highvis .measure-group::after { width: 4px; background: #000; }
+body.quest-redesign.skin-highvis .measure-group.is-final-measure::after { width: 9px; }
+
+/* Kids — color-harmony pass: was 5 fighting hues (blue/yellow/orange/green/red). Soften the green so
+   the groove meter belongs (sky+sun+grass reads as one scheme), unify the buttons into ONE friendly
+   coral family (was a competing orange), and tie the red to that coral. Balanced warm/cool. */
+body.quest-redesign.skin-kids {
+  --green:#3fbf6a;          /* groove: grass-green, less neon -> sits with the blue + yellow */
+  --blue:#3aa9df;           /* play highlight: a deeper sky, in the chassis family */
+  --red:#ff6f61;            /* wrong: coral, matches the buttons instead of a stray red */
+  --btn-face:#ff9470;       /* buttons: soft friendly coral (was harsh orange) */
+  --tool-face:#ff8560;
+  --accent-bg:#6b4a00;      /* darker warm backing behind the yellow accent chips */
+}

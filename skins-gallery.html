@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RhythmQuest — 4 skins</title>
+<style>
+  :root { --ink:#e9ecf2; --dim:#9aa0ac; --bg:#0e0f13; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:18px clamp(12px,3vw,28px) 60px; background:var(--bg); color:var(--ink);
+         font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; -webkit-font-smoothing:antialiased; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  p.note { color:var(--dim); margin:0 0 20px; max-width:60ch; }
+  .grid { display:grid; grid-template-columns:1fr; gap:26px; }
+  @media (min-width:1100px){ .grid{ grid-template-columns:1fr 1fr; } }
+  .card { border-radius:14px; overflow:hidden; background:#16181d; box-shadow:0 0 0 1px rgba(255,255,255,.07); }
+  .card.pick { box-shadow:0 0 0 2px #ffd23e; }
+  .cap { display:flex; align-items:baseline; gap:10px; padding:12px 15px; flex-wrap:wrap; }
+  .cap .nm { font:800 16px/1 system-ui; }
+  .cap .role { color:var(--dim); font-size:12.5px; }
+  .cap .tag { font:800 9px/1 ui-monospace,monospace; letter-spacing:.1em; text-transform:uppercase;
+              color:#06210f; background:#ffd23e; padding:4px 7px; border-radius:5px; }
+  .frame { position:relative; background:#000; }
+  /* show the game top-down; scroll within each card for the rest */
+  iframe { display:block; width:100%; height:880px; border:0; background:#0c0d10; }
+  .open { display:inline-block; margin:0 15px 14px; color:#8fd0ff; font-size:13px; text-decoration:none; }
+</style>
+</head>
+<body>
+  <h1>RhythmQuest — four skins</h1>
+  <p class="note">Each panel below is the <b>real game</b> re-skinned by CSS variables — not a mockup.
+  Scroll inside a panel to see the bank/controls. Tap "open full" to play it. Default and Kids are the
+  two that matter; Sleek, Calm, and High-Visibility are purpose-built alternatives — minimal,
+  low-stimulation, and an accessibility option for low-vision students.</p>
+
+  <div class="grid">
+    <div class="card">
+      <div class="cap"><span class="nm">Default · Console</span><span class="role">clean/pro — older students, teachers</span></div>
+      <div class="frame"><iframe src="rhythmquest.html" title="Default"></iframe></div>
+      <a class="open" href="rhythmquest.html" target="_blank">open full ↗</a>
+    </div>
+
+    <div class="card pick">
+      <div class="cap"><span class="nm">Kids</span><span class="tag">the one that matters</span><span class="role">bright, big, playful — for any kid</span></div>
+      <div class="frame"><iframe src="rhythmquest.html?skin=kids" title="Kids"></iframe></div>
+      <a class="open" href="rhythmquest.html?skin=kids" target="_blank">open full ↗</a>
+    </div>
+
+    <div class="card">
+      <div class="cap"><span class="nm">Sleek · Mono</span><span class="role">cool, minimal alternative</span></div>
+      <div class="frame"><iframe src="rhythmquest.html?skin=mono" title="Sleek Mono"></iframe></div>
+      <a class="open" href="rhythmquest.html?skin=mono" target="_blank">open full ↗</a>
+    </div>
+
+    <div class="card">
+      <div class="cap"><span class="nm">Calm</span><span class="role">soft, muted, low-stimulation</span></div>
+      <div class="frame"><iframe src="rhythmquest.html?skin=calm" title="Calm"></iframe></div>
+      <a class="open" href="rhythmquest.html?skin=calm" target="_blank">open full ↗</a>
+    </div>
+
+    <div class="card">
+      <div class="cap"><span class="nm">High-Visibility</span><span class="role">max contrast for low-vision</span></div>
+      <div class="frame"><iframe src="rhythmquest.html?skin=highvis" title="High visibility"></iframe></div>
+      <a class="open" href="rhythmquest.html?skin=highvis" target="_blank">open full ↗</a>
+    </div>
+  </div>
+</body>
+</html>
